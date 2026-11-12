@@ -48,8 +48,9 @@ bundle install
 bundle exec rake check
 ```
 
-With a pikuri checkout beside it, `bundle config set --local local.pikuri-core ../pikuri`
-builds against that instead of pikuri's master.
+pikuri comes from its repo at the commit `PIKURI_REF` in the `Gemfile` names. To try an
+unpushed pikuri change, point that `git` block at `path: '../pikuri'` for the session, and
+put the pin back before you commit.
 
 ## License
 

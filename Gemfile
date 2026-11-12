@@ -12,14 +12,14 @@ gemspec path: 'pikuri-lsp'
 gemspec path: 'pikuri-code'
 gemspec path: 'pikuri-os'
 
-# pikuri itself, "just" a dependency: its git master, with Gemfile.lock
-# pinning the commit; `bundle update pikuri-core` moves it. To work against
-# a local checkout instead:
-#   bundle config set --local local.pikuri-core ../pikuri
+# pikuri itself, "just" a dependency, pinned to one commit of its repo, so
+# the Gemfile says which pikuri this was built against. Move it by editing
+# PIKURI_REF to a commit that is already pushed, then `bundle install`.
 # The gems a workshop gemspec doesn't name are the demo binaries' and the
 # specs' choices: web tools, the PDF extractor, Thunderbird for
 # pikuri-computer, and vectordb for the shared Qdrant image pin.
-git 'https://codeberg.org/mvysny/pikuri.git', branch: 'master' do
+PIKURI_REF = 'ac77ac94363b091cc176e805c1fdf741ff2d5006'
+git 'https://codeberg.org/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-pdf'
   gem 'pikuri-subagents'

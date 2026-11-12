@@ -17,7 +17,7 @@ jobs:
   # `rake check` = specs, then the seam tripwires, then the doc layer again:
   # the same command a contributor runs locally. The runner is not root, so
   # the specs that assert EACCES really exercise the deny path. pikuri's gems
-  # come from its git master at the commit Gemfile.lock pins.
+  # come from its repo at the commit the Gemfile pins (PIKURI_REF).
   check:
     runs-on: ubuntu-latest
     strategy:

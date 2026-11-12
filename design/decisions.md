@@ -1366,7 +1366,7 @@ paste-back ask — unprompted, and reaching for the NVMe-specific tool first.
 
 ---
 
-## D_separate_repo — Why is the workshop a repo of its own, riding pikuri's master, rather than more gems in pikuri?
+## D_separate_repo — Why is the workshop a repo of its own, pinned to a pikuri commit, rather than more gems in pikuri?
 
 **Context.** Until 2026-11 these eight gems lived in pikuri's monorepo. Every integration added
 a gem, a release target, a book chapter and a share of a capped `AGENTS.md`, and pulled pikuri
@@ -1375,15 +1375,19 @@ tokenizer, a sandbox, MCP's container model and a language server's build evalua
 
 **Decision.** pikuri keeps the gems you would run on your host with your real data, and whose
 future is "explain it better". A gem that needs a cage, or whose future is more features, lives
-here. The workshop is "just" an app built on pikuri: its `Gemfile` rides pikuri's git master
-with `Gemfile.lock` pinning the commit, its gemspecs pin the pikuri release they were built
-against, it releases on its own cycle, and its tooling (`rake check`, `rake release`, both
-tripwires) is a copy that evolves on its own. Dependencies point from here to pikuri, never back.
+here. The workshop is "just" an app built on pikuri: its `Gemfile` pins one pushed pikuri
+commit by sha, its gemspecs pin the pikuri release they were built against, it releases on its
+own cycle, and its tooling (`rake check`, `rake release`, both tripwires) is a copy that evolves
+on its own. Dependencies point from here to pikuri, never back.
 
 **Alternatives rejected.**
 
 - **One repo, two books.** Every gem would still answer to "readable in an evening" and to the
   trifecta promise, which a coding agent holding all three legs can't keep.
+- **pikuri's `master` branch, with a Bundler local override to `../pikuri`.** The pin lived only
+  in `Gemfile.lock`, and the override moved it silently: on the first day it pointed the lock at
+  a pikuri commit not yet pushed, which CI could never fetch. A sha in the `Gemfile` is visible,
+  and moves only when someone edits it.
 - **A shared version and release.** A rename in pikuri breaks the workshop until it catches up
   either way; a shared number only hides that, and spends a release on gems that didn't change.
 - **Renaming the gems `pikuri-workshop-*`.** A name is tied to its namespace and entry file, so

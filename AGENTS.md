@@ -42,7 +42,7 @@ home of everything about pikuri; a cite into them is qualified, `pikuri:D_<slug>
 
 Rails-shape monorepo: each gem owns its `lib/`, `spec/`, gemspec, entry file, and where relevant
 its `bin/`, `prompts/` and `design/`. The root `Gemfile` wires every gem via `gemspec path:` and
-pikuri's gems from its git master; the `Rakefile` fans out `rake test` and orchestrates
+pikuri's gems from its repo at one pinned commit; the `Rakefile` fans out `rake test` and orchestrates
 `rake release`.
 
 - `pikuri-code` — `Bash` + sandbox + `bin/pikuri-code`, the in-repo coding agent. Rules: `pikuri-code/AGENTS.md`
@@ -63,7 +63,7 @@ pikuri's gems from its git master; the `Rakefile` fans out `rake test` and orche
 - **Linux-first; macOS may work; Windows is unsupported.** POSIX shell, GNU `timeout`, XDG cache layout, SIGTERM process-group cleanup.
 - **`# frozen_string_literal: true`** atop every Ruby file (`lib/`, `spec/`, `bin/*`).
 - **YARD on every public module/class/method** in `lib/`: concrete `@param` / `@return` types, `@raise` for expected exceptions, one-line summary then tags, and the local *why*.
-- **pikuri rides its git master.** `Gemfile.lock` pins the commit, `bundle update pikuri-core` moves it, and `bundle config set --local local.pikuri-core ../pikuri` works against a local checkout — push pikuri before the workshop, or CI can't fetch the pinned commit.
+- **pikuri is pinned by commit.** The `Gemfile`'s `PIKURI_REF` names a commit already pushed to pikuri's repo — never a branch, never a local override — so the Gemfile says which pikuri the workshop was built against and CI can always fetch it.
 - **A gemspec's runtime dependencies are what its `lib/` requires.** Workshop siblings pin `= Pikuri::Workshop::VERSION`, pikuri's gems `Pikuri::Workshop::PIKURI`; a gem only a `bin/` or a spec uses comes from the root `Gemfile`.
 - **Per-gem Zeitwerk loaders**, eager-loading at boot; no `require_relative` inside a gem's `lib/`. One constant per file at the Zeitwerk path, everything under `Pikuri::`, acronyms need an `inflector.inflect` entry, no top-level constants.
 - **Tests: rspec-core with minitest-style asserts.** `describe` / `it` but `assert_equal` / `assert` / `refute`, no RSpec matchers, no rspec-mocks (stub with `define_singleton_method` in `before`, restore in `after`). Pattern: `pikuri-code/spec/pikuri/code/bash_spec.rb`.
