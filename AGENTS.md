@@ -10,7 +10,7 @@ a cage, and the book says what the cage buys and where it stops.
 ## Promises
 
 - **Powerful, yet simple enough to teach.** Every gem does real work and still teaches a lesson the book can tell; a gem that stops teaching has stopped belonging here.
-- **Power runs in a VM.** An agent that runs code you didn't write runs inside a virtual machine, since a shared kernel is a thin wall; the OS assistant, whose whole point is your host, is the one exception, held by a network the kernel has cut.
+- **Lifting the cage takes a VM.** Each gem's cage runs on your host and says where it stops; `--yolo`, unattended runs and code you don't trust go inside a virtual machine around the whole process, since a shared kernel is a thin wall. The OS assistant never lifts its cage: its whole point is your host, held by a network the kernel has cut.
 - **The code may be complex.** pikuri's "readable in an evening" does not hold here: a gem carries the complexity the real world forces on it, and the book explains the hard parts rather than every line.
 
 ## Design docs

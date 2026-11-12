@@ -9,10 +9,11 @@ and a coding agent holds all three.
 
 Read this once before pointing `pikuri-code` at anything sensitive.
 
-**The promise and today's code disagree.** The workshop promises that an agent running code
-you didn't write runs inside a VM. Today's cages are Bubblewrap (`pikuri-code`'s `bash`) and
-Docker (MCP servers, the extractors): kernel namespaces, which share your host's kernel. Until
-the VM lands, run `pikuri-code` inside a VM yourself if the repo is one you don't trust.
+**Past the cage, use a VM.** The workshop's cages are Bubblewrap (`pikuri-code`'s `bash`) and
+Docker (MCP servers, the extractors): kernel namespaces, which share your host's kernel. They
+are built for attended use on a repo you trust. For `--yolo`, unattended runs, or a repo you
+don't trust, run the whole of `pikuri-code` inside a VM. The workshop ships no VM of its own,
+by design, and nothing yet checks that you used one.
 
 ## The kit, by harness shape
 
@@ -26,7 +27,7 @@ wants, a coding agent, is the one it can't cover.
 | **Blast-radius containment** | Workspace seam + Bubblewrap — `~/.ssh`, `~/.aws`, other projects don't resolve; bash sees only the workspace | coding, attended or not | the workspace is itself inside the radius — "leak *this* project's `.env`" still works |
 | **Human gate** | `Confirmer` prompts before an irreversible or egress-bearing action runs | coding **with a human present** | confirmation fatigue; worth zero when nobody's watching |
 | **Egress allowlist** *(planned)* | allow your package registries + git remote, deny the rest — cuts exfil at the network without removing `bash` | **unattended** coding | coarse: an allowlisted host is still open, and DNS exfil rides port 53 |
-| **Outer isolation** | a VM wrapping the whole pikuri process | `--yolo`, "I don't trust any of this" | delegated to the hypervisor; the promise above says it becomes the default |
+| **Outer isolation** | a VM wrapping the whole pikuri process | `--yolo`, "I don't trust any of this" | delegated to the hypervisor, which you run: the workshop ships none; your toolchain must live inside it too |
 
 **Why coding needs the kit, not the headline.** A coding agent's job *is* the trifecta: read
 your source (a), pull docs and dependencies (b), run builds and push (c). You can't decompose
@@ -38,8 +39,8 @@ instead, and the composition splits on whether a human is in the room:
   containment bounds the damage to *this project* when a tired user clicks through.
 - **Unattended** (cron, CI, a `minions` fan-out): no human to prompt, so the human gate is off
   the table. Blast-radius containment plus an egress allowlist is the structural substitute.
-  The allowlist isn't shipped yet; until it is, unattended coding on a box with real secrets is
-  the open gap, and a VM (outer isolation) is the stopgap.
+  The allowlist isn't shipped yet, and even once it is, unattended coding on a box with real
+  secrets belongs inside a VM (outer isolation).
 
 These *compose*; they aren't alternatives. The human gate is *attention, not isolation*, which
 is exactly why it only works stacked on the structural mechanisms beneath it: they keep it from
