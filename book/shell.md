@@ -379,5 +379,5 @@ you used one, either. That's on you, and it's why the banner says so.
 
 [The OS assistant](os-assistant.md) takes the same parts (the file tools, `bash`, the gate,
 the detector) and makes the opposite cut. Its whole job is your machine, so it gets the
-*whole* disk, and the kernel severs the network instead. It's the one agent in this book that
-never lifts its cage, because its point is your host, not a VM.
+*whole* disk, and the kernel severs the network instead. Its point is your host, not a VM, so
+that cage is the one you keep on.

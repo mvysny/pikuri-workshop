@@ -9,21 +9,23 @@ the parts [the shell chapter](shell.md) introduced — `Workspace`
 changes get approved), `Bash` (running a real shell), and `Sandbox`
 (what that shell can actually touch) — cut the other way.
 
-There is one thesis sentence to carry through both this chapter and
-the next. [The security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) named the lethal trifecta —
+There is one thesis sentence to carry through this chapter.
+[The security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) named the lethal trifecta —
 private data, untrusted content, a way to send bytes out — and said
-you defeat it by *structurally* removing a leg. This is the first
-agent that does it, and because reading your whole disk is the entire
-point, the leg it removes is **egress**: the network is severed by
-the kernel, so a prompt injection in a log file has the data but
-nowhere to send it. [The shell chapter](shell.md) made the
-*opposite* cut — it kept the network (builds need it) and confined
-the disk instead. Same adversary, opposite leg. Hold onto that; it's
-the through-line.
+you defeat it by *structurally* removing a leg. pikuri's own agents
+did that by leaving tools out. This one can't: it holds a shell, and
+a shell can reach anything. So the kernel removes the leg instead,
+and because reading your whole disk is the entire point, the leg it
+removes is **egress**: the network is severed, so a prompt injection
+in a log file has the data but nowhere to send it.
+[The shell chapter](shell.md) made the *opposite* cut — it kept the
+network (builds need it) and confined the disk instead. Same
+adversary, opposite leg. Hold onto that; it's the through-line.
 
 `pikuri-os` is a thin gem: it rides on top of `pikuri-workspace` (the
 file tools) and `pikuri-code` (the shell and the sandbox), the same
-two gems the shell chapter used.
+two gems the shell chapter used. This chapter dwells only on what
+it does differently.
 
 The chapter runs in three parts. **Part 1** builds the agent as described
 above — full disk, network severed. **Part 2** does the harder thing:
@@ -40,22 +42,22 @@ being *severe*.
 
 ## Prerequisites
 
-The [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md) and [security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
-chapters. `llama-server`
-running, `bundle install` done. Plus a couple of OS-level pieces,
-all of which **degrade rather than crash** except the first:
+[The shell chapter](shell.md), and pikuri's
+[security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) and
+[sub-agents](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md) chapters.
+`llama-server` running, `bundle install` done. Plus a few OS-level
+pieces, all of which **degrade rather than crash** except the first:
 
-- **`bubblewrap`** (`bwrap`) — the sandbox that severs the network
-  lives in it. On Debian / Ubuntu: `sudo apt install bubblewrap`.
-  This one is load-bearing, so `pikuri-os` probes it (and
-  the unprivileged user/network namespaces it needs) at boot and
-  **raises rather than silently running with an open network**. If
-  you genuinely want no sandbox, you have to pass `--no-sandbox`
-  and say so out loud.
-- **`localsearch`** — GNOME's desktop file index (it ships with the
-  GNOME desktop on Ubuntu 26.04+). When it's present you get the
-  `fileindex_*` tools; when it isn't, they're simply omitted and the
-  agent still works with `bash` and the file tools.
+- **`bubblewrap`** (`bwrap`), as in the shell chapter — here it's
+  what severs the network. This one is load-bearing, so `pikuri-os`
+  probes it (and the unprivileged user/network namespaces it needs)
+  at boot and **raises rather than silently running with an open
+  network**.
+- **A desktop file index**: GNOME's **`localsearch`** (the successor
+  to Tracker, part of a GNOME desktop) or, on any desktop,
+  **`recoll`** with an index you've built. When neither is usable,
+  the `fileindex_*` tools are simply omitted and the agent still
+  works with `bash` and the file tools.
 - **`inxi`** — a hardware/desktop summariser, optional enrichment for
   the boot grounding. Absent is fine; the same facts come from
   `/proc`, `uname`, and the environment.
@@ -64,19 +66,29 @@ This agent points at your *real* home directory by design. It can't
 reach the network, and every change stops for your confirmation — but
 it is not a toy sandbox you can be careless in. Read the confirmations.
 
-## 1. Run it
+## Run it
 
 ```sh
-./bin/pikuri-os "what's eating my disk in my home directory?"
+pikuri-os/bin/pikuri-os "what's eating my disk in my home directory?"
 ```
 
 or with no argument for an interactive REPL:
 
 ```sh
-./bin/pikuri-os
+pikuri-os/bin/pikuri-os
 > find the budget spreadsheet I was editing last week
 > Any kernel errors or warnings in the log?
 ```
+
+Before the prompt, the boot banner already states this chapter's
+thesis:
+
+```
+Trifecta: pikuri-os — 2 of 3 legs (private, untrusted); no egress leg found.
+```
+
+Private data and untrusted content, both present, both maximal — and
+no way out.
 
 You'll watch it reach for read-only shell commands (`du`, `df`,
 `journalctl`), the file-index tools, and `read` — and *not* stop you
@@ -113,8 +125,8 @@ unprivileged namespaces it needs at construction and raises if they're
 unavailable, rather than quietly degrading to an open network. The
 only way to an internet-capable shell here is the explicit
 `--no-sandbox` flag, which swaps in `Sandbox::NONE` and prints a
-warning that the security property is off — use it only on a
-throwaway box.
+warning that the security property is off — the end of Part 1 says
+where that flag belongs.
 
 **This is where the security chapter's trifecta argument becomes concrete.** The
 agent holds two legs — private data (your whole disk) and untrusted
@@ -161,7 +173,8 @@ the coding agent of the shell chapter — the file tools are opened all the way 
 to see exactly what `bash` sees:
 
 ```ruby
-filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [])
+filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [],
+                                                         private: true)
 ```
 
 `AllowAll` normally keeps a credential floor: the file tools refuse
@@ -177,35 +190,34 @@ agree: they can all read your files. What actually stops a secret from
 The rule of thumb: **reads are safe because egress is; what needs a
 human is writes.**
 
+`private: true` is the other half of that honesty. The coding agent
+*asks* whether a project holds anything you'd mind leaking, because
+a checkout might be a toy or a client's payroll. Here there's nothing
+to ask: a workspace that reaches your home directory, your keys and
+your browser profile is private by what it *is*. Declaring it makes
+the trifecta report name `read` and `bash` among the tools holding
+the private leg, which is what a reader of that report would go and
+change.
+
 `project_root` is just the anchor for relative paths ("what's in *this*
 folder?") and where `bash` starts; absolute paths reach anywhere. There's
 no containment fence — the opposite of the shell chapter's project-rooted
-workspace, and deliberate: the job is the whole machine. One gate still
-stands: the **read-before-edit gate**, where `edit` (and an overwriting
-`write`) refuses a path the agent hasn't `read` first — so a change can't
-land on bytes the model never saw. The shell chapter raised the perimeter too,
-fencing the file tools into the project, when the stakes are a shared
-repo rather than your own machine.
+workspace, and deliberate: the job is the whole machine. The
+read-before-edit gate from the shell chapter still stands.
 
 ## The Confirmer seam — writes stop for a human, with a diff
 
-Reads are open; writes are where a human steps in. Every `write` and
-`edit` this agent makes routes through a `Confirmer` and stops for a
-yes/no — and because a file change is *structured* (a known path, exact
-bytes), the confirmer shows you an exact **diff** of what's about to
-change, not a bare "OK to write?". The binary wires the terminal one:
+Reads are open; writes are where a human steps in. The coding agent
+let new files and edits through without asking, because a project is
+under version control and the cage kept them inside it. Neither holds
+here, so the posture flips:
 
-```ruby
-confirmer = Pikuri::Workspace::Confirmer::Terminal.new
-```
-
-Two details make this pull its weight on a full-disk agent:
-
-- **Every writable write confirms** — not just risky overwrites. Writes
-  are rare for a diagnosis agent (it mostly reads), so confirming each
-  one is cheap, and it matches the posture `bash` already has: every
-  mutation stops for you. You approve a change you can *see*, line by
-  line, rather than a blind write.
+- **Every writable write confirms** — new files and `edit`s too, not
+  just overwrites, each with an exact **diff** of what's about to
+  change. Writes are rare for a diagnosis agent (it mostly reads), so
+  confirming each one is cheap, and it matches the posture `bash`
+  already has: every mutation stops for you. You approve a change you
+  can *see*, line by line, rather than a blind write.
 - **A write that can't succeed never prompts.** The file tools run as
   you, so a `write` to `/etc/fstab` fails with permission denied whether
   or not you approve — the confirmer detects that up front and returns
@@ -215,87 +227,50 @@ Two details make this pull its weight on a full-disk agent:
   your own. `/etc`, `/boot`, another user's home are unwritable, so they
   never reach the prompt in the first place.
 
-The tool never touches `gets`/`puts` itself — it hands the confirmer a
-semantic request (the question plus the change) and the confirmer owns
-presentation, including neutralising hostile control characters in
-attacker-influenced bytes before they reach your terminal. That matters
-precisely because this agent reads untrusted files: a diff line
-engineered to look like a confirmation prompt gets defanged, not
-rendered. (The `--no-confirm` flag swaps in an auto-approver — again,
-throwaway-box only.)
+The confirmer neutralises hostile control characters before they reach
+your terminal, as in the shell chapter, and that matters more here:
+this agent reads untrusted files all day, and a diff line engineered
+to look like a confirmation prompt gets defanged, not rendered.
 
 You'll see this fire first not on a destructive command but on the
-agent editing its own memory file, which is the next section.
+agent editing its own memory file, which is a section below.
 
-## Confirmation fatigue — the passive-command detector
+## The passive-command detector, for a different reason
 
-"Confirm every command" is right for changes and *miserable* for the
-constant harmless reads (`ls`, `cat`, `journalctl`, `df`). And the
-fatigue isn't only annoyance — it's a security hole. A user who has
-clicked "yes" forty times this session has stopped reading; the
-forty-first prompt, the injected one, gets rubber-stamped. Cutting
-fatigue *is* security work.
+`bash` gets the same
+[passive-command detector](shell.md#confirmation-fatigue-the-passive-command-detector)
+as the coding agent, so `ls`, `du`, `journalctl` and their kind run
+without a prompt. The same line passes in both agents —
+`cat ~/.ssh/id_ed25519` — but for different reasons. In the coding
+agent it was harmless because the cage hid the key. Here the agent can
+read the key (it can read everything), and it's harmless because the
+key has nowhere to go. The detector only ever grants reads; which
+reads are safe is decided by the cut each agent made.
 
-So alongside the human confirmer, `bash` gets a separate *command
-approver* — a predicate answering one question, "is this command
-provably read-only?":
-
-```ruby
-Pikuri::Code::Bash::PassiveCommandDetector.new(allow_git: true)
-```
-
-This is deliberately **not** a `Confirmer`. A confirmer's one job is to
-ask a human, and it never inspects what a command *does*; deciding
-whether a command is safe enough to skip the prompt is a different
-concern, so it's a different object. `bash` consults the approver first
-and only falls through to the human confirmer for whatever it can't
-vouch for. (Keeping the two apart also means `--yolo` — a blanket
-auto-approving confirmer — and this read-only skip are independent
-knobs, not one tangled class.) It approves a command **only**
-when every part of it is a single invocation whose binary is on a tight
-read-only allowlist (`ls cat head tail wc grep df du free ps uptime …`,
-plus `|`/`&&`/`;`-joined chains of such), with no command substitution,
-no redirect to a real file, and no shell trickery. The allowlist holds
-only binaries that are safe in *all* their argument forms — `find` is
-excluded (`-delete`), `dd`/`tee`/`truncate`/`shred` are excluded,
-anything with a destructive mode is out. A small tokenizer does the
-parse: it understands quoted arguments (`grep -w 'install'` and
-`echo " bytes"` are fine — the quotes are stripped and the text is one
-literal word), but a double-quoted string containing `$`, a backtick or
-a backslash still falls through to the human (inside `"…"` those stay
-live — a `"$(…)"` would execute), as does any backslash outside quotes.
-The failure mode is "asks too often," never "approved a deletion."
-Everything else falls through to the human.
-
-`allow_git: true` extends that to read-only git verbs (`status`,
-`diff`, `log`, `show`, `blame`). On its face that's unsafe — even a
-bare `git status` executes whatever the repo's `.git/config` directs
-(`core.fsmonitor` is an RCE vector that fires on the most common
-command). It's safe here *only because* `Bash` hardens the git
-environment so a hostile repo-local `core.fsmonitor` is neutralised
-regardless of what the repo says. That's the headline vector closed
-deterministically; the residual (diff-driver execution on a repo whose
-`.git/config` an attacker handed you) is documented and accepted — a
-genuinely untrusted repo belongs in a VM. [The shell chapter](shell.md#even-git-status-runs-code)
-unpacks that hardening; here, take it as the reason there's no per-repo trust prompt.
-
-There's a cheaper lever, too, and it's mostly in the system prompt:
-the agent already has non-confirming `read`/`grep`/`glob` tools, so the
-prompt nudges it to *prefer those for looking* and keep `bash` for
-*acting*. That pushes the whole 80% of read-only work onto tools that
-never prompt, leaving `bash`'s residual confirmations aligned with the
-genuine changes you want to see anyway.
+One knob differs: the detector is built with `allow_git: true`, so
+read-only git (`status`, `diff`, `log`, `show`, `blame`) skips the
+prompt with no per-repo trust question. `bash`'s
+[git hardening](shell.md#even-git-status-runs-code) closes the
+headline vector (`core.fsmonitor`) for every repo. The residual, a
+diff driver named by a hostile `.gitattributes`, can still run a
+program, but here it runs with no network to send what it reads.
+That's the trade the coding agent couldn't make, because its network
+is open. The program can still change your files, though, so a repo
+you genuinely don't trust still belongs in a VM.
 
 ## Finding things — fileindex_search and fileindex_read
 
 `find` and `grep` are fine for filenames and plain-text content, but
 they're slow over the entire home directory and blind to PDFs and office
-documents. GNOME already solved this: the desktop ships `localsearch`,
-a file indexer that has *already extracted the full text* of your
-PDFs, spreadsheets, and documents, and it's entirely local — inbound
-only, nothing to send out, a perfect fit for the no-egress posture.
+documents. Your desktop may already have solved this: GNOME ships
+`localsearch`, a file indexer that has *already extracted the full
+text* of your PDFs, spreadsheets, and documents, and it's entirely
+local — inbound only, nothing to send out, a perfect fit for the
+no-egress posture. On any other desktop, `recoll` does the same job
+once you've built its index.
 
-`pikuri-os` exposes it as a **search → read-full pair**, the same
+`pikuri-os` exposes the first of the two it finds usable as a
+**search → read-full pair**, the same
 two-step shape as `vectordb_search` → `vectordb_read` from
 [the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md):
 
@@ -308,23 +283,26 @@ two-step shape as `vectordb_search` → `vectordb_read` from
   line-paged exactly like the `read` tool, with no extractor of its
   own (the index did the extraction at index time).
 
-It covers your home and XDG folders, not system paths — `/etc` and
-`/var` aren't indexed, so the agent reaches for `grep` there. And it's
-best-effort: when `localsearch` is absent or disabled the tools are
-simply not wired, and the agent falls back to `find`/`grep`. This is
-"spotlight" as two tools the LLM reaches for, and we got it from the
-pre-installed index for free — which is also why a vector DB earns no
-place in this agent: pointing one at `$HOME` would re-index the exact
-corpus `localsearch` already holds.
+Each index has a blind spot, and the tool's description tells the
+model which one it's working with. `localsearch` covers your home and
+XDG folders but skips source trees and `.git` checkouts; `recoll`
+covers exactly the folders you configured, source code included, and
+nothing else. Neither indexes `/etc` or `/var`, so the agent reaches
+for `grep` there. And it's best-effort: when no index is usable the
+tools are simply not wired, and the agent falls back to `find`/`grep`.
+This is "spotlight" as two tools the LLM reaches for, and we got it
+from an index that already exists — which is also why a vector DB earns
+no place in this agent: pointing one at `$HOME` would re-index the
+exact corpus the desktop index already holds.
 
 ## MACHINE.md — durable notes about this machine
 
 An assistant for your computer should remember where you keep your
 work, how your files are synced, the quirks of *this* setup — and have
 that knowledge in hand at the start of the next conversation.
-[The memories chapter](memories.md) built durable memory as mem0: automatic,
-invisible capture into a vector store. For this agent the answer is
-deliberately simpler — a single markdown file:
+[The next chapter](memories.md) builds one kind of durable memory,
+mem0: automatic, invisible capture into a vector store. For this agent
+the answer is deliberately simpler — a single markdown file:
 
 ```
 ~/.config/pikuri/MACHINE.md
@@ -333,7 +311,7 @@ deliberately simpler — a single markdown file:
 A `AGENTS.md` for this host. It's read at boot and folded into the
 system prompt, and the agent edits it through the *same confirmed
 `write`/`edit` path* as any other file. That choice is the whole
-point of contrast with the memories chapter. mem0's safety rested on an invisible
+point of contrast with mem0, whose safety will rest on an invisible
 structural filter ("capture user-role content only"); `MACHINE.md`'s
 safety is **visible, confirmed, and reversible** — a poisoned fact
 can't land silently, because the write surfaces to you as a plain-text
@@ -405,9 +383,27 @@ The one piece the host keeps a handle on is **plan mode**: a shared
 `Workspace::ReadOnly` flag, threaded into both the file tools and
 `Code::Extension`. Flipping it on (the REPL's `/plan`) makes `write`
 and `edit` refuse — research and design without touching anything —
-and `/impl` flips it back. It gates only the *writing* file tools,
-never `bash`'s read-only commands, and the toggle is host-side: it's
-never sent to the model.
+and `/impl` flips it back. It gates only `write` and `edit`; `bash`
+is untouched, so a mutating command still stops at the confirmer
+rather than being refused. The toggle is host-side: it's never sent
+to the model.
+
+## Lifting the cage, and where
+
+Like the coding agent, `pikuri-os` has the off switches: `--no-sandbox`
+drops the network cut, `--no-confirm` the gate, `--yolo` both. On your
+host, `--no-sandbox` turns this agent into the one the security chapter
+warned about: your whole disk, your untrusted logs, and now a way out.
+So the rule is [the shell chapter's](shell.md#where-the-cage-stops):
+**lifting the cage takes a VM.**
+
+Here that has a twist. Inside a VM, the OS assistant looks after the
+VM, not your machine — so a VM can't be how you *use* it, only how you
+*try* it. That's worth doing once: start a VM, run `pikuri-os --yolo`
+in it, and give it the same tasks. No prompts, no severed network,
+the model reaching for `curl` when it wants a man page. Then come back
+to your host and notice what each prompt and each `No route to host`
+was buying you.
 
 ---
 
@@ -455,7 +451,7 @@ down, on a privilege-separated research sub-agent — the bundled
 the `agent` tool:
 
 ```ruby
-c.add_sub_agent_tool Pikuri::Web::Search.build(brave_key:, exa_key:)
+c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
 c.add_sub_agent_tool Pikuri::Web::SCRAPE
 c.add_sub_agent_tool Pikuri::Web::FETCH
 c.add_extension Pikuri::SubAgent::Extension.new(
@@ -534,8 +530,9 @@ fetched page reaches the parent as a reported fact ("the page also said
 to…"), not a live instruction. Confirm what goes *out*; let what comes
 *in* be data, as it always was.
 
-Note the third option. `e` opens the task in your editor and sends
-**what you type**, not what the model proposed — the difference between
+Note the third option. `e` gives you a `task>` line with the model's
+task already on it, and sends **what you leave there** once you've
+edited it, not what the model proposed — the difference between
 approving a payload and authoring one. And if the task tripped a
 `Sanitizer` warning, the prompt changes shape entirely:
 
@@ -543,7 +540,7 @@ approving a payload and authoring one. And if the task tripped a
 ⚠ retype required — [e] edit  [n] reject  [r] redirect
 ```
 
-Bare approval is gone, and the editor opens *empty*: a flagged task can
+Bare approval is gone, and the `task>` line starts *empty*: a flagged task can
 only proceed as bytes you wrote yourself. That is as close to a forced
 author seat as a terminal gets — see "What the gate is — and isn't" at
 the end of this chapter for why "as close as a terminal gets" is not the
@@ -648,8 +645,8 @@ c.add_extension Pikuri::Thunderbird::Extension.new(
 )
 ```
 
-Five of those tools are read-only (search and read your mail, resolve a
-contact, search and read your calendar) and touch nothing but
+Six of those tools are read-only (search and read your mail, read an
+attachment, resolve a contact, search and read your calendar) and touch nothing but
 Thunderbird's own on-disk profile — no IMAP, no SMTP, no CalDAV. Two are
 outbound and *opt-in on their own flag*: `allow_compose_mail` opens a
 pre-filled compose window, `allow_create_calendar_event` stages an `.ics`
@@ -837,15 +834,9 @@ work, not convenience.
 
 ## What's next
 
-[the in-repo coding agent](code.md) takes the four
-seams you just met and makes the opposite cut. Where this agent severed
-the network and kept the whole disk — restoring egress only inside a
-quarantined researcher — the coding agent keeps the network in the
-parent's own hands (a build needs it) and confines the disk instead:
-`Bubblewrap` in place of `FullFsNoNet`, a project-rooted `Workspace`
-in place of `AllowAll`. Same `Confirmer`, same `bash`, same
-passive-command detector (now with the git hardening unpacked). Same
-adversary, opposite trifecta leg — and now in a developer's hands,
-with read-only recon sub-agents on top. The threat-model accounting
-for both shapes is [security
-revisited](security-revisited.md).
+`MACHINE.md` is memory you can see: every fact lands as a diff you
+approve. [Memories](memories.md) builds the opposite kind — mem0,
+capturing facts about you automatically, invisibly, across
+conversations — and finds that the trick which made this chapter's
+full-disk reads safe is the same one that makes *that* safe: an agent
+with no way to send bytes out.

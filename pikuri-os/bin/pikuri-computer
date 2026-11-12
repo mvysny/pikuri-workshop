@@ -70,7 +70,7 @@ parser = OptionParser.new do |opts|
                            'still work, and thunderbird\'s compose/create hand-offs remain the only ' \
                            'egress leg — human-gated in Thunderbird\'s UI.') { internet_enabled = false }
   opts.on('--profile-dir DIR', 'Thunderbird profile directory (overrides auto-discovery).') { |d| profile_dir = d }
-  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm. Use only in a throwaway environment.') do
+  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm. Use only inside a VM.') do
     sandbox_enabled = false
     confirm_enabled = false
   end
@@ -117,7 +117,7 @@ confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikur
 # Default sandbox: FullFsNoNet — full host read-write but the network
 # namespace unshared, so bash cannot exfiltrate. Load-bearing: it probes
 # bwrap + unprivileged namespaces at construction and raises (no silent
-# fallback) if unavailable. --no-sandbox / --yolo swap in NONE — throwaway box only.
+# fallback) if unavailable. --no-sandbox / --yolo swap in NONE — only inside a VM.
 sandbox = if sandbox_enabled
             Pikuri::Code::Bash::Sandbox::FullFsNoNet.new(filesystem: filesystem)
           else
@@ -225,11 +225,11 @@ begin
   warnings << 'Network sandbox: DISABLED — bash can reach the internet (egress is OPEN).' unless sandbox_enabled
   warnings << 'Confirmer: AUTO-APPROVE — mutations run without asking.' unless confirm_enabled
   unless warnings.empty?
-    warnings << 'Use only in a throwaway environment.'
+    warnings << 'Use only inside a VM.'
     puts warnings.join(' ')
   end
   if internet_enabled
-    # Not a throwaway-only warning. Web access is quarantined in the
+    # Not a VM-only warning. Web access is quarantined in the
     # RESEARCHER sub-agent (web tools, no filesystem); each task is confirmed
     # before dispatch and the main agent holds no direct web tool. Bash stays
     # network-severed regardless — a separate boundary.

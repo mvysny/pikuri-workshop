@@ -1,7 +1,7 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite under way, the shell chapter
-done** (see "Progress" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite under way, the shell and OS
+chapters done** (see "Progress" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -48,8 +48,8 @@ What that does to the book:
 
 1. **The shell and its cage**: bare `pikuri-code`, Bubblewrap, the sandbox seam. Harvests
    `code.md`'s sandbox half and `os-assistant.md` Part 1's seam introduction.
-2. **The OS assistant**: the same seams, the opposite cut (`FullFsNoNet`); the one agent that
-   never lifts its cage, because its whole point is your host.
+2. **The OS assistant**: the same seams, the opposite cut (`FullFsNoNet`). Its point is your
+   host, so on the host its cage stays on; `--yolo` is for a VM, to compare how it feels.
 3. **Memories**: mem0, automatic capture on a no-egress agent.
 4. **Your first MCP server.**
 5. **MCPs revisited.**
@@ -81,7 +81,7 @@ Each finished chapter strikes its part of this file; after the climax the file g
 | # | Chapter | Source files | State |
 |---|---|---|---|
 | 1 | The shell and its cage | `shell.md` (from `code.md`'s first half, `os-assistant.md` Part 1 seams) | done |
-| 2 | The OS assistant | `os-assistant.md` | — |
+| 2 | The OS assistant | `os-assistant.md` | done |
 | 3 | Memories | `memories.md` | — |
 | 4 | Your first MCP server | `mcp.md` | — |
 | 5 | MCPs revisited | `mcp-revisited.md` | — |
@@ -93,15 +93,13 @@ Each finished chapter strikes its part of this file; after the climax the file g
 
 ### Carried forward
 
-- **The OS assistant.** Only its opening and its pointers were fixed when `shell.md` landed.
-  Its Workspace, Confirmer and passive-command-detector sections now repeat `shell.md`: cut
-  them down to what differs (`AllowAll(denylist: [])`, confirm-all-writes, the unwritable
-  short-circuit), and add `shell.md` to its prerequisites.
 - **The coding agent, completed.** `code.md`'s wiring block is stale: it shows `add_tool` per
   file tool and `Bash`, where the bin now uses `Workspace::Extension` + `Code::Extension`
   (which also adds `git_clone` and plan mode) plus `Command` and `Lsp`; "four extensions" and
   "six tools take `workspace`" are wrong. The private-repo boot question and the trifecta
-  banner get one line in `shell.md`; their full story is pikuri's trifecta chapter.
+  banner get one line in `shell.md`; their full story is pikuri's trifecta chapter. pikuri's
+  `book/security.md` links `security-revisited.md#wrapping-pikuri-in-docker`, the one anchor pikuri
+  holds into this repo: renaming that section to the outer VM means fixing pikuri too.
 - **Language intelligence.** `lsp.md` cites "a rule from the coding agent chapter" for its
   walked-path note; that rule (credential denylist on walked paths) lives in neither chapter
   now. Find its home when that chapter is revisited.

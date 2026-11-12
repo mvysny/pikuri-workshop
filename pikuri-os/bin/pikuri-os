@@ -60,7 +60,7 @@ parser = OptionParser.new do |opts|
                              'web_scrape + fetch, but NO filesystem access). You approve each research ' \
                              'task before it runs; the main agent has no direct web tool. Separate network ' \
                              'boundary from bash, which stays kernel-severed regardless.') { internet_enabled = true }
-  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm. Use only in a throwaway environment.') do
+  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm. Use only inside a VM.') do
     sandbox_enabled = false
     confirm_enabled = false
   end
@@ -91,7 +91,7 @@ end
 # the user hasn't seen; and every writable write is confirmed with a diff
 # (confirm_all_writes, wired by Os::Extension), unwritable ones
 # short-circuit to "sudo it yourself". Re-instate the floor the moment
-# this parent ever gains unmediated egress. See design/ideas/write-edit-confirmer.md.
+# this parent ever gains unmediated egress.
 # project_root is the relative-path base and the bash chdir target (the
 # launch dir is the intuitive anchor; absolute paths reach everywhere).
 #
@@ -119,7 +119,7 @@ confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikur
 # the load-bearing security property; it probes bwrap + unprivileged
 # user/net namespaces at construction and raises (no silent fallback) if
 # they're unavailable. --no-sandbox / --yolo swap in NONE and re-open the
-# network — only for a throwaway box.
+# network — only inside a VM.
 sandbox = if sandbox_enabled
             Pikuri::Code::Bash::Sandbox::FullFsNoNet.new(filesystem: filesystem)
           else
@@ -225,11 +225,11 @@ begin
   warnings << 'Network sandbox: DISABLED — bash can reach the internet (egress is OPEN).' unless sandbox_enabled
   warnings << 'Confirmer: AUTO-APPROVE — mutations run without asking.' unless confirm_enabled
   unless warnings.empty?
-    warnings << 'Use only in a throwaway environment.'
+    warnings << 'Use only inside a VM.'
     puts warnings.join(' ')
   end
   if internet_enabled
-    # Not a throwaway-only warning. Web access is quarantined in the
+    # Not a VM-only warning. Web access is quarantined in the
     # RESEARCHER sub-agent (web tools, no filesystem); each research task is
     # confirmed before dispatch and the main agent holds no direct web tool.
     # Distinct from the --no-sandbox warning above, which re-opens bash's
