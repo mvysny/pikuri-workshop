@@ -1,0 +1,28 @@
+{
+  "capabilities": {
+    "textDocumentSync": { "openClose": true, "change": 2, "willSave": true, "willSaveWaitUntil": true, "save": { "includeText": false } },
+    "hoverProvider": true,
+    "completionProvider": { "resolveProvider": true, "triggerCharacters": [".", "@", "#", "*", " "] },
+    "signatureHelpProvider": { "triggerCharacters": ["(", ","] },
+    "definitionProvider": true,
+    "typeDefinitionProvider": true,
+    "implementationProvider": true,
+    "referencesProvider": true,
+    "documentHighlightProvider": true,
+    "documentSymbolProvider": true,
+    "workspaceSymbolProvider": true,
+    "codeActionProvider": { "codeActionKinds": ["quickfix", "refactor", "source"], "resolveProvider": true },
+    "codeLensProvider": { "resolveProvider": true },
+    "documentFormattingProvider": true,
+    "documentRangeFormattingProvider": true,
+    "renameProvider": { "prepareProvider": true },
+    "foldingRangeProvider": true,
+    "executeCommandProvider": { "commands": ["java.edit.organizeImports", "java.project.import"] },
+    "callHierarchyProvider": true,
+    "typeHierarchyProvider": true,
+    "selectionRangeProvider": true,
+    "semanticTokensProvider": { "legend": { "tokenTypes": ["namespace", "class", "method"], "tokenModifiers": ["declaration", "static"] }, "range": true, "full": true },
+    "inlayHintProvider": true
+  },
+  "serverInfo": { "name": "Eclipse JDT Language Server", "version": "1.58.0" }
+}

@@ -1,0 +1,27 @@
+{
+  "capabilities": {
+    "positionEncoding": "utf-8",
+    "textDocumentSync": { "openClose": true, "change": 2, "save": { "includeText": false } },
+    "selectionRangeProvider": true,
+    "hoverProvider": true,
+    "documentSymbolProvider": true,
+    "documentLinkProvider": { "resolveProvider": false },
+    "foldingRangeProvider": true,
+    "semanticTokensProvider": { "legend": { "tokenTypes": ["namespace", "class", "method"], "tokenModifiers": ["declaration"] }, "range": true, "full": { "delta": false } },
+    "documentHighlightProvider": true,
+    "documentOnTypeFormattingProvider": { "firstTriggerCharacter": "{", "moreTriggerCharacter": ["\n", "|", "d", "e"] },
+    "codeActionProvider": { "resolveProvider": true },
+    "inlayHintProvider": { "resolveProvider": false },
+    "diagnosticProvider": { "interFileDependencies": false, "workspaceDiagnostics": false },
+    "definitionProvider": true,
+    "workspaceSymbolProvider": true,
+    "signatureHelpProvider": { "triggerCharacters": ["(", " ", ","] },
+    "completionProvider": { "resolveProvider": true, "triggerCharacters": [".", "@", "$", ":", "\""], "completionItem": { "labelDetailsSupport": true } },
+    "codeLensProvider": { "resolveProvider": false },
+    "referencesProvider": true,
+    "renameProvider": { "prepareProvider": true },
+    "typeHierarchyProvider": {},
+    "experimental": { "addDocumentDependency": true }
+  },
+  "serverInfo": { "name": "Ruby LSP", "version": "0.26.10" }
+}

@@ -1,0 +1,269 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Dev / demo entry point — runs from a source checkout only, not installed
+# by `gem install`. Composes the offline OS-helper agent (pikuri-os) with
+# the local mail + calendar surface (pikuri-thunderbird) into one desktop
+# assistant that understands this machine AND can search/read the user's
+# Thunderbird mail + calendar and draft a reply or event for them to send.
+#
+# This is the "reassembled trifecta" demo (see the book's OS-assistant chapter Part 3 and the
+# pikuri-os entry in AGENTS.md). By default it runs `os --with-internet`
+# (web research via the isolated RESEARCHER) *plus* thunderbird's outbound
+# compose / calendar-create hand-offs — so all three trifecta legs are live
+# (whole-disk private pool + attacker-authorable email as an untrusted
+# source + egress), but egress is *human-gated*, never autonomous: bash is
+# kernel-severed, each research task is approved before dispatch, and every
+# mail/event is a Send/confirm the user performs in Thunderbird's own UI.
+# pikuri-thunderbird rides as a dev/demo dep of this binary only — pikuri-os's
+# gemspec / lib / extension surface stay substrate-only.
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../../Gemfile', __dir__)
+
+require 'bundler/setup'
+require 'optparse'
+require 'yaml'
+require 'reline' # line editing + history for the interactive prompt
+
+require 'pikuri-os' # pulls in pikuri-core + -workspace + -code
+require 'pikuri-subagents' # the `agent` tool + RESEARCHER persona (web research)
+require 'pikuri-thunderbird' # local mail + calendar (dev/demo dep of this binary)
+require 'pikuri-pdf' # PDF → text extractor (see registration below)
+require 'pikuri-web' # the RESEARCHER's web tools
+
+# Explicit opt-in (requiring pikuri-pdf alone changes nothing): teach the
+# Extractor registry to handle PDFs, so the file tools and the researcher's
+# web_scrape / fetch can read them. Pure Ruby, no subprocess/docker/network
+# — fits the offline, audit-first posture. Front-inserts because the %PDF-
+# magic sniff must beat HTML's content-type match.
+Pikuri::Extractors::PDF.register
+
+sandbox_enabled = true   # FullFsNoNet: full filesystem, network severed
+confirm_enabled = true
+internet_enabled = true  # web research ON by default — a "computer" reaches out
+profile_dir = nil        # Thunderbird profile (nil = auto-discover)
+
+# Example-only config: LLM connection + keys live verbatim in a user-owned
+# YAML file (see AGENTS.md "Environment is not a secret store"). chmod 600.
+examples_config_path = File.expand_path('~/.pikuri-examples-config.yaml')
+examples_config = File.exist?(examples_config_path) ? (YAML.safe_load_file(examples_config_path) || {}) : {}
+
+# The search keys moved under the `search:` block: a stale top-level key here
+# would just be ignored, silently meaning "no Brave".
+stale_search_keys = examples_config.keys & %w[brave_search_api_key exa_api_key]
+unless stale_search_keys.empty?
+  abort "#{examples_config_path}: #{stale_search_keys.join(' / ')} moved under the " \
+        '`search:` key (search: {brave_key:, exa_key:, engines: [...]}) — see book/chat.md'
+end
+
+server = examples_config['llm_server'] || 'http://localhost:8080'
+model  = examples_config['llm_model']  || 'unsloth/Qwen3.6-35B-A3B-GGUF:Q4_K_M'
+
+custom_prompt = nil
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: pikuri-computer [options] [initial message...]'
+  opts.separator ''
+  opts.separator 'Options:'
+  opts.on('--no-sandbox', 'Disable the network sandbox around bash. WARNING: bash can then ' \
+                          'reach the internet — the no-egress security property is OFF.') { sandbox_enabled = false }
+  opts.on('--no-confirm', 'Auto-approve every confirmation (skip the y/n prompt for writes + bash).') { confirm_enabled = false }
+  opts.on('--no-internet', 'Disable web research (drop the RESEARCHER sub-agent). Mail + calendar ' \
+                           'still work, and thunderbird\'s compose/create hand-offs remain the only ' \
+                           'egress leg — human-gated in Thunderbird\'s UI.') { internet_enabled = false }
+  opts.on('--profile-dir DIR', 'Thunderbird profile directory (overrides auto-discovery).') { |d| profile_dir = d }
+  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm. Use only in a throwaway environment.') do
+    sandbox_enabled = false
+    confirm_enabled = false
+  end
+  opts.on('--system-prompt FILE', "Replace the built-in system prompt with FILE's contents " \
+                                  '(extensions still append their own sections).') do |v|
+    custom_prompt = File.read(v).rstrip
+  end
+  opts.on('-h', '--help', 'Print this help and exit') do
+    puts opts
+    exit
+  end
+end
+
+begin
+  parser.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
+  warn e.message
+  warn parser
+  exit 2
+end
+
+# The whole host is in scope (that's the point). denylist: [] drops the
+# credential floor for the *file* tools too, so Read/Write/Edit see exactly
+# what bash already sees under FullFsNoNet — a half-denylist bash bypasses
+# via an auto-approved `cat` is security theater. Safe because egress is
+# *human-gated*, not open: bash is kernel-severed, every research task is
+# approved, and every mail/event is a Send/confirm the user performs in
+# Thunderbird. Every writable write is confirmed with a diff, unwritable
+# ones short-circuit to "sudo it yourself". project_root is the
+# relative-path base and the bash chdir target.
+#
+# private: true for the same reason as bin/pikuri-os — the disk this reaches
+# is your actual machine, so the leg is a property of the binary rather than
+# a user declaration. No verdict moves (soft either way); what it buys is an
+# honest attribution list. Without it the trifecta advisory credits the
+# private leg to the mailbox and the file index while read and bash — the
+# tools that actually hand the whole disk to the model — look leg-free,
+# which undersells the pool-amplification point this demo exists to make.
+filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [],
+                                                         private: true)
+
+confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikuri::Workspace::Confirmer::AUTO_APPROVE
+
+# Default sandbox: FullFsNoNet — full host read-write but the network
+# namespace unshared, so bash cannot exfiltrate. Load-bearing: it probes
+# bwrap + unprivileged namespaces at construction and raises (no silent
+# fallback) if unavailable. --no-sandbox / --yolo swap in NONE — throwaway box only.
+sandbox = if sandbox_enabled
+            Pikuri::Code::Bash::Sandbox::FullFsNoNet.new(filesystem: filesystem)
+          else
+            Pikuri::Code::Bash::Sandbox::NONE
+          end
+
+# Base OS prompt (+ the constant no-network posture) + the online
+# network-posture block by default (--no-internet drops it — offline mode adds
+# nothing, the exception is what's stated). The mail/calendar usage guidance —
+# untrusted-email policy, grounding discipline, draft-hand-off stance — is
+# contributed by Thunderbird::Extension's system_prompt_snippets (in lockstep
+# with the allow_ flags), and the "# This machine" facts + MACHINE.md by
+# Os::Extension.
+prompt_names = [:'os-assistant']
+prompt_names << :'os-network-online' if internet_enabled
+prompt_names << :'agent-loop'
+system_prompt = custom_prompt || Pikuri.prompts(*prompt_names)
+system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
+
+cancel_flag = Pikuri::Agent::Control::Cancellable.new
+
+# One read-only flag threaded into the file tools (Edit/Write refuse while
+# active) and Code::Extension (the /plan /impl toggle + PlanModeChanged
+# event). Gates Write/Edit only, NOT bash — see Pikuri::Workspace::ReadOnly.
+read_only = Pikuri::Workspace::ReadOnly.new(
+  message: Pikuri::Code::Extension::PLAN_MODE_READONLY_MESSAGE
+)
+
+# Trap SIGINT only during a turn (flips the Cancellable; the next tool-call
+# boundary raises Cancelled). Outside a turn the default handler exits the REPL.
+def run_turn(agent, message)
+  prev_trap = trap('INT') { agent.cancellable&.cancel! }
+  agent.run_loop(user_message: message)
+rescue Pikuri::Agent::Control::Cancellable::Cancelled
+  # Notice already rendered by the Terminal listener.
+rescue RubyLLM::ContextLengthExceededError => e
+  warn "\nContext window exhausted: #{e.message}"
+  warn 'The conversation has grown too large for the model. Start a fresh question.'
+  exit 1
+ensure
+  trap('INT', prev_trap || 'DEFAULT')
+end
+
+begin
+  agent = Pikuri::Agent.new(
+    transport: Pikuri::Agent::ChatTransport.from_openai_server(
+      server: server,
+      model: model,
+      api_key: examples_config.fetch('llm_api_key', 'not-needed')
+    ),
+    system_prompt: system_prompt,
+    cancellable: cancel_flag
+  ) do |c|
+    c.add_listener Pikuri::Agent::Listener::Terminal.new
+    c.add_listener Pikuri::Agent::Listener::TokenLog.new
+    c.add_tool Pikuri::Tool::CALCULATOR
+    # The OS-helper surface: the file tools, bash (read-only
+    # auto-confirmer + the sandbox above), the file-index tools, and the
+    # machine facts + MACHINE.md memory folded into the system prompt.
+    c.add_extension Pikuri::Os::Extension.new(
+      filesystem: filesystem,
+      confirmer: confirmer,
+      sandbox: sandbox,
+      read_only: read_only
+    )
+    # The mail + calendar surface: five read-only inbound tools plus both
+    # human-gated outbound hand-offs (compose a message, create an event).
+    # No confirmer wired — the gate is Thunderbird's own compose window /
+    # import wizard, where the user reviews and Sends/confirms.
+    c.add_extension Pikuri::Thunderbird::Extension.new(
+      profile_dir: profile_dir, allow_compose_mail: true, allow_create_calendar_event: true
+    )
+    # Default (unless --no-internet): web access is quarantined in a
+    # RESEARCHER sub-agent holding the web tools but NO filesystem, reached
+    # via the `agent` tool. The web tools go on as *sub-agent-only*
+    # (add_sub_agent_tool), so the parent LLM never holds them — zero direct
+    # egress from the disk-holding agent. The confirmer gates each
+    # delegation's task prompt. Bash stays kernel-severed regardless — a
+    # separate network boundary. Must precede the SubAgent extension, whose
+    # configure validates the persona's tool_names.
+    if internet_enabled
+      c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
+      c.add_sub_agent_tool Pikuri::Web::SCRAPE
+      c.add_sub_agent_tool Pikuri::Web::FETCH
+      c.add_extension Pikuri::SubAgent::Extension.new(
+        personas: [Pikuri::SubAgent::RESEARCHER],
+        confirmer: confirmer
+      )
+    end
+  end
+rescue Pikuri::Thunderbird::Profile::DiscoveryError => e
+  warn "Thunderbird profile problem: #{e.message}"
+  exit 1
+end
+
+begin
+  # Capability + trifecta map, printed unconditionally. These are teaching
+  # binaries and the map is half the lesson; a production host puts it behind
+  # an explicit ask instead.
+  puts agent.trifecta.render
+  puts
+  puts "Pikuri Computer — OS helper + local mail/calendar for this machine. Working from #{filesystem.project_root}. Ctrl+C / Ctrl+D to quit."
+  puts 'Type /plan to enter plan mode (read-only research + design), /impl to leave.'
+  warnings = []
+  warnings << 'Network sandbox: DISABLED — bash can reach the internet (egress is OPEN).' unless sandbox_enabled
+  warnings << 'Confirmer: AUTO-APPROVE — mutations run without asking.' unless confirm_enabled
+  unless warnings.empty?
+    warnings << 'Use only in a throwaway environment.'
+    puts warnings.join(' ')
+  end
+  if internet_enabled
+    # Not a throwaway-only warning. Web access is quarantined in the
+    # RESEARCHER sub-agent (web tools, no filesystem); each task is confirmed
+    # before dispatch and the main agent holds no direct web tool. Bash stays
+    # network-severed regardless — a separate boundary.
+    puts 'Internet: web research ENABLED via an isolated researcher sub-agent — ' \
+         'you approve each task before it runs. Mail/events are drafted for you to ' \
+         'Send/confirm in Thunderbird; nothing is sent or committed automatically.'
+  else
+    puts 'Internet: web research OFF. Mail + calendar still work; drafts open in ' \
+         'Thunderbird for you to Send/confirm.'
+  end
+
+  run_turn(agent, ARGV.join(' ')) unless ARGV.empty?
+
+  loop do
+    line = Reline.readline('> ', true) # arrow-key history + line editing
+    break if line.nil? # Ctrl+D / EOF
+
+    message = line.chomp
+    next if message.strip.empty?
+
+    # Host-side plan-mode toggle, NOT sent to the LLM; Code::Extension emits
+    # PlanModeChanged on the flip, which the Terminal listener renders.
+    # activate!/deactivate! are idempotent.
+    case message.strip.downcase
+    when '/plan' then read_only.activate!;   next
+    when '/impl' then read_only.deactivate!; next
+    end
+
+    run_turn(agent, message)
+  end
+rescue Interrupt
+  # Ctrl+C at the prompt — clean exit.
+ensure
+  agent.close
+end
+
+puts

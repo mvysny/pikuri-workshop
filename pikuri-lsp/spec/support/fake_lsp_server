@@ -1,0 +1,137 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# A real child process that speaks just enough LSP to exercise the spawn leg —
+# the one {Pikuri::Lsp::Testing::FakeServer} cannot reach, because it runs
+# in-process over IO.pipe: argv, env and cwd actually being handed over, a real
+# pid, a real death, a real process group, a real reap. Deliberately not a
+# language server: it indexes nothing and knows one file.
+#
+#   ruby spec/support/fake_lsp_server [--die-after N] [--fork-helper PATH] [--stderr TEXT]
+#
+#   --die-after N   exit(9) without replying to the Nth request (the handshake
+#                   is request 1), so a death lands on a real process.
+#   --die-once PATH the same, on the *second* request and only while PATH does
+#                   not exist — one generation dies, its replacement works, and
+#                   restart-on-death has something to succeed at.
+#   --fork-helper PATH
+#                   fork a long-lived grandchild, the way jdtls forks helpers,
+#                   and write its pid to PATH — it must die with the process
+#                   group, not outlive it.
+#   --stderr TEXT   write TEXT to stderr at startup, for the stderr tail.
+#
+# Answers, beyond the handshake: +pikuri/environment+ reports the cwd, a marker
+# read from the environment (which is how a spec sees that +chdir:+ and +env:+
+# arrived) and +BUNDLE_GEMFILE+ (how it sees that the child was de-bundlerized);
+# +textDocument/definition+ answers one canned location, and anything else is
+# refused as -32601 the way a real server refuses.
+
+require 'json'
+
+die_after = nil
+fork_helper = nil
+stderr_text = nil
+args = ARGV.dup
+until args.empty?
+  case (flag = args.shift)
+  when '--die-after'   then die_after = Integer(args.shift)
+  when '--fork-helper' then fork_helper = args.shift
+  when '--stderr'      then stderr_text = args.shift
+  when '--die-once'
+    marker = args.shift
+    if File.exist?(marker)
+      die_after = nil
+    else
+      File.write(marker, 'died')
+      die_after = 2
+    end
+  else raise "unknown flag #{flag.inspect}"
+  end
+end
+
+if stderr_text
+  $stderr.print("#{stderr_text}\n")
+  $stderr.flush
+end
+
+# A grandchild in the same process group: teardown has to reach it too. Its pid
+# is reported rather than discovered, so no spec needs pgrep on PATH.
+if fork_helper
+  helper_pid = fork { sleep 30 }
+  File.write(fork_helper, helper_pid.to_s)
+end
+
+$stdin.binmode
+$stdout.binmode
+
+def write(message)
+  body = JSON.generate(message)
+  $stdout.print("Content-Length: #{body.bytesize}\r\n\r\n#{body}")
+  $stdout.flush
+end
+
+def reply(id, result)
+  write('jsonrpc' => '2.0', 'id' => id, 'result' => result)
+end
+
+def refuse(id, method)
+  write('jsonrpc' => '2.0', 'id' => id,
+        'error' => { 'code' => -32_601, 'message' => "Method not found: #{method}" })
+end
+
+# @return [Hash, nil] the next message, or nil at EOF.
+def read_message
+  length = nil
+  while (line = $stdin.gets("\r\n"))
+    return nil if line.nil?
+
+    header = line.chomp
+    break if header.empty?
+
+    length = Integer(header.split(':', 2).last.strip) if header.downcase.start_with?('content-length')
+  end
+  return nil if length.nil?
+
+  JSON.parse($stdin.read(length))
+end
+
+CAPABILITIES = {
+  'definitionProvider' => true,
+  'hoverProvider' => true,
+  'workspaceSymbolProvider' => true
+}.freeze
+
+requests = 0
+loop do
+  message = read_message
+  break if message.nil?
+
+  id = message['id']
+  method = message['method']
+  requests += 1 if id
+  # The death lands *instead of* the reply, which is what makes the client
+  # discover it while waiting rather than at the next call.
+  exit!(9) if die_after && id && requests >= die_after
+
+  case method
+  when 'initialize'
+    # Honour the client's encoding offer when it made one, the way a
+    # well-behaved server does — jdtls's ignoring it is a separate fixture.
+    offered = message.dig('params', 'capabilities', 'general', 'positionEncodings') || []
+    encoding = offered.include?('utf-8') ? 'utf-8' : 'utf-16'
+    reply(id, 'capabilities' => CAPABILITIES.merge('positionEncoding' => encoding),
+              'serverInfo' => { 'name' => 'fake_lsp_server' })
+  when 'pikuri/environment'
+    reply(id, 'cwd' => Dir.pwd, 'marker' => ENV.fetch('PIKURI_FAKE_MARKER', nil),
+              'bundle_gemfile' => ENV.fetch('BUNDLE_GEMFILE', nil))
+  when 'textDocument/definition'
+    uri = message.dig('params', 'textDocument', 'uri')
+    reply(id, 'uri' => uri,
+              'range' => { 'start' => { 'line' => 0, 'character' => 6 },
+                           'end' => { 'line' => 0, 'character' => 9 } })
+  when 'shutdown' then reply(id, nil)
+  when 'exit' then exit!(0)
+  else
+    id ? refuse(id, method) : nil # a notification needs no answer
+  end
+end

@@ -1,0 +1,1 @@
+{ "jsonrpc": "2.0", "method": "language/status", "params": { "type": "ProjectStatus", "message": "OK" } }

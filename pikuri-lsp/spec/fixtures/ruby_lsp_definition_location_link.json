@@ -1,0 +1,12 @@
+[
+  {
+    "targetUri": "file:///home/mavi/work/my/pikuri/pikuri-workspace/lib/pikuri/workspace/filesystem.rb",
+    "targetRange": { "start": { "line": 217, "character": 4 }, "end": { "line": 231, "character": 7 } },
+    "targetSelectionRange": { "start": { "line": 217, "character": 8 }, "end": { "line": 217, "character": 24 } }
+  },
+  {
+    "targetUri": "file:///home/mavi/work/my/pikuri/pikuri-workspace/lib/pikuri/workspace/filesystem.rb",
+    "targetRange": { "start": { "line": 414, "character": 6 }, "end": { "line": 421, "character": 9 } },
+    "targetSelectionRange": { "start": { "line": 414, "character": 10 }, "end": { "line": 414, "character": 26 } }
+  }
+]

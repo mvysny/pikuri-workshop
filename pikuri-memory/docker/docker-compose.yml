@@ -1,0 +1,113 @@
+# Self-managed mem0 + Qdrant sidecar for pikuri-memory.
+#
+# Driven by Pikuri::Memory::Mem0Server (the supervisor), which sets the
+# PIKURI_* environment variables below and invokes
+#   docker compose -p pikuri-internal-mem0 -f <this file> up -d --build
+# through Pikuri::Subprocess.spawn. Not meant to be run by hand, though
+# it can be (export the PIKURI_* vars first).
+#
+# Three services, no Postgres: the mem0 server image is built from a
+# git checkout of mem0 (pinned + patched so DEFAULT_CONFIG uses Qdrant
+# instead of pgvector — see qdrant-default-config.patch), Qdrant is
+# the vector store, and router-proxy is a ~5 MB socat relay that
+# carries mem0's LLM/embedder calls to the host's llama.cpp router
+# (see Mem0Server's "router relay" yardoc section). The pgvector
+# default the upstream server ships has a top-k inversion bug
+# (design/ideas/memory-mem0.md §"Root cause"); Qdrant ranks correctly.
+# Verified end-to-end (server boots with no Postgres, add + search
+# through the REST API rank correctly against the local llama.cpp
+# router).
+#
+# Everything binds 127.0.0.1 only — the user's memory never listens on a
+# routable interface.
+name: pikuri-internal-mem0
+
+services:
+  qdrant:
+    image: ${PIKURI_QDRANT_IMAGE:-qdrant/qdrant:v1.12.4}
+    container_name: pikuri-internal-mem0-qdrant
+    networks: [pikuri]
+    volumes:
+      # Bind-mounted to the host cache (set by the supervisor) — the
+      # container is ephemeral, the corpus lives on the host. Same
+      # "ephemeral container, persistent host data" posture as
+      # ChromaServer.
+      - ${PIKURI_DATA_DIR:?PIKURI_DATA_DIR must be the host data dir}/qdrant:/qdrant/storage
+    ports:
+      # Published for host-side inspection only; mem0 reaches Qdrant
+      # over the internal `pikuri` network, not this port.
+      - "127.0.0.1:${PIKURI_QDRANT_PORT:-6333}:6333"
+
+  router-proxy:
+    # The in-stack half of the router relay: forwards TCP connections
+    # from the internal network onto the unix socket the host-side
+    # socat (spawned by the supervisor) listens on, which in turn
+    # forwards to the llama.cpp router. This is how mem0 reaches a
+    # router bound to the host's 127.0.0.1 — rootless docker (rightly)
+    # refuses to route containers to the host's loopback, and the
+    # socket file is the narrow, stack-scoped hole instead: only a
+    # container that mounts it can reach the router. No published
+    # ports; nothing outside the `pikuri` network sees this.
+    image: ${PIKURI_SOCAT_IMAGE:-alpine/socat:1.8.0.3}
+    container_name: pikuri-internal-mem0-router-proxy
+    command: ["TCP-LISTEN:8080,fork,reuseaddr", "UNIX-CONNECT:/sock/router.sock"]
+    networks: [pikuri]
+    volumes:
+      # The socket *directory*, not the socket file — a restarted
+      # host-side socat re-creates the socket, and a file bind-mount
+      # would pin the stale inode.
+      - ${PIKURI_SOCK_DIR:?PIKURI_SOCK_DIR must be the host socket dir}:/sock
+
+  mem0:
+    container_name: pikuri-internal-mem0-server
+    build:
+      # Set by the supervisor to the patched mem0 checkout. The upstream
+      # dev.Dockerfile copies server/ + the mem0 package from the repo
+      # root, so the context is the checkout root.
+      context: ${PIKURI_MEM0_SRC:?PIKURI_MEM0_SRC must point at the patched mem0 checkout}
+      dockerfile: server/dev.Dockerfile
+    depends_on:
+      - qdrant
+      - router-proxy
+    # Only relevant to the container_router_url: escape hatch: on a
+    # *rootful* daemon, "http://host.docker.internal:8080/v1" works as
+    # an override because this maps the name to the host gateway. Inert
+    # on the normal relay path (and useless under rootless, where the
+    # gateway can't reach the host's loopback anyway — that's what the
+    # relay is for).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Dummy key: the OpenAI-compatible endpoint is local llama.cpp,
+      # which ignores auth. OPENAI_BASE_URL routes both the extraction
+      # LLM and the embedder to the router (mem0's openai provider reads
+      # this env var) — normally via the router-proxy relay above
+      # (http://router-proxy:8080/v1); the supervisor's
+      # container_router_url: escape hatch substitutes a caller-routed
+      # URL instead.
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-pikuri-local-no-auth}
+      OPENAI_BASE_URL: ${PIKURI_ROUTER_URL:?PIKURI_ROUTER_URL must be the /v1 base URL as seen from inside the container}
+      MEM0_DEFAULT_LLM_MODEL: ${PIKURI_LLM_MODEL:?PIKURI_LLM_MODEL must be the extraction model id}
+      MEM0_DEFAULT_EMBEDDER_MODEL: ${PIKURI_EMBEDDER_MODEL:?PIKURI_EMBEDDER_MODEL must be the embedder model id}
+      # Local-only: skip the JWT/admin auth layer (no Postgres settings
+      # DB to back it anyway).
+      AUTH_DISABLED: "true"
+      # Consumed by the patched DEFAULT_CONFIG (qdrant-default-config.patch).
+      QDRANT_HOST: "qdrant"
+      QDRANT_PORT: "6333"
+      MEM0_COLLECTION_NAME: ${PIKURI_COLLECTION:-pikuri_memory}
+      MEM0_EMBEDDING_DIMS: ${PIKURI_EMBEDDING_DIMS:-768}
+      # Memory-history SQLite, bind-mounted to the host cache so it
+      # survives container recreation alongside the Qdrant corpus.
+      HISTORY_DB_PATH: "/data/history.db"
+    volumes:
+      - ${PIKURI_DATA_DIR:?PIKURI_DATA_DIR must be the host data dir}/history:/data
+    ports:
+      - "127.0.0.1:${PIKURI_MEM0_PORT:-8888}:8000"
+    networks: [pikuri]
+
+networks:
+  pikuri:
+    # Explicit name (no compose project prefix) so it can't collide with
+    # an unrelated `*_pikuri` network from another stack.
+    name: pikuri-mem0

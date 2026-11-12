@@ -1,0 +1,269 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Dev / demo entry point — runs from a source checkout only, not installed
+# by `gem install`. Demonstrates wiring the offline OS-helper agent: a
+# single local, network-severed agent that understands and operates this
+# Linux host. Production binaries (e.g. a TUI) live in their own gems and
+# wire the same Pikuri::Os::Extension.
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../../Gemfile', __dir__)
+
+require 'bundler/setup'
+require 'optparse'
+require 'yaml'
+require 'reline' # line editing + history for the interactive prompt
+
+require 'pikuri-os' # pulls in pikuri-core + -workspace + -code
+require 'pikuri-subagents' # the `agent` tool + RESEARCHER persona (--with-internet only)
+require 'pikuri-pdf' # PDF → text extractor (see registration below)
+require 'pikuri-web' # the RESEARCHER's web tools (--with-internet only)
+
+# Explicit opt-in (requiring pikuri-pdf alone changes nothing): teach the
+# Extractor registry to handle PDFs, so both the file tools (local
+# ~/docs/*.pdf) and — under --with-internet — the researcher's web_scrape
+# / fetch can read them. pikuri-pdf is pure Ruby: no subprocess, no
+# docker, no network, and it neither runs embedded JS nor fetches remote
+# resources — so it fits pikuri-os's offline, audit-first posture and
+# keeps parsing off the Subprocess/sandbox seam. It front-inserts because
+# the %PDF- magic sniff must beat HTML's content-type match.
+Pikuri::Extractors::PDF.register
+
+sandbox_enabled = true   # FullFsNoNet: full filesystem, network severed
+confirm_enabled = true
+internet_enabled = false # web_search off by default — keeps the agent networkless
+
+# Example-only config: LLM connection + keys live verbatim in a user-owned
+# YAML file (see AGENTS.md "Environment is not a secret store"). chmod 600.
+examples_config_path = File.expand_path('~/.pikuri-examples-config.yaml')
+examples_config = File.exist?(examples_config_path) ? (YAML.safe_load_file(examples_config_path) || {}) : {}
+
+# The search keys moved under the `search:` block: a stale top-level key here
+# would just be ignored, silently meaning "no Brave".
+stale_search_keys = examples_config.keys & %w[brave_search_api_key exa_api_key]
+unless stale_search_keys.empty?
+  abort "#{examples_config_path}: #{stale_search_keys.join(' / ')} moved under the " \
+        '`search:` key (search: {brave_key:, exa_key:, engines: [...]}) — see book/chat.md'
+end
+
+server = examples_config['llm_server'] || 'http://localhost:8080'
+model  = examples_config['llm_model']  || 'unsloth/Qwen3.6-35B-A3B-GGUF:Q4_K_M'
+
+custom_prompt = nil
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: pikuri-os [options] [initial message...]'
+  opts.separator ''
+  opts.separator 'Options:'
+  opts.on('--no-sandbox', 'Disable the network sandbox around bash. WARNING: bash can then ' \
+                          'reach the internet — the no-egress security property is OFF.') { sandbox_enabled = false }
+  opts.on('--no-confirm', 'Auto-approve every confirmation (skip the y/n prompt for writes + bash).') { confirm_enabled = false }
+  opts.on('--with-internet', 'Enable web research via an isolated RESEARCHER sub-agent (web_search + ' \
+                             'web_scrape + fetch, but NO filesystem access). You approve each research ' \
+                             'task before it runs; the main agent has no direct web tool. Separate network ' \
+                             'boundary from bash, which stays kernel-severed regardless.') { internet_enabled = true }
+  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm. Use only in a throwaway environment.') do
+    sandbox_enabled = false
+    confirm_enabled = false
+  end
+  opts.on('--system-prompt FILE', "Replace the built-in system prompt with FILE's contents " \
+                                  '(extensions still append their own sections).') do |v|
+    custom_prompt = File.read(v).rstrip
+  end
+  opts.on('-h', '--help', 'Print this help and exit') do
+    puts opts
+    exit
+  end
+end
+
+begin
+  parser.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
+  warn e.message
+  warn parser
+  exit 2
+end
+
+# The whole host is in scope (that's the point). denylist: [] drops the
+# credential floor for the *file* tools too, so Read/Write/Edit see
+# exactly what bash already sees under FullFsNoNet — a half-denylist bash
+# bypasses via an auto-approved `cat` is security theater. Safe because
+# egress is *user-confirmed*, not open: bash is kernel-severed and every
+# outbound research task is human-approved, so nothing leaves the machine
+# the user hasn't seen; and every writable write is confirmed with a diff
+# (confirm_all_writes, wired by Os::Extension), unwritable ones
+# short-circuit to "sudo it yourself". Re-instate the floor the moment
+# this parent ever gains unmediated egress. See design/ideas/write-edit-confirmer.md.
+# project_root is the relative-path base and the bash chdir target (the
+# launch dir is the intuitive anchor; absolute paths reach everywhere).
+#
+# private: true is a property of what this binary IS, not a user call the
+# way it is for a coding agent over some checkout: the premise is operating
+# *your machine*, and AllowAll with an empty denylist reaches your home
+# directory, your keys, your browser profile. Same domain argument that
+# makes a mailbox private without anyone declaring it — and the file-index
+# tools already hardcode it on exactly that reasoning
+# (Os::FileindexSearch), so leaving it off here made read/bash disagree
+# with fileindex about whether the same disk is sensitive.
+#
+# Deliberately an *attribution* fix, not a verdict one: fileindex already
+# supplied the private leg, so no verdict moves (silent here, soft with
+# --with-internet, both before and after). What changes is that the
+# advisory now names read and bash among the contributors, which is what a
+# reader would go and change.
+filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [],
+                                                         private: true)
+
+confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikuri::Workspace::Confirmer::AUTO_APPROVE
+
+# Default sandbox: FullFsNoNet — binds / read-write (full host control)
+# but unshares the network namespace, so bash cannot exfiltrate. This is
+# the load-bearing security property; it probes bwrap + unprivileged
+# user/net namespaces at construction and raises (no silent fallback) if
+# they're unavailable. --no-sandbox / --yolo swap in NONE and re-open the
+# network — only for a throwaway box.
+sandbox = if sandbox_enabled
+            Pikuri::Code::Bash::Sandbox::FullFsNoNet.new(filesystem: filesystem)
+          else
+            Pikuri::Code::Bash::Sandbox::NONE
+          end
+
+# Base prompt (+ the network-severance reality) + an optional online block +
+# date. os-assistant.txt states the constant no-network posture; only
+# --with-internet adds a block, granting the delegate-a-web-lookup exception
+# (offline mode adds nothing — there's no exception to state). The "# This
+# machine" facts and the MACHINE.md memory section are appended by
+# Os::Extension (via append_system_prompt), so the binary doesn't assemble them.
+prompt_names = [:'os-assistant']
+prompt_names << :'os-network-online' if internet_enabled
+prompt_names << :'agent-loop'
+system_prompt = custom_prompt || Pikuri.prompts(*prompt_names)
+system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
+
+cancel_flag = Pikuri::Agent::Control::Cancellable.new
+
+# One read-only flag, shared by reference: Os::Extension threads it into
+# both the file tools (Edit/Write refuse while active) and
+# Pikuri::Code::Extension (the enter/exit tools + per-turn reminder +
+# the PlanModeChanged event the Terminal listener renders). The host
+# keeps the reference so the REPL can flip it on the /plan and /impl
+# slash commands below (a future TUI from a key binding). It gates
+# Write/Edit only, NOT bash — see Pikuri::Workspace::ReadOnly. The
+# refusal message is plan-mode's (names exit_plan_mode), owned by
+# Code::Extension.
+read_only = Pikuri::Workspace::ReadOnly.new(
+  message: Pikuri::Code::Extension::PLAN_MODE_READONLY_MESSAGE
+)
+
+# Trap SIGINT only during a turn (flips the Cancellable flag; the next
+# tool-call boundary raises Cancelled). Outside a turn the default handler
+# is restored so Ctrl+C exits the REPL.
+def run_turn(agent, message)
+  prev_trap = trap('INT') { agent.cancellable&.cancel! }
+  agent.run_loop(user_message: message)
+rescue Pikuri::Agent::Control::Cancellable::Cancelled
+  # Notice already rendered by the Terminal listener.
+rescue RubyLLM::ContextLengthExceededError => e
+  warn "\nContext window exhausted: #{e.message}"
+  warn 'The conversation has grown too large for the model. Start a fresh question.'
+  exit 1
+ensure
+  trap('INT', prev_trap || 'DEFAULT')
+end
+
+agent = Pikuri::Agent.new(
+  transport: Pikuri::Agent::ChatTransport.from_openai_server(
+    server: server,
+    model: model,
+    api_key: examples_config.fetch('llm_api_key', 'not-needed')
+  ),
+  system_prompt: system_prompt,
+  cancellable: cancel_flag
+) do |c|
+  c.add_listener Pikuri::Agent::Listener::Terminal.new
+  c.add_listener Pikuri::Agent::Listener::TokenLog.new
+  c.add_tool Pikuri::Tool::CALCULATOR
+  # One extension wires the whole OS-helper surface: the file tools,
+  # bash (gated by the read-only auto-confirmer + the sandbox above), the
+  # file-index tools, and the machine facts + MACHINE.md memory folded
+  # into the system prompt.
+  c.add_extension Pikuri::Os::Extension.new(
+    filesystem: filesystem,
+    confirmer: confirmer,
+    sandbox: sandbox,
+    read_only: read_only
+  )
+  # --with-internet only: web access is quarantined in a RESEARCHER
+  # sub-agent that holds the web tools but NO filesystem, reached via the
+  # `agent` tool. The web tools go on as *sub-agent-only* tools
+  # (add_sub_agent_tool), so the parent LLM never holds them — the parent
+  # keeps zero direct egress. The confirmer gates each delegation's task
+  # prompt: the human (not an injection-driven parent) approves what
+  # leaves this machine, and the researcher — having no private data —
+  # can at worst leak that approved task plus the public pages it read.
+  # Bash stays kernel-severed regardless; that's a separate network
+  # boundary. The add_sub_agent_tool calls must precede the SubAgent
+  # extension, whose configure validates the persona's tool_names.
+  if internet_enabled
+    c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
+    c.add_sub_agent_tool Pikuri::Web::SCRAPE
+    c.add_sub_agent_tool Pikuri::Web::FETCH
+    c.add_extension Pikuri::SubAgent::Extension.new(
+      personas: [Pikuri::SubAgent::RESEARCHER],
+      confirmer: confirmer
+    )
+  end
+end
+
+begin
+  # Capability + trifecta map, printed unconditionally. These are teaching
+  # binaries and the map is half the lesson; a production host puts it behind
+  # an explicit ask instead.
+  puts agent.trifecta.render
+  puts
+  puts "Pikuri OS Assistant for this machine. Working from #{filesystem.project_root}. Ctrl+C / Ctrl+D to quit."
+  puts 'Type /plan to enter plan mode (read-only research + design), /impl to leave.'
+  warnings = []
+  warnings << 'Network sandbox: DISABLED — bash can reach the internet (egress is OPEN).' unless sandbox_enabled
+  warnings << 'Confirmer: AUTO-APPROVE — mutations run without asking.' unless confirm_enabled
+  unless warnings.empty?
+    warnings << 'Use only in a throwaway environment.'
+    puts warnings.join(' ')
+  end
+  if internet_enabled
+    # Not a throwaway-only warning. Web access is quarantined in the
+    # RESEARCHER sub-agent (web tools, no filesystem); each research task is
+    # confirmed before dispatch and the main agent holds no direct web tool.
+    # Distinct from the --no-sandbox warning above, which re-opens bash's
+    # unbounded egress. Bash stays network-severed regardless — a separate boundary.
+    puts 'Internet: web research ENABLED via an isolated researcher sub-agent — ' \
+         'you approve each task before it runs. The main agent has no direct web access; ' \
+         'bash stays network-severed regardless.'
+  end
+
+  run_turn(agent, ARGV.join(' ')) unless ARGV.empty?
+
+  loop do
+    line = Reline.readline('> ', true) # arrow-key history + line editing
+    break if line.nil? # Ctrl+D / EOF
+
+    message = line.chomp
+    next if message.strip.empty?
+
+    # Host-side plan-mode toggle. These flip the shared read-only flag
+    # directly and are NOT sent to the LLM; Code::Extension emits a
+    # PlanModeChanged event on the flip, which the Terminal listener
+    # renders (so no puts here). activate!/deactivate! are idempotent,
+    # so a repeat is a silent no-op.
+    case message.strip.downcase
+    when '/plan' then read_only.activate!;   next
+    when '/impl' then read_only.deactivate!; next
+    end
+
+    run_turn(agent, message)
+  end
+rescue Interrupt
+  # Ctrl+C at the prompt — clean exit.
+ensure
+  agent.close
+end
+
+puts

@@ -1,0 +1,1 @@
+{ "jsonrpc": "2.0", "method": "$/progress", "params": { "token": "9c1b6d0e-1c2b-4b7f-9a1e-000000000001", "value": { "kind": "report", "message": "3/7 projects", "percentage": 42 } } }

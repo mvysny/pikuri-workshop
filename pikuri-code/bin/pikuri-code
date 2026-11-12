@@ -1,0 +1,689 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Dev / demo entry point — runs from a source checkout only. The pikuri
+# gem ships as a library; this script is not installed by `gem install
+# pikuri`. It exists to demonstrate how to wire Pikuri::Agent +
+# Pikuri::Tool::* into a working coding binary, and to support development.
+# Production binaries built on pikuri (e.g. the planned pikuri-tui) live
+# in their own gems.
+#
+# Pin Bundler to pikuri's own Gemfile so locked dependency versions win
+# and the script works when invoked via a symlink (e.g. ~/.local/bin/
+# pikuri-code) from any working directory. `__dir__` resolves through
+# symlinks, so this points at the real checkout.
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../../Gemfile', __dir__)
+
+require 'bundler/setup'
+require 'optparse'
+require 'yaml'
+require 'reline' # line editing + history for the interactive prompt
+
+require 'pikuri-core'
+require 'pikuri-skills'
+require 'pikuri-tasks'
+require 'pikuri-workspace'
+require 'pikuri-mcp'
+require 'pikuri-lsp'
+require 'pikuri-subagents'
+require 'pikuri-code'
+require 'pikuri-web'
+
+sandbox_enabled = true
+confirm_enabled = true
+yolo = false
+extra_readable = []
+extra_writable = []
+# Example-only config: the LLM connection + provider API keys live verbatim
+# in a YAML file the user owns — no CLI flags, never the environment (see
+# AGENTS.md "Environment is not a secret store"). Shared by convention across
+# the example scripts; chmod 600 it. Absent file ⇒ {} ⇒ built-in defaults.
+# (Per-run choices — the prompt, --no-sandbox, --writable, ... — stay on the
+# command line, not here: persisting a security toggle you forget is a footgun.)
+examples_config_path = File.expand_path('~/.pikuri-examples-config.yaml')
+examples_config = File.exist?(examples_config_path) ? (YAML.safe_load_file(examples_config_path) || {}) : {}
+
+# The search keys moved under the `search:` block: a stale top-level key here
+# would just be ignored, silently meaning "no Brave".
+stale_search_keys = examples_config.keys & %w[brave_search_api_key exa_api_key]
+unless stale_search_keys.empty?
+  abort "#{examples_config_path}: #{stale_search_keys.join(' / ')} moved under the " \
+        '`search:` key (search: {brave_key:, exa_key:, engines: [...]}) — see book/chat.md'
+end
+
+server = examples_config['llm_server'] || 'http://localhost:8080'
+model = examples_config['llm_model'] || 'unsloth/Qwen3.6-35B-A3B-GGUF:Q4_K_M'
+custom_prompt = nil
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: pikuri-code [options] [initial message...]'
+  opts.separator ''
+  opts.separator 'Options:'
+  opts.on('--no-sandbox', 'Disable the bubblewrap sandbox around bash commands.') { sandbox_enabled = false }
+  # Expanded eagerly (the handler runs at parse!, before the chdir to
+  # the discovered project root below) so relative paths and ~ resolve
+  # against where the user launched, not where the project lives.
+  opts.on('--readable PATH', 'Additional read-only directory (repeatable). For the file tools and ' \
+                             'sandboxed bash alike, e.g. a local gem a Gemfile references by path:.') do |v|
+    extra_readable << File.expand_path(v)
+  end
+  opts.on('--writable PATH', 'Additional read+write directory (repeatable). Full write access, ' \
+                             'including for sandboxed bash — same blast radius as the project root.') do |v|
+    extra_writable << File.expand_path(v)
+  end
+  opts.on('--no-confirm', 'Auto-approve every confirmation (skip the y/n prompt for writes + bash).') { confirm_enabled = false }
+  opts.on('--yolo', 'Combines --no-sandbox + --no-confirm + opens the filesystem ' \
+                    '(credential denylist only). Use only inside a container.') do
+    sandbox_enabled = false
+    confirm_enabled = false
+    yolo = true
+  end
+  opts.on('--system-prompt FILE', "Replace the built-in system prompt with FILE's contents " \
+                                  '(extensions still append their own sections).') do |v|
+    custom_prompt = File.read(v).rstrip
+  end
+  opts.on('-h', '--help', 'Print this help and exit') do
+    puts opts
+    exit
+  end
+end
+
+begin
+  parser.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
+  warn e.message
+  warn parser
+  exit 2
+end
+
+# Fail fast with a readable message — Filesystem.new realpath's its
+# readable:/writable: entries and a missing one raises a bare
+# Errno::ENOENT much later, mid-construction.
+(extra_readable + extra_writable).each do |path|
+  next if File.directory?(path)
+
+  warn "no such directory: #{path}"
+  exit 2
+end
+
+# Climb from the launch directory to the project root, looking for
+# a VCS marker (.git / .hg / .svn). See {Pikuri::Workspace::ProjectRoot}
+# for why build-system markers (Gemfile, pom.xml, build.gradle.kts, …)
+# are deliberately NOT in the default list (Gradle/Maven/yarn-workspaces
+# subprojects have their own copies, leading to wrong-project_root climbs).
+# Falls back to launch dir if no VCS marker is reachable.
+#
+# If the discovered project root differs from where the user launched,
+# +Dir.chdir+ the whole Ruby process to it before doing anything else.
+# Rationale: pikuri has a single project anchor and zero "cwd" concept;
+# the file tools, Bash, Grep, Glob all operate against +project_root+.
+# Keeping the Ruby process's cwd aligned with the workspace means there
+# is one truth, not two (which the LLM would otherwise have to reason
+# about — see the discussion in AGENTS.md / IDEAS.md). Loud about it
+# so the user isn't surprised by +pwd+ output later.
+launch_cwd   = Pathname.new(Dir.pwd)
+project_root = Pikuri::Workspace::ProjectRoot.find(cwd: launch_cwd) || launch_cwd
+if Dir.pwd != project_root.to_s
+  warn "Changing working directory to project root: #{project_root}"
+  Dir.chdir(project_root.to_s)
+end
+
+# The private-data declaration, and the only trifecta leg the framework
+# cannot determine for itself: nothing distinguishes ~/work/my/pikuri from
+# ~/work/client-payroll by inspection, because sensitivity is a property of
+# the data. Undeclared, the boot advisory reads two legs and stays quiet over
+# a repo full of secrets — so this bin asks rather than making you remember a
+# flag, which is the mistake whose cost is the whole repo.
+#
+# Nothing is gated on the answer: it changes what the report *says*, never
+# what the agent may do. Asked every interactive session (no persistence —
+# this bin is illustrative, like the git-config prompt below), and gated on a
+# TTY *only*. Deliberately not on confirm_enabled, which the git prompt does
+# gate on: skipping that one fails safe (nothing gets auto-approved), while
+# skipping this one fails silent, so --yolo would take the quiet reading over
+# exactly the repo that most wants the loud one.
+private_repo =
+  $stdin.tty? &&
+  Pikuri::Workspace::Confirmer::Terminal.new.confirm?(
+    request: Pikuri::Workspace::Confirmer::Request.new(
+      question: 'Does this project hold anything you would mind leaking ' \
+                '(credentials, client work, unpublished code)?',
+      detail: "#{project_root}\n\nThis sets one line of the trifecta report printed at " \
+              'startup; it blocks nothing either way. Say yes and the report will tell you ' \
+              'whenever this agent simultaneously holds private data, attacker-authored ' \
+              'content, and a way to send bytes out.'
+    )
+  )
+
+# The bytes-are-yours declaration, and the third of this bin's three trust
+# questions — which are genuinely three: this one asks whether the *sources*
+# here are user-authored, private_repo above asks whether they are sensitive,
+# and trusted_repo below asks whether a hostile .gitattributes can *execute
+# code*. Reusing that last one here would claim vendor/ is your own work on
+# the strength of you controlling .git/config.
+#
+# Gated on confirm_enabled unlike private_repo, and the asymmetry is the
+# failure direction: skipping this one over-warns, which is the declared bias,
+# while skipping that one fails silent. --yolo therefore lands on false for
+# free, which it must — Filesystem::AllowAll refuses the flag outright.
+#
+# The answer reaches the skill catalog and NOTHING ELSE. It deliberately does
+# not become Filesystem(trusted:), which would be dishonest here whatever you
+# answer: ToolchainPaths.readable puts ~/.m2/repository and ~/.cargo/registry
+# in the workspace's reachable set permanently, so `read` really can reach
+# somebody else's bytes and its :hard leg is correct. The catalog reached
+# .pikuri/skills under this root and nothing else, so its :none is correct
+# too. Same question, two reachable sets, two honest answers.
+repo_sources_are_mine =
+  confirm_enabled && $stdin.tty? &&
+  Pikuri::Workspace::Confirmer::Terminal.new.confirm?(
+    request: Pikuri::Workspace::Confirmer::Request.new(
+      question: 'Did you write the files under this directory yourself?',
+      detail: "#{project_root}\n\nSay yes ONLY if nothing here arrived with a clone — no " \
+              'vendored dependencies, no fetched PR branch, no pasted bundle. This grades ' \
+              'the skills loaded from this repo in the trifecta report; it blocks nothing, ' \
+              'and the file tools keep reading your dependency caches either way.'
+    )
+  )
+
+# Skill catalog. Two search bases — the project root and +Dir.home+ — under
+# which the catalog itself scans for +.pikuri/skills+ / +.claude/skills+ /
+# +.agents/skills+. Project beats global because the project base comes first.
+# Catalog roots are folded into the workspace's readable set below so the skill
+# tool's sidecar +read+ flow works.
+#
+# Built after the prompts because the project base needs their answer, and
+# before the workspace because the workspace needs its roots.
+#
+# +Dir.home+ is vouched for without asking, and the reason is a property this
+# binary can check rather than a guess about its user: the agent has no way to
+# put a bundle there. Home bundle roots ride in readable:, never writable:, so
+# write/edit refuse them; sandboxed bash gets readable dirs as *ephemeral
+# overlays*, so a write vanishes at exit and the file tools never see it; and
+# unsandboxed bash still confirms every command. Nothing lands in
+# ~/.claude/skills or ~/.claude/commands except by the user's own hand, which
+# is exactly what the +trusted+ flag claims. (Home as a whole is a different
+# matter — Downloads, a mail store — which is why this vouches for the bundle
+# dirs, not for $HOME.)
+#
+# The exception is the mode where both guards are off: --yolo, or
+# --no-sandbox --no-confirm. There bash can write those dirs for real and
+# unwatched, so the next session would load bytes the agent authored — the one
+# self-poisoning loop this flag must not paper over.
+home_bundles_are_mine = sandbox_enabled || confirm_enabled
+bundle_bases = [
+  Pikuri::Bundle::Base.new(dir: project_root, trusted: repo_sources_are_mine),
+  Pikuri::Bundle::Base.new(dir: Dir.home, trusted: home_bundles_are_mine)
+]
+skill_catalog = Pikuri::Skill::Catalog::Bundled.new(search_bases: bundle_bases)
+# Held in a local (rather than built inline in the wiring block below) because
+# the REPL calls #schedule_load_skill on it to serve a typed /name.
+skill_extension = Pikuri::Skill::Extension.new(catalog: skill_catalog, root: project_root)
+
+# Slash commands: the *human*-invoked half of the same surface, scanned from
+# .pikuri/commands / .claude/commands under those same bases. Never advertised
+# to the model, so it costs no prompt tokens; the REPL below resolves a typed
+# /name against it. The vouch above covers these bytes for the same reason it
+# covers skills — command roots ride in readable:, never writable:.
+command_registry = Pikuri::Command::Registry.new(search_bases: bundle_bases)
+
+# Workspace is captured once at startup; all file-touching tools share it.
+# +project_root+ is the writable containment ceiling, the Bubblewrap
+# bind root, the relative-path base, and the chdir target — one anchor,
+# no separate cwd. Readable additions: system toolchains (/usr, /opt,
+# mise/cargo/m2/…) so the LLM can grep Ruby stdlib, JDK sources,
+# dependency caches; skill catalog roots so the +read+ tool can load
+# skill sidecars. temp: true mints an ephemeral writable playground
+# under ~/.cache/pikuri (Dir.mktmpdir, removed at_exit) — exposed below
+# in the system prompt so the LLM knows where to put junk (downloads,
+# unzip targets, scratch artifacts).
+#
+# alias_tmp_to_temp: true is wired on when the bubblewrap sandbox is
+# enabled. It pairs with the sandbox's --bind <temp> /tmp: bash inside
+# the sandbox writes to /tmp/foo, then file tools (Read/Write/Edit/
+# Grep/Glob, which run on the host, not inside the sandbox) accept the
+# same /tmp/foo path because the workspace rewrites it to the temp's
+# host path before containment check. With the sandbox off, /tmp in
+# bash is the host's real /tmp — aliasing it would lie about what
+# `read('/tmp/foo')` actually opens, so the kwarg is left at false.
+#
+# --yolo swaps in +Filesystem::AllowAll+: every path resolves except
+# those under the credential denylist (~/.ssh, ~/.aws, …, /etc/shadow).
+# Intended for use inside a container where the container itself is
+# the security boundary; the toolchain/skill readable list is moot
+# since everything is reachable anyway.
+filesystem = if yolo
+              # --readable/--writable are moot under AllowAll (everything
+              # short of the credential denylist resolves anyway); warn so
+              # the user knows the flags did nothing rather than silently
+              # accepting them.
+              warn '--readable/--writable ignored under --yolo (filesystem is ALLOW_ALL).' \
+                unless extra_readable.empty? && extra_writable.empty?
+              Pikuri::Workspace::Filesystem::AllowAll.new(
+                project_root:      project_root,
+                temp:              true,
+                alias_tmp_to_temp: sandbox_enabled,
+                private:           private_repo
+              )
+            else
+              # User-supplied --readable/--writable extras ride the same
+              # lists as the toolchain paths, so they propagate to the
+              # file tools AND the bubblewrap binds. Readable dirs (the
+              # toolchains + caches + skill roots + --readable extras)
+              # are mounted by Bubblewrap as read-write ephemeral
+              # overlays so toolchain installs (gem/bundle/mvn/pip/...)
+              # succeed but vanish at session exit — preventing a
+              # poisoned session from leaking into other projects' or
+              # the user's normal builds. Writable extras get a
+              # persistent read+write --bind. See
+              # Pikuri::Code::ToolchainPaths and
+              # Pikuri::Code::Bash::Sandbox::Bubblewrap for the rationale.
+              Pikuri::Workspace::Filesystem.new(
+                project_root:      project_root,
+                readable:          Pikuri::Code::ToolchainPaths.readable +
+                                   skill_catalog.roots +
+                                   command_registry.roots +
+                                   extra_readable,
+                writable:          extra_writable,
+                temp:              true,
+                alias_tmp_to_temp: sandbox_enabled,
+                private:           private_repo
+              )
+            end
+confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikuri::Workspace::Confirmer::AUTO_APPROVE
+
+# Bash auto-gates provably read-only commands on top of the human
+# confirmer (mirrors pikuri-os/lib/pikuri/os/extension.rb): the frequent
+# harmless inspections (ls, cat, grep, ps, `cd x && ls`, `ps aux | grep`)
+# stop prompting, while every mutation — and anything not provably
+# read-only — still reaches the human. Safe even with the sandbox's
+# shared network: no allowlisted binary can write or exfiltrate, so this
+# grants nothing the agent's own non-confirming Read/Grep/Glob don't.
+# The gate is asymmetric — only Code::Extension (Bash) gets a
+# passive_detector; Write/Edit (Workspace::Extension below) keep the bare
+# human confirmer, so every overwrite confirms. Under --yolo/--no-confirm
+# there is nothing to skip, so no approver is built.
+#
+# Read-only *git* (git diff/status/log/show/…) is gated behind an explicit
+# trust prompt. Bash already hardens the git environment
+# (Code::Bash::GIT_HARDENING) so a hostile repo-local `core.fsmonitor`
+# can't fire on `git status`; what the prompt covers is the residual a
+# hostile committed .gitattributes / repo-local diff driver can still
+# reach — a `diff.external`/`textconv` command that runs (and, with the
+# sandbox network shared, exfiltrates) when the model diffs a matching
+# file. So we auto-approve read-only git only after the user affirms they
+# control this directory's git config. Asked every interactive session (no
+# persistence — this bin is illustrative); skipped when stdin isn't a TTY
+# (so piped input is never consumed) and under --yolo/--no-confirm (which
+# already auto-approve everything).
+trusted_repo =
+  confirm_enabled && $stdin.tty? &&
+  confirmer.confirm?(
+    request: Pikuri::Workspace::Confirmer::Request.new(
+      question: "Trust this directory's git config? Read-only git " \
+                '(status/diff/log/show/blame/…) will then run WITHOUT confirmation.',
+      detail: "#{project_root}\n\nSay yes ONLY if you control this repo's " \
+              '.git/config and committed .gitattributes. A hostile diff driver ' \
+              "(diff.external / textconv) can make `git diff` execute arbitrary " \
+              'code — and with the sandbox network shared, exfiltrate. Default is no.'
+    )
+  )
+code_passive_detector = confirm_enabled ? Pikuri::Code::Bash::PassiveCommandDetector.new(allow_git: trusted_repo) : nil
+
+# Bubblewrap sandbox wraps every Bash subprocess with a filesystem view
+# constrained to workspace.readable / workspace.writable plus a curated
+# OS-runtime baseline (/etc/ssl, /etc/resolv.conf, /etc/localtime, …).
+# Readable dirs are mounted as per-session read-write overlays (so
+# toolchain installs succeed and vanish at exit); on a kernel without
+# overlayfs-in-userns support the sandbox degrades to read-only binds.
+# Probes `bwrap` at construction and raises if it isn't installed or the
+# kernel lacks user-namespace support — fail-loud, so a host that
+# expects the sandbox doesn't silently run without one. Disable with
+# --no-sandbox / --yolo.
+sandbox = if sandbox_enabled
+            Pikuri::Code::Bash::Sandbox::Bubblewrap.new(filesystem: filesystem)
+          else
+            Pikuri::Code::Bash::Sandbox::NONE
+          end
+
+# Build the system prompt: static base + optional context files + footer.
+# Two instruction layers are prepended when present, global first so a
+# project's file refines the user-wide one rather than overriding it
+# wholesale:
+#   * global  — ~/.claude/CLAUDE.md (mirrors the skill catalog's Dir.home base)
+#   * project — AGENTS.md, else CLAUDE.md, at the project root (AGENTS.md wins)
+# Each is injected verbatim under a header naming its source path, so the
+# LLM can tell user-wide preferences from this project's rules.
+#
+# An outside-model review (Grok 4.6, 2026-08) found the project file the
+# most valuable thing in the prefix — "the decisions I would otherwise
+# rediscover, and get wrong" — and the base prompt's guardrails
+# project-shaped rather than safety theater. The same review calls the
+# standing prefix too heavy: when it gets trimmed, these two go last.
+system_prompt = custom_prompt || Pikuri.prompts(:'coding-system-prompt', :'agent-loop')
+context_paths = [
+  Pathname.new(Dir.home).join('.claude', 'CLAUDE.md'),
+  ['AGENTS.md', 'CLAUDE.md'].map { |f| filesystem.project_root.join(f) }.find(&:file?)
+].compact.select(&:file?).uniq
+context_paths.each do |path|
+  system_prompt += "\n\n# Context: #{path}\n\n#{File.read(path)}"
+end
+system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
+system_prompt += "\nProject root: #{filesystem.project_root}"
+# Advertise --writable extras: that the agent may edit outside the
+# project root is non-obvious to the LLM. --readable extras are
+# deliberately not advertised — like the toolchain paths, the model
+# finds them by following references (Gemfile path:, bundle show).
+unless yolo || extra_writable.empty?
+  system_prompt += "\nAdditional writable paths: #{extra_writable.join(', ')}"
+end
+# Tell the LLM only what's true for the current mode so it doesn't
+# need to know whether bubblewrap is on. Sandboxed: /tmp itself is the
+# scratch dir (bind-mounted to a persistent host dir under
+# ~/.cache/pikuri, and the workspace aliases /tmp/* in file tools to
+# match). Unsandboxed: /tmp is the host's real /tmp; nudge the LLM
+# toward the workspace's personal scratch dir to keep host /tmp clean.
+system_prompt += if sandbox_enabled
+                   "\nScratch space: /tmp — persistent across all bash and tool calls; " \
+                     'use for downloads, clones, unpacks. Cleared on exit.'
+                 else
+                   "\nScratch space: #{filesystem.temp} — persistent across tool calls, " \
+                     'cleared on exit. Prefer it over /tmp for downloads, clones, unpacks ' \
+                     "(keeps the host's /tmp clean)."
+                 end
+
+cancel_flag = Pikuri::Agent::Control::Cancellable.new
+
+# One read-only flag, shared by reference across the file-editing tools
+# (Edit/Write refuse to write while it is active) and
+# Pikuri::Code::Extension (which wires the enter/exit tools, the per-turn
+# reminder, and the PlanModeChanged event). The host keeps the reference
+# and the REPL flips it on the /plan and /impl slash commands below (a
+# future TUI would flip it from a key binding); the model can also
+# enter/exit via its own tools. It gates Write/Edit only, NOT bash —
+# see Pikuri::Workspace::ReadOnly. The refusal message is plan-mode's
+# (names exit_plan_mode), owned by Code::Extension.
+read_only = Pikuri::Workspace::ReadOnly.new(
+  message: Pikuri::Code::Extension::PLAN_MODE_READONLY_MESSAGE
+)
+
+# MCP servers available to the assistant. Hand-edit this array to add
+# providers — id is what the LLM references via +mcp_connect("...")+.
+# Two entry types: +StdioEntry+ for a local subprocess (argv to spawn)
+# and +HttpEntry+ for a remote endpoint (url + optional headers). Empty
+# by default, so no MCP tool is wired until at least one entry is
+# added here.
+#
+# == Examples
+#
+#   Pikuri::Mcp::Registry::StdioEntry.new(
+#     id:      'maven-tools',
+#     command: ['npx', 'mcp-maven-deps']
+#   ),
+#   Pikuri::Mcp::Registry::StdioEntry.new(
+#     id:      'gmail',
+#     command: ['npx', '@gongrzhe/server-gmail-autoauth-mcp']
+#   ),
+#   Pikuri::Mcp::Registry::HttpEntry.new(
+#     id:      'hubspot',
+#     url:     'https://mcp.example.com/v1',
+#     headers: { 'Authorization' => "Bearer #{ENV.fetch('HUBSPOT_TOKEN')}" }
+#   ),
+mcp_registry = Pikuri::Mcp::Registry.new(entries: [
+])
+
+# Language servers, from the shared example config rather than from this
+# script: an entry names a binary on *this* machine (and, for jdtls, a
+# JAVA_HOME and a data directory), which a version-controlled demo cannot
+# know and a user would lose on the next pull. Absent key ⇒ no servers ⇒
+# no `lsp` tool.
+#
+#   lsp_servers:
+#     ruby:
+#       command: [ruby-lsp]
+#       files:   ['*.rb', '*.rake', '*.gemspec', Rakefile, Gemfile]
+lsp_registry = Pikuri::Lsp::Registry.from_h(examples_config['lsp_servers'])
+
+# Run one agent turn, trapping SIGINT only for the duration of the turn.
+# Ctrl+C during a turn flips the agent's Cancellable flag — the next
+# tool-call boundary raises Cancelled, which we rescue below to return to
+# the prompt. Outside a turn (at the `> ` input) the default handler is
+# restored so Ctrl+C still exits the REPL the way it did before.
+def run_turn(agent, message)
+  prev_trap = trap('INT') { agent.cancellable&.cancel! }
+  agent.run_loop(user_message: message)
+rescue Pikuri::Agent::Control::Cancellable::Cancelled
+  # Notice already rendered by the Terminal listener; nothing else to do.
+rescue RubyLLM::ContextLengthExceededError => e
+  warn "\nContext window exhausted: #{e.message}"
+  warn 'The conversation has grown too large for the model. Start a fresh question.'
+  exit 1
+ensure
+  trap('INT', prev_trap || 'DEFAULT')
+end
+
+# Boot-time LLM work — synthesize_descriptions: + verify_mcp_servers:
+# each run a one-shot thinker agent once per configured MCP server on a cold
+# cache. Trap SIGINT around Agent.new so a Ctrl+C unwinds startup.
+prev_boot_trap = trap('INT') { cancel_flag.cancel! }
+begin
+  agent = Pikuri::Agent.new(
+    # Connection rides the transport's own RubyLLM::Context (not a global
+    # RubyLLM.configure); from_openai_server normalizes a trailing /v1.
+    transport: Pikuri::Agent::ChatTransport.from_openai_server(
+      server: server,
+      model: model,
+      api_key: examples_config.fetch('llm_api_key', 'not-needed')
+    ),
+    system_prompt: system_prompt,
+    cancellable: cancel_flag,
+    # Two things land here: the *agent's own* mid-loop injections, which is
+    # what a `paths:`-gated skill needs to be promoted when a matching file
+    # is touched (without one, Skill::Extension leaves every skill
+    # advertised), and this REPL's own typed-/name skill loads.
+    interloper: Pikuri::Agent::Control::Interloper.new
+  ) do |c|
+    c.add_listener Pikuri::Agent::Listener::Terminal.new
+    c.add_listener Pikuri::Agent::Listener::TokenLog.new
+    # File/shell tools first (declaration order biases some models toward
+    # earlier tools, and this is the coding-relevant set); calculator
+    # last as auxiliary. Network tools (web_search / web_scrape / fetch)
+    # go on the sub-agent-only pool via +add_sub_agent_tool+ — the
+    # parent LLM never sees them, but the RESEARCHER persona (wired
+    # below) lists them in its +tool_names+ and receives them through
+    # the +agent+ delegation tool. So untrusted web content can only
+    # land in a child context with no file read/write/bash to hijack
+    # a prompt injection. See SECURITY.md §"Defense: capability
+    # boundaries via sub-agents". The `skill` tool, when the catalog
+    # is non-empty, is appended by the Skill::Extension below.
+    # The file tools (read/grep/glob/file_list/edit/write) share one
+    # Workspace composite (Filesystem + this session's read record) so
+    # the read-before-edit gate works across them. The extension owns
+    # that composite; Bash and the sandbox take the raw `filesystem`
+    # below (they govern the subprocess fs view, not the read record).
+    # It also threads the shared read-only flag into edit/write, so they
+    # refuse while it is active — the same flag Code::Extension's plan
+    # tools (and the /plan, /impl slash commands) flip.
+    c.add_extension Pikuri::Workspace::Extension.new(
+      filesystem: filesystem,
+      confirmer: confirmer,
+      read_only: read_only
+    )
+    c.add_tool Pikuri::Tool::CALCULATOR
+    c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
+    c.add_sub_agent_tool Pikuri::Web::SCRAPE
+    c.add_sub_agent_tool Pikuri::Web::FETCH
+    c.add_extension Pikuri::Code::Extension.new(
+      filesystem: filesystem,
+      confirmer: confirmer,
+      passive_detector: code_passive_detector,
+      sandbox: sandbox,
+      read_only: read_only
+    )
+    c.add_extension skill_extension
+    # Declaration only: commands register no tool and render no prompt, so
+    # without this the trifecta banner would miss their untrusted leg entirely.
+    c.add_extension Pikuri::Command::Extension.new(registry: command_registry)
+    # In-memory task list + four +task_*+ tools (task_create /
+    # task_in_progress / task_completed / task_delete). The LLM
+    # uses these to externalize a multi-step plan into a
+    # structured slot it sees on every turn — combats the "by
+    # step 25 the original plan is buried" failure mode on long
+    # tasks. List is per-Agent, in-memory, dropped on close;
+    # sub-agents don't inherit it. See book/tasks.md.
+    c.add_extension Pikuri::Tasks::Extension.new
+    c.add_extension Pikuri::Mcp::Extension.new(
+      registry: mcp_registry,
+      synthesize_descriptions: true,
+      verify_mcp_servers: true
+    )
+    # Language intelligence, when this machine has a server for the
+    # project's languages: which binaries you have installed is machine
+    # state, so the entries live in the same YAML the LLM connection does
+    # (`lsp_servers:`, see Pikuri::Lsp::Registry.from_h for the shape).
+    # No config ⇒ no tool at all; configured ⇒ nothing is spawned until a
+    # call needs it, and the first one blocks for as long as the server's
+    # index takes. Takes the raw filesystem, not the Workspace composite:
+    # it reads files to send them to the server and marks nothing read.
+    c.add_extension Pikuri::Lsp::Extension.new(
+      registry: lsp_registry,
+      filesystem: filesystem
+    )
+    # Privilege-separated read-only sub-agents along both recon axes:
+    # FILE_MINER (read/grep/glob) for code/fs lookups, RESEARCHER
+    # (web_search/web_scrape/fetch) for external docs / error-message
+    # lookup / library research. Both keep the parent's context clean
+    # during exploration and put potentially-injected content (file
+    # contents, scraped pages) in a child that has no bash/write/edit
+    # to hijack. See IDEAS.md §"The lethal trifecta" + §"Personas for
+    # Tool::SubAgent" for the framing.
+    c.add_extension Pikuri::SubAgent::Extension.new(
+      personas: [
+        Pikuri::SubAgent::FILE_MINER,
+        Pikuri::SubAgent::RESEARCHER,
+        Pikuri::Code::GIT_REPO_RESEARCHER
+      ]
+    )
+  end
+rescue Pikuri::Agent::Control::Cancellable::Cancelled
+  warn 'Cancelled during startup'
+  exit 130
+ensure
+  trap('INT', prev_boot_trap || 'DEFAULT')
+end
+# Reset in case the user pressed Ctrl+C between MCP synthesis calls — the
+# trap fired but Agent.new finished before the next thinker pre-call check
+# could raise. Otherwise the first turn would inherit a stale cancellation.
+cancel_flag.reset!
+
+begin
+  # Capability + trifecta map, printed unconditionally. These are teaching
+  # binaries and the map is half the lesson; a production host puts it behind
+  # an explicit ask instead.
+  puts agent.trifecta.render
+  puts
+  puts "Pikuri Coding Agent. Working in #{filesystem.project_root}. Press Ctrl+C or Ctrl+D to quit."
+  puts 'Type /plan to enter plan mode (read-only research + design), /impl to leave.'
+  puts 'Trusted repo: read-only git (status/diff/log/show/…) runs without confirmation.' if trusted_repo
+  context_paths.each { |path| puts "Loaded context from #{path}." }
+  unless skill_catalog.empty?
+    names = skill_catalog.list.map(&:name).sort.join(', ')
+    puts "Loaded #{skill_catalog.list.size} skill(s): #{names}."
+    puts 'Type /<skill-name> to load one yourself; the agent can also load them on its own.'
+  end
+  unless command_registry.empty?
+    names = command_registry.list.map { |cmd| "/#{cmd.name}#{cmd.refused? ? ' (unavailable)' : ''}" }
+    puts "Loaded #{command_registry.list.size} command(s): #{names.sort.join(', ')}."
+  end
+  # Print reduced-safety status only when a layer is off. Silent at
+  # defaults; loud when something the user might want to know about has
+  # been disabled.
+  warnings = []
+  warnings << 'Sandbox: DISABLED.' unless sandbox_enabled
+  warnings << 'Confirmer: AUTO-APPROVE.' unless confirm_enabled
+  warnings << 'Filesystem: ALLOW_ALL (credential denylist only).' if yolo
+  unless warnings.empty?
+    warnings << 'Use only with an outer sandbox (docker / dev-container) or in a throwaway environment.'
+    puts warnings.join(' ')
+  end
+
+  run_turn(agent, ARGV.join(' ')) unless ARGV.empty?
+
+  loop do
+    line = Reline.readline('> ', true) # arrow-key history + line editing
+    break if line.nil? # Ctrl+D / EOF on empty line
+
+    message = line.chomp
+    next if message.strip.empty?
+
+    # Host-side plan-mode toggle. These flip the shared read-only flag
+    # directly and are NOT sent to the LLM; Code::Extension emits a
+    # PlanModeChanged event on the flip, which the Terminal listener
+    # renders (so no puts here). activate!/deactivate! are idempotent,
+    # so a repeat is a silent no-op.
+    case message.strip.downcase
+    when '/plan' then read_only.activate!;   next
+    when '/impl' then read_only.deactivate!; next
+    end
+
+    # Slash commands, resolved *after* the built-ins above: a cloned repo
+    # shipping .claude/commands/plan.md must not capture the read-only
+    # toggle. What comes back is an ordinary user turn — the human typed it,
+    # just short — so it goes through run_turn like anything else.
+    if message.start_with?('/')
+      name, arguments = message[1..].split(/\s+/, 2)
+      next if name.nil? || name.empty?
+
+      expanded =
+        begin
+          command_registry.expand(name, arguments: arguments.to_s)
+        rescue Pikuri::Command::RefusedError => e
+          puts "/#{name} is unavailable — #{e.message}"
+          next
+        end
+
+      # Third and last leg of the typed-/name chain (host built-in >
+      # command > skill): /cop loads the skill named cop. Deliberately
+      # argument-less — a command is a template with $ARGUMENTS to
+      # interpolate, where a skill body is fixed text, so there is nothing
+      # for an argument to do.
+      if expanded.nil?
+        loaded = begin
+          skill_extension.schedule_load_skill(name)
+        rescue KeyError
+          nil
+        end
+
+        if loaded.nil?
+          puts "No such command or skill: /#{name}."
+          # Human-facing only, and reading the *unfiltered* catalog on
+          # purpose: the gate refuses a not-yet-fired skill exactly as it
+          # refuses a name that exists nowhere, which is right for the model
+          # but useless to someone who just read the name in the startup
+          # banner. Nothing here reaches the conversation.
+          if skill_catalog.get(name)
+            puts "'#{name}' is installed but gated on `paths:` — it becomes loadable once a matching file is touched."
+          end
+          next
+        end
+
+        # Enqueue-only: the block is delivered at the *next* turn's start, so
+        # priming the agent costs no round-trip of its own. Running a bare
+        # turn here instead would spend a completion on an acknowledgement,
+        # which is the "surprise tax" that asked for this feature.
+        puts "Skill '#{loaded.name}' will load with your next message."
+        next
+      end
+
+      message = expanded
+    end
+
+    run_turn(agent, message)
+  end
+rescue Interrupt
+  # Ctrl+C — fall through to clean exit
+ensure
+  agent.close
+end
+
+puts
+

@@ -1,0 +1,394 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Dev / diagnostic entry point — runs from a source checkout only, and is not
+# installed by `gem install pikuri`.
+#
+# Answers one question: **do the measurements pikuri-lsp's design rests on still
+# hold against the server you have installed today?**
+#
+# It exists because the alternative reports a lie. The specs cover the client
+# against a fake and a dummy binary, both of which behave the way pikuri expects
+# by construction — so nothing in the suite would notice a server release that
+# started indexing methods, implemented a provider it used to stub, or changed
+# the shape of a reply. A live spec tagged to skip when the binary is
+# absent is worse than nothing: it reports green by staying silent, and the CI
+# image has no language server.
+#
+# So the probes live here instead, and this script reports three outcomes per
+# probe, never two:
+#
+#   ok       — the finding still holds; the design decision resting on it stands
+#   DRIFT    — the server no longer behaves that way; go re-read the decision
+#   no answer — the probe could not be run here, and says why
+#
+# A DRIFT is not a failure. It is an invitation to revisit a choice that was
+# right when it was measured; each probe names the decision it guards. Exits 1
+# when anything drifted, so a wrapper can notice.
+#
+# Two layers, because a fault at one is invisible from the other. By default the
+# probes drive the *protocol* client. `--drive` drives the `lsp` **tool** instead,
+# printing what the model would read for every operation and checking the
+# properties the rendered answer owes — which is how the `R_` findings were
+# found, and what no protocol probe could have caught.
+#
+# Usage:
+#
+#   bin/pikuri-lsp-check                       # ruby-lsp against this checkout
+#   bin/pikuri-lsp-check --drive               # the same checkout, through the tool
+#   bin/pikuri-lsp-check --server java --root ~/some/maven-project
+#   bin/pikuri-lsp-check --anchor lib/foo.rb:12:Foo
+#   bin/pikuri-lsp-check --drive --anchor lib/foo.rb:41:my_method
+#
+# Servers come from `~/.pikuri-examples-config.yaml` (`lsp_servers:`, the shape
+# {Pikuri::Lsp::Registry.from_h} takes) when it has any, and otherwise from a
+# built-in `ruby-lsp` entry — so the common case needs no config at all.
+
+require 'bundler/setup'
+require 'optparse'
+require 'yaml'
+require 'pikuri-lsp'
+
+root = Dir.pwd
+server_id = nil
+anchor = nil
+drive = false
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: pikuri-lsp-check [options]'
+  opts.on('--root PATH', 'Project to index (default: the working directory).') { |v| root = File.expand_path(v) }
+  opts.on('--server ID', 'Which configured server to probe (default: the first).') { |v| server_id = v }
+  opts.on('--anchor FILE:LINE:SYMBOL', 'What to ask about (default: a class ' \
+                                       'declaration found by scanning).') do |v|
+    anchor = v
+  end
+  opts.on('--drive', 'Probe through the `lsp` tool instead of the protocol: ' \
+                     'print what the model would read for every operation, and ' \
+                     'check the R_ findings.') do
+    drive = true
+  end
+  opts.on('-h', '--help') do
+    puts opts
+    exit 0
+  end
+end
+parser.parse!
+
+CONFIG_PATH = File.expand_path('~/.pikuri-examples-config.yaml')
+
+# @return [Pikuri::Lsp::Registry]
+def registry_from_config
+  config = File.exist?(CONFIG_PATH) ? (YAML.safe_load_file(CONFIG_PATH) || {}) : {}
+  configured = Pikuri::Lsp::Registry.from_h(config['lsp_servers'])
+  return configured unless configured.empty?
+
+  puts "No lsp_servers: in #{CONFIG_PATH} — falling back to a built-in ruby-lsp entry."
+  Pikuri::Lsp::Registry.new(entries: [
+    Pikuri::Lsp::Registry::StdioEntry.new(id: 'ruby', command: %w[ruby-lsp],
+                                          files: %w[*.rb *.rake *.gemspec Rakefile Gemfile])
+  ])
+end
+
+# The anchor: a declaration line, because that is what the hierarchy operations
+# need and it is the one shape every probe can share.
+#
+# @return [Array(String, Integer, String)] path, 1-based line, symbol.
+def discover_anchor(entry, root)
+  Dir.glob('**/*', base: root).each do |relative|
+    next unless entry.claims?(relative)
+
+    path = File.join(root, relative)
+    next unless File.file?(path)
+
+    File.foreach(path).with_index(1) do |line, number|
+      # Deliberately crude: any language's `class Foo` / `class Foo {`.
+      match = line.match(/^\s*(?:public\s+|final\s+|abstract\s+)*class\s+([A-Z]\w*)/)
+      return [path, number, match[1]] if match
+    end
+  end
+  nil
+end
+
+# @return [Array(String, Integer, String)]
+def parse_anchor(spec, root)
+  path, line, symbol = spec.split(':', 3)
+  raise "--anchor wants FILE:LINE:SYMBOL, got #{spec.inspect}" if symbol.nil?
+
+  [File.expand_path(path, root), Integer(line), symbol]
+end
+
+# One probe's verdict. +decision+ names what rests on it, so a DRIFT line tells
+# the reader where to go next.
+Probe = Struct.new(:name, :decision, :verdict, :detail) do
+  def to_s
+    mark = { ok: '  ok      ', drift: '  DRIFT   ', unknown: '  no answer' }.fetch(verdict)
+    "#{mark} #{name}\n             #{detail}\n             guards: #{decision}"
+  end
+end
+
+PROBES = []
+
+def probe(name, decision)
+  verdict, detail = yield
+  PROBES << Probe.new(name, decision, verdict, detail)
+rescue StandardError => e
+  PROBES << Probe.new(name, decision, :unknown, "the probe itself raised #{e.class}: #{e.message}")
+end
+
+# Print the verdicts and exit — 1 when anything drifted, so a wrapper can notice.
+def report_and_exit
+  puts 'Probes'
+  puts '------'
+  PROBES.each { |result| puts result }
+  puts
+
+  drifted = PROBES.count { |result| result.verdict == :drift }
+  unknown = PROBES.count { |result| result.verdict == :unknown }
+  puts "#{PROBES.length} probes: #{PROBES.length - drifted - unknown} ok, #{drifted} drifted, " \
+       "#{unknown} unanswered."
+  puts 'A DRIFT means a measurement the design rests on no longer holds — re-read the decision it guards.' if drifted.positive?
+  exit(drifted.positive? ? 1 : 0)
+end
+
+# Every +label:line+ a rendered answer prints, in the order printed.
+#
+# Matches a whole whitespace-delimited field rather than searching the line, which
+# is what keeps two lookalikes out: +foo.rb:12+ quoted inside a snippet is never
+# its own field, and an out-of-root row reads +"outside the workspace: foo.rb:12"+,
+# spaces included. So no renderer layout is parsed here.
+#
+# @param answer [String] one rendered observation.
+# @return [Array<Array(String, Integer)>] label and 1-based line per row.
+def printed_labels(answer)
+  answer.lines.flat_map do |row|
+    row.strip.split(/ {2,}/).filter_map do |field|
+      match = field.match(/\A(?<label>\S+):(?<line>\d+)\z/)
+      [match[:label], Integer(match[:line])] if match
+    end
+  end
+end
+
+# Ask every operation through the +lsp+ tool, print what the model would read, and
+# check what a rendered answer owes.
+#
+# The probes above drive the protocol client, so none of them can see a fault in
+# +Navigator+ dispatch, +Anchor+, +Sources+ or +Renderer+ — which is where both
+# +R_+ findings were spotted. One server (the +--server+ one), because a
+# readable report beats an exhaustive one.
+#
+# @return [void]
+def drive_probes(entry:, root:, path:, line:, symbol:)
+  filesystem = Pikuri::Workspace::Filesystem.new(project_root: root)
+  servers = Pikuri::Lsp::Servers.new(registry: Pikuri::Lsp::Registry.new(entries: [entry]),
+                                     root: filesystem.project_root)
+  tool = Pikuri::Lsp::LspTool.new(servers: servers, filesystem: filesystem)
+  tool.on_progress = ->(progress) { print("\r\e[K#{progress}") if $stdout.tty? }
+  relative = path.delete_prefix("#{root}/")
+
+  puts 'Waiting for the index, then asking every operation (no timeout — Ctrl+C to give up)'
+  answers = begin
+    Pikuri::Lsp::Operation::ALL.to_h do |operation|
+      args = { 'operation' => operation.name, 'symbol' => symbol }
+      args['file'] = relative unless operation.anchor == :query
+      args['line'] = line if operation.anchor == :position
+      # +.to_s+: the tool answers a Pikuri::Tool::Result, and every probe
+      # below reads the rendered observation.
+      [operation.name, tool.run(args).to_s]
+    end
+  ensure
+    servers.close
+  end
+  print "\r\e[K" if $stdout.tty?
+  puts
+
+  puts 'What the model would read'
+  puts '-------------------------'
+  answers.each { |name, answer| puts("\n=== #{name}\n#{answer}") }
+  puts
+
+  # A capability refusal is the gate working, so it is not counted against the
+  # tool; anything else that came back as an error is.
+  probe('every operation renders an answer rather than raising',
+        'relay-do-not-work-around, at the layer the model reads') do
+    unexpected = answers.reject do |_name, answer|
+      !answer.start_with?('Error: ') || answer.include?('does not support')
+    end
+    gated = answers.count { |_name, answer| answer.include?('does not support') }
+    if unexpected.empty?
+      [:ok, "#{answers.length - gated} answered, #{gated} refused by the capability gate"]
+    else
+      [:drift, "these came back as errors the gate does not explain: " \
+               "#{unexpected.map { |name, answer| "#{name}: #{answer.lines.first.to_s.strip}" }.join('; ')}"]
+    end
+  end
+
+  probe('no rendered answer repeats a row (E_same_line_references)',
+        "Renderer#locations deduping on the row, since pikuri prints no column") do
+    repeated = answers.filter_map do |name, answer|
+      rows = answer.lines.select { |row| row.match?(/\A {2}\S/) }.map(&:rstrip)
+      duplicates = rows.tally.select { |_row, count| count > 1 }
+      "#{name}: #{duplicates.keys.map(&:strip).first(2).inspect}" unless duplicates.empty?
+    end
+    if repeated.empty?
+      [:ok, 'every row in every answer is distinct']
+    else
+      [:drift, "identical rows are back, and each one spends a cap slot: #{repeated.join('; ')}"]
+    end
+  end
+
+  probe('every path a row prints is one this workspace can open',
+        'Sources: a path where resolve_for_read would open it, a basename otherwise') do
+    missing = answers.flat_map do |name, answer|
+      printed_labels(answer).filter_map do |label, _row_line|
+        absolute = label.start_with?('/') ? label : File.join(root, label)
+        "#{name}: #{label}" unless File.exist?(absolute)
+      end
+    end
+    if missing.empty?
+      [:ok, 'every printed label resolves to a file on disk']
+    else
+      [:drift, "printed but not openable, which invites a refused read: #{missing.uniq.first(5).join('; ')}"]
+    end
+  end
+
+  probe('hover stays silent on a method\'s own def line (E_hover_not_on_a_def_line)',
+        'why documentSymbol, not hover, is the route to a method') do
+    declaration = File.readlines(path)[line - 1].to_s.match?(/^\s*def\s+(self\.)?#{Regexp.escape(symbol)}\b/)
+    answered = !answers['hover'].to_s.start_with?('The server answered no results')
+    if !declaration
+      [:unknown, "the anchor is not a `def #{symbol}` line, which is the case this finding is about — " \
+                 'pass --anchor at a method declaration to re-measure it']
+    elsif answered
+      [:drift, 'hover now answers on a def line, so the finding no longer holds — and the operation ' \
+               "summary that stays silent about it can say less: #{answers['hover'].lines.first.to_s.strip}"]
+    else
+      [:ok, 'nothing, as measured — the anchor an agent reaches for first is the one that answers least']
+    end
+  end
+end
+
+entry = server_id ? registry_from_config.entries.find { |e| e.id == server_id } : registry_from_config.entries.first
+abort("no server #{server_id.inspect} in #{CONFIG_PATH}") if entry.nil?
+
+located = anchor ? parse_anchor(anchor, root) : discover_anchor(entry, root)
+abort("found no class declaration under #{root} that #{entry.id} claims — pass --anchor") if located.nil?
+path, line, symbol = located
+text = File.read(path)
+column = Pikuri::Lsp::Anchor.locate(text.lines[line - 1].chomp, symbol).first
+abort("#{symbol.inspect} is not on line #{line} of #{path}") if column.nil?
+
+puts "Server:  #{entry.id} (#{entry.command.join(' ')})"
+puts "Project: #{root}"
+puts "Anchor:  #{path.delete_prefix("#{root}/")}:#{line}:#{column} #{symbol}"
+puts "Layer:   #{drive ? 'the lsp tool (--drive)' : 'the protocol client'}"
+puts
+
+if drive
+  drive_probes(entry: entry, root: root, path: path, line: line, symbol: symbol)
+  report_and_exit
+end
+
+client = Pikuri::Lsp::ClientWrapper.spawn(entry, root: root)
+
+begin
+  # Same rule as the Terminal listener: a rewritten line is for a terminal, and
+  # a redirected run gets one line per state instead of a hundred escape codes.
+  puts 'Waiting for the index (no timeout — Ctrl+C to give up)'
+  client.wait_until_ready do |progress|
+    print("\r\e[K#{progress}") if $stdout.tty?
+  end
+  print "\r\e[K" if $stdout.tty?
+  puts 'index ready.'
+  puts
+
+  position = Pikuri::Lsp::Position.new(line: line, column: column)
+  params = lambda do
+    { textDocument: { uri: Pikuri::Lsp::Uris.for_path(path) },
+      position: position.to_wire(line_text: text.lines[line - 1].chomp,
+                                 encoding: client.position_encoding) }
+  end
+  reopen = -> { client.open_document(path, File.read(path)) }
+  release = -> { client.close_document(path) }
+
+  probe('the encoding offer is honoured (F_position_encoding)',
+        'PositionEncoding exists at all: pikuri converts when it is not') do
+    if client.position_encoding == 'utf-8'
+      [:ok, 'the server took the utf-8 offer, so offsets need no conversion']
+    else
+      [:ok, "the server kept #{client.position_encoding}, which is why the conversion is not optional"]
+    end
+  end
+
+  probe('open / ask / close, twice over, gives the same answer (S_reopen_works)',
+        'the document-sync policy: re-open on read, never didChange, and close what was opened') do
+    reopen.call
+    first = client.request('textDocument/definition', params.call)
+    release.call
+    reopen.call
+    second = client.request('textDocument/definition', params.call)
+    release.call
+    if first == second
+      [:ok, "two open/close rounds, the same answer (#{Array(first).length} location(s))"]
+    else
+      [:drift, "the second answer differs from the first: #{first.inspect} vs #{second.inspect}"]
+    end
+  end
+
+  probe('a bare name may score below the index threshold (H_qualified_name_match)',
+        'why symbol-only lookup is best-effort and file+line is what the tool teaches') do
+    if client.supports?('workspaceSymbolProvider')
+      hits = Array(client.request('workspace/symbol', { query: symbol }))
+      names = hits.map { |hit| hit['name'] }
+      if names.any? { |name| Pikuri::Lsp::SymbolName.matches?(name, symbol) }
+        [:ok, "#{symbol.inspect} was returned by the index (#{hits.length} hit(s)) — " \
+              'the route works here, which the design already treats as luck rather than contract']
+      else
+        [:ok, "the index returned #{hits.length} hit(s) and none is #{symbol.inspect}: " \
+              "#{names.first(5).inspect}"]
+      end
+    else
+      [:unknown, 'this server advertises no workspaceSymbolProvider']
+    end
+  end
+
+  probe('the operations the enum names are advertised here',
+        'the capability gate at dispatch, per workspace') do
+    missing = Pikuri::Lsp::Operation::ALL.reject { |op| client.supports?(op.capability) }
+    if missing.empty?
+      [:ok, "all #{Pikuri::Lsp::Operation::ALL.length} operations are advertised"]
+    else
+      [:ok, "not advertised here: #{missing.map(&:name).join(', ')} — " \
+            'the gate refuses these cleanly rather than relaying a protocol error']
+    end
+  end
+
+  probe('an advertised provider actually answers (H_subtypes_stub: the # TODO trap)',
+        'relay-do-not-work-around: no per-server known-stub list') do
+    unless client.supports?('typeHierarchyProvider')
+      next [:unknown, 'no typeHierarchyProvider advertised, so there is nothing to catch lying']
+    end
+
+    reopen.call
+    # Closed after the last of the three requests, not after the first: the walk
+    # below asks about a document an earlier close would have dropped.
+    begin
+      prepared = Array(client.request('textDocument/prepareTypeHierarchy', params.call))
+      if prepared.empty?
+        [:ok, "prepare answered nothing for #{symbol.inspect}; an empty answer is not a stub"]
+      else
+        supertypes = Array(client.request('typeHierarchy/supertypes', { item: prepared.first }))
+        subtypes = begin
+          Array(client.request('typeHierarchy/subtypes', { item: prepared.first }))
+        rescue Pikuri::Lsp::Connection::ServerError => e
+          "refused: #{e.message}"
+        end
+        [:ok, "supertypes: #{supertypes.length} row(s); subtypes: #{subtypes.is_a?(String) ? subtypes : "#{subtypes.length} row(s)"}"]
+      end
+    ensure
+      release.call
+    end
+  end
+ensure
+  client.close
+end
+
+report_and_exit

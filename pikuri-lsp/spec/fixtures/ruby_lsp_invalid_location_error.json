@@ -1,0 +1,8 @@
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "error": {
+    "code": -32602,
+    "message": "RubyLsp::Store::NonExistingDocumentError: /home/mavi/scratch/lsp-sync/lib/greeter.rb\n/home/mavi/.local/share/gem/ruby/3.3.0/gems/ruby-lsp-0.26.10/lib/ruby_lsp/document.rb:98:in `push_edits'\n/home/mavi/.local/share/gem/ruby/3.3.0/gems/ruby-lsp-0.26.10/lib/ruby_lsp/server.rb:1094:in `text_document_did_change'\n/home/mavi/.local/share/gem/ruby/3.3.0/gems/ruby-lsp-0.26.10/lib/ruby_lsp/server.rb:212:in `process_message'"
+  }
+}

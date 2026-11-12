@@ -1,0 +1,1 @@
+{ "jsonrpc": "2.0", "method": "window/logMessage", "params": { "type": 1, "message": "Error processing textDocument/didChange: undefined method `[]' for nil (NoMethodError)" } }
