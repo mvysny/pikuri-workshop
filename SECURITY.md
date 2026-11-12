@@ -69,6 +69,12 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   question: the agent cannot write there (skill dirs are readable, never writable, and
   sandboxed `bash` only ever writes to a throwaway overlay). Turn off *both* the sandbox and
   confirmation and that stops being true, so those modes stop vouching for it.
+- **The mem0 memory store — don't trust → a network with no way out.** `pikuri-memory`'s
+  sidecar is third-party code built from a GitHub clone, holding every memory, and mem0 sends
+  usage telemetry by default. The stack sits on an `internal: true` Docker network (no route
+  off it, telemetry also switched off); a socat `front-door` publishes only the API, on
+  `127.0.0.1`. That API has no auth, so anything that reaches your loopback can read your
+  memories, a sandboxed coding agent's `bash` included.
 - **Language servers — they evaluate the project.** A language server often runs the
   project's build files to learn its classpath; a hostile `build.gradle` runs as you, on
   your host, outside any sandbox today. `pikuri-lsp` starts only the servers your config

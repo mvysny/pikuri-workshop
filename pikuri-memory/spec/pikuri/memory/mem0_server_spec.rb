@@ -205,18 +205,6 @@ describe Pikuri::Memory::Mem0Server do
       assert_equal '768', env['PIKURI_EMBEDDING_DIMS']
     end
 
-    it 'skips the relay and uses container_router_url verbatim when given' do
-      # No socat plan entry: the relay must not be spawned.
-      planned.replace([[0, ''], [0, ''], [0, ''], [0, ''], [1, ''], [0, ''], [0, '']])
-      health_stubs.get('/docs') { [200, {}, 'ok'] }
-
-      build_server(container_router_url: 'http://host.docker.internal:8080/v1').ensure_running!
-
-      refute(calls.map { |c| c[:argv] }.any? { |a| a[0] == 'socat' }, 'relay must not spawn')
-      up = calls.find { |c| c[:argv].include?('up') }
-      assert_equal 'http://host.docker.internal:8080/v1', up[:env]['PIKURI_ROUTER_URL']
-    end
-
     it 'raises a socat install hint when socat is missing' do
       planned.replace([[0, ''], [0, ''], [0, ''], [0, ''], [1, ''], [0, ''], :enoent])
 
@@ -265,14 +253,9 @@ describe Pikuri::Memory::Mem0Server do
   end
 
   describe '#initialize relay guard' do
-    it 'rejects a non-http router_url without container_router_url' do
+    it 'rejects a non-http router_url' do
       err = assert_raises(ArgumentError) { build_server(router_url: 'https://router:8443/v1') }
       assert_match(/must be http/, err.message)
-    end
-
-    it 'accepts a non-http router_url when container_router_url is given' do
-      build_server(router_url: 'https://router:8443/v1',
-                   container_router_url: 'https://router:8443/v1')
     end
   end
 

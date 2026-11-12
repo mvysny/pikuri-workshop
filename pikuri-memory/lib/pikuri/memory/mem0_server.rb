@@ -69,9 +69,20 @@ module Pikuri
     # The socket *file* is the capability: only a container that mounts it
     # reaches the router, the host loopback stays sealed for everything
     # else, and the wiring is identical on rootful and rootless daemons.
-    # The relay speaks plain TCP, so +router_url+ must be +http://+; an
-    # +https+ router needs +container_router_url:+ (bypasses the relay,
-    # caller's routing problem).
+    # The relay speaks plain TCP, so +router_url+ must be +http://+.
+    #
+    # == No route out
+    #
+    # The store holds every memory and runs code cloned from GitHub, so it
+    # gets no network path off the stack: mem0, Qdrant and +router-proxy+
+    # sit only on an +internal: true+ network (no gateway). Docker won't
+    # publish a port from a container that is only on an internal network,
+    # so a +front-door+ socat sidecar joins it and an ordinary bridge and
+    # publishes the API; it runs one fixed command and holds no data.
+    # mem0's own PostHog telemetry is also switched off
+    # (+MEM0_TELEMETRY=false+), but the network is what holds. That is
+    # also why there is no "route the container yourself" escape hatch:
+    # an internal network can reach nothing but the relay.
     #
     # == Pinned + patched checkout
     #
@@ -80,7 +91,7 @@ module Pikuri
     # neither applies cleanly nor is already applied, {#prepare_checkout!}
     # raises rather than build a wrong image.
     #
-    # Both published ports bind +127.0.0.1+ only — the memory never
+    # The one published port binds +127.0.0.1+ only — the memory never
     # listens on a routable interface. Boot errors (missing docker/git,
     # build failure, healthcheck timeout) raise +RuntimeError+ with the
     # offending output; teardown failures are logged, not raised.
@@ -110,10 +121,6 @@ module Pikuri
       # @return [Integer] default host port mem0's REST API binds (127.0.0.1).
       DEFAULT_PORT = 8888
 
-      # @return [Integer] default host port Qdrant binds (127.0.0.1),
-      #   published for inspection only.
-      DEFAULT_QDRANT_PORT = 6333
-
       # @return [Integer] default embedding dimension. 768 matches
       #   +nomic-embed-text-v1.5+; must equal the embedder's output dim or
       #   Qdrant rejects upserts.
@@ -135,8 +142,8 @@ module Pikuri
       #   +--build+ call, not this poll.
       DEFAULT_HEALTHCHECK_TIMEOUT = 60
 
-      # @return [String] pinned socat image for the +router-proxy+ sidecar
-      #   (class header's "router relay"). Bumped manually.
+      # @return [String] pinned socat image for the +router-proxy+ and
+      #   +front-door+ sidecars (class header). Bumped manually.
       SOCAT_IMAGE = 'alpine/socat:1.8.0.3'
 
       # @return [String] socket filename inside {#sock_dir}; the sidecar
@@ -165,15 +172,7 @@ module Pikuri
       # @param llm_model [String] extraction model id on the router. Must
       #   be **non-reasoning** (see the class header).
       # @param embedder_model [String] embedder model id on the router.
-      # @param container_router_url [String, nil] escape hatch: router
-      #   base URL *as seen from inside the mem0 container*. When set,
-      #   the relay is not spawned and routing the container to this URL
-      #   is the caller's problem (e.g.
-      #   +"http://host.docker.internal:8080/v1"+ on a rootful daemon, or
-      #   an +https+ router on a routable address). Default +nil+ — use
-      #   the relay.
       # @param port [Integer] host port for the REST API (127.0.0.1).
-      # @param qdrant_port [Integer] host port for Qdrant (127.0.0.1).
       # @param embedding_dims [Integer] embedder output dimension.
       # @param collection [String] Qdrant collection name.
       # @param qdrant_image [String] Qdrant docker image.
@@ -182,25 +181,22 @@ module Pikuri
       # @param healthcheck_timeout [Integer] seconds to poll readiness.
       # @param connection [Faraday::Connection, nil] DI hook for tests.
       # @return [Mem0Server]
-      # @raise [ArgumentError] when +router_url+ is not +http://+ and no
-      #   +container_router_url+ is given (the TCP relay can't originate
-      #   TLS).
-      def initialize(router_url:, llm_model:, embedder_model:, container_router_url: nil,
-                     port: DEFAULT_PORT, qdrant_port: DEFAULT_QDRANT_PORT,
+      # @raise [ArgumentError] when +router_url+ is not +http://+ (the TCP
+      #   relay can't originate TLS, and the store has no other way out).
+      def initialize(router_url:, llm_model:, embedder_model:,
+                     port: DEFAULT_PORT,
                      embedding_dims: DEFAULT_EMBEDDING_DIMS, collection: DEFAULT_COLLECTION,
                      qdrant_image: DEFAULT_QDRANT_IMAGE, cache_dir: nil,
                      healthcheck_timeout: DEFAULT_HEALTHCHECK_TIMEOUT, connection: nil)
         @router_url = router_url
-        @container_router_url = container_router_url
-        if container_router_url.nil? && URI(router_url).scheme != 'http'
+        unless URI(router_url).scheme == 'http'
           raise ArgumentError, "Mem0Server: the socat relay carries plain TCP, so router_url must be " \
-                               "http:// (got #{router_url.inspect}). For an https router, pass " \
-                               'container_router_url: with an address the container can route to.'
+                               "http:// (got #{router_url.inspect}). For a router elsewhere, run " \
+                               'mem0 yourself and point Mem0Client at it.'
         end
         @llm_model = llm_model
         @embedder_model = embedder_model
         @port = port
-        @qdrant_port = qdrant_port
         @embedding_dims = embedding_dims
         @collection = collection
         @qdrant_image = qdrant_image
@@ -264,9 +260,9 @@ module Pikuri
         FileUtils.mkdir_p(data_dir.join('qdrant'))
         FileUtils.mkdir_p(data_dir.join('history'))
         FileUtils.mkdir_p(sock_dir, mode: 0o700)
-        start_relay! unless @container_router_url
+        start_relay!
         begin
-          LOGGER.info("starting #{COMPOSE_PROJECT} (mem0 + Qdrant + relay) on 127.0.0.1:#{@port}; " \
+          LOGGER.info("starting #{COMPOSE_PROJECT} (mem0 + Qdrant + relays) on 127.0.0.1:#{@port}; " \
                       'first run builds the mem0 image and may take a few minutes')
           compose!('up', '-d', '--build')
           wait_for_healthy!
@@ -367,30 +363,22 @@ module Pikuri
       # Environment the compose file interpolates (+${PIKURI_*}+) — the
       # checkout path as the build context plus the router + model wiring.
       # +PIKURI_ROUTER_URL+ is the router URL *as the container sees it*:
-      # the relay sidecar's address, unless +container_router_url:+
-      # overrode the routing.
+      # the relay sidecar, with +router_url+'s path (normally +/v1+)
+      # carried over.
       def compose_env
         {
           'PIKURI_MEM0_SRC' => checkout_dir.to_s,
           'PIKURI_DATA_DIR' => data_dir.to_s,
           'PIKURI_SOCK_DIR' => sock_dir.to_s,
           'PIKURI_SOCAT_IMAGE' => SOCAT_IMAGE,
-          'PIKURI_ROUTER_URL' => container_router_url,
+          'PIKURI_ROUTER_URL' => "http://router-proxy:8080#{URI(@router_url).path}",
           'PIKURI_LLM_MODEL' => @llm_model,
           'PIKURI_EMBEDDER_MODEL' => @embedder_model,
           'PIKURI_MEM0_PORT' => @port.to_s,
-          'PIKURI_QDRANT_PORT' => @qdrant_port.to_s,
           'PIKURI_QDRANT_IMAGE' => @qdrant_image,
           'PIKURI_COLLECTION' => @collection,
           'PIKURI_EMBEDDING_DIMS' => @embedding_dims.to_s
         }
-      end
-
-      # Router base URL as seen from inside the mem0 container: the
-      # explicit override, or the relay sidecar with +router_url+'s path
-      # (normally +/v1+) carried over.
-      def container_router_url
-        @container_router_url || "http://router-proxy:8080#{URI(@router_url).path}"
       end
 
       # Spawn the host-side half of the router relay (class header):
@@ -412,8 +400,7 @@ module Pikuri
         wait_for_relay_socket!(sock)
       rescue Errno::ENOENT
         raise 'Mem0Server: `socat` not found on PATH — the relay that lets the mem0 ' \
-              'container reach the host router needs it. Install it (sudo apt install ' \
-              'socat), or pass container_router_url: to route the container yourself.'
+              'container reach the host router needs it. Install it (sudo apt install socat).'
       end
 
       # Log whatever socat prints (errors only, in practice) and keep the
@@ -442,8 +429,8 @@ module Pikuri
         end
       end
 
-      # SIGTERM the relay's process group. Idempotent; nil-safe for the
-      # +container_router_url:+ path where no relay was spawned.
+      # SIGTERM the relay's process group. Idempotent; nil-safe when
+      # {#start_relay!} failed before spawning.
       def stop_relay!
         @relay&.terminate
         @relay = nil

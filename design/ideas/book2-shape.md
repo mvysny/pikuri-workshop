@@ -1,7 +1,7 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite under way, the shell and OS
-chapters done** (see "Progress" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite under way, the shell, OS and
+memories chapters done** (see "Progress" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -82,7 +82,7 @@ Each finished chapter strikes its part of this file; after the climax the file g
 |---|---|---|---|
 | 1 | The shell and its cage | `shell.md` (from `code.md`'s first half, `os-assistant.md` Part 1 seams) | done |
 | 2 | The OS assistant | `os-assistant.md` | done |
-| 3 | Memories | `memories.md` | — |
+| 3 | Memories | `memories.md` | done; end-to-end recall untested (no `socat` on the dev box) |
 | 4 | Your first MCP server | `mcp.md` | — |
 | 5 | MCPs revisited | `mcp-revisited.md` | — |
 | 6 | Skills | `skills.md` | — |

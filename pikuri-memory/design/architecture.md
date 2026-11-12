@@ -167,6 +167,35 @@ Porting memory onto an egress-capable agent **re-opens recall-poisoning**
 (then you must cap recall size, frame recalled text as untrusted, log
 every recall) — flagged so it isn't ported blindly.
 
+### `@private` covers the store, not just the agent
+
+The agent's tool list has no egress, but the memories live in the mem0
+container: third-party code, built from a GitHub clone, holding every
+fact. mem0 at the pinned ref also sends PostHog usage telemetry by
+default (`MEM0_TELEMETRY` defaults on; its events carry platform details
+and an ID, not memory text, as far as `mem0/memory/telemetry.py` shows).
+A store with a route out is the trifecta in one box whatever the agent
+holds, so the stack cuts it structurally rather than trusting the code:
+
+- mem0, Qdrant and `router-proxy` sit only on an `internal: true`
+  network — no gateway, no DNS beyond the stack. Verified from inside
+  the mem0 container: name resolution fails, a connect to `1.1.1.1`
+  is `Network is unreachable`, while `qdrant` and `router-proxy` answer.
+- Docker won't publish a port from a container only on an internal
+  network, so a `front-door` socat sidecar joins it plus an ordinary
+  bridge and publishes `127.0.0.1:8888 → mem0:8000`. It runs one fixed
+  command and holds no data.
+- `MEM0_TELEMETRY=false` as belt and braces: mem0 stops trying.
+
+Consequences: no "route the container yourself" escape hatch (an
+internal network reaches nothing but the relay), and no published Qdrant
+port. The residual is the published API: unauthenticated
+(`AUTH_DISABLED`), so any local process that can reach the host's
+loopback — another user, or a sandboxed coding agent's `bash`, whose
+Bubblewrap cage shares the network — can read every memory. Closing it
+means a unix-socket front door instead of a TCP port, which `Mem0Client`
+(Faraday over `Net::HTTP`) doesn't speak today.
+
 ### Extraction-input discipline
 
 A production audit of *our exact stack* (Qdrant + a local extraction
@@ -272,8 +301,8 @@ load-bearing:
 1. The pgvector path has a correctness bug (below).
 2. The pgvector provider connects to Postgres **eagerly at boot**, so
    leaving it the default forces a Postgres container into the stack.
-   Defaulting to Qdrant lets the stack run **Postgres-free** — two
-   containers (mem0 + Qdrant), not three.
+   Defaulting to Qdrant lets the stack run **Postgres-free** — mem0 +
+   Qdrant plus two socat relays, no database.
 
 ### Root cause: the pgvector top-k inversion
 

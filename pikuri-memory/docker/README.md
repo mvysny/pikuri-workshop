@@ -5,13 +5,18 @@ Qdrant sidecar supervisor. They are not run by hand in normal use — the
 supervisor clones mem0, applies the patch, and drives compose through
 `Pikuri::Subprocess.spawn`.
 
-- **`docker-compose.yml`** — two services, **no Postgres**: a mem0 REST
+- **`docker-compose.yml`** — four services, **no Postgres**: a mem0 REST
   server (`pikuri-internal-mem0-server`) built from a pinned mem0
-  checkout, and Qdrant (`pikuri-internal-mem0-qdrant`) as the vector
-  store, on an explicitly-named `pikuri-mem0` network. Parameterized by
-  `PIKURI_*` environment variables the supervisor sets (build-context
-  path, host data dir, router URL, model ids, ports, dims). Both
-  published ports bind `127.0.0.1` only. The containers are **ephemeral**
+  checkout, Qdrant (`pikuri-internal-mem0-qdrant`) as the vector store,
+  and two pinned socat relays — `router-proxy` (mem0 → the host's
+  llama.cpp router, over a unix socket) and `front-door` (the host → mem0's
+  API). mem0, Qdrant and `router-proxy` sit only on the `pikuri-mem0`
+  network, which is `internal: true`: the store has no route off the
+  stack, and `MEM0_TELEMETRY=false` stops mem0 trying. `front-door` also
+  joins the ordinary `pikuri-mem0-edge` network, solely so the API port
+  can be published. Parameterized by `PIKURI_*` environment variables the
+  supervisor sets (build-context path, host data dir, router URL, model
+  ids, port, dims). The one published port binds `127.0.0.1` only. The containers are **ephemeral**
   — all state is bind-mounted to the host under `PIKURI_DATA_DIR`
   (`~/.cache/pikuri/mem0/data/{qdrant,history}`), so the corpus survives
   container recreation, same posture as Server::Chroma.

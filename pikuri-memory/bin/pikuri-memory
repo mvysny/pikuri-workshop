@@ -55,7 +55,6 @@ extraction_model = examples_config['extraction_model'] || 'bartowski/Qwen2.5-7B-
 embed_model      = examples_config['embed_model'] || 'nomic-ai/nomic-embed-text-v1.5-GGUF:Q8_0'
 user_id          = ENV['USER'] || 'default'
 mem0_url         = nil # BYO mem0 endpoint; when set, the supervisor is skipped
-mem0_router_url  = nil # router URL as the mem0 *container* sees it; nil => the socat relay to llm_server
 streaming        = false
 
 custom_prompt = nil
@@ -65,7 +64,6 @@ parser = OptionParser.new do |opts|
   opts.separator 'Options:'
   opts.on('--user-id ID', "Memory namespace, one per user (default: #{user_id})") { |v| user_id = v }
   opts.on('--mem0-url URL', 'Use an existing mem0 server at this URL instead of the self-managed sidecar') { |v| mem0_url = v }
-  opts.on('--mem0-router-url URL', 'Advanced: router base URL as seen from inside the mem0 container, bypassing the socat relay (default: relay to the configured llm_server)') { |v| mem0_router_url = v }
   opts.on('--system-prompt FILE', "Replace the built-in system prompt with FILE's contents " \
                                   '(extensions still append their own sections).') do |v|
     custom_prompt = File.read(v).rstrip
@@ -110,10 +108,9 @@ client =
     # Mem0Server's "router relay" yardoc section.
     begin
       mem0_server = Pikuri::Memory::Mem0Server.ensure_running(
-        router_url:           transport.api_base,
-        container_router_url: mem0_router_url&.then { |u| "#{u.chomp('/')}/v1" },
-        llm_model:            extraction_model,
-        embedder_model:       embed_model
+        router_url:     transport.api_base,
+        llm_model:      extraction_model,
+        embedder_model: embed_model
       )
     rescue StandardError => e
       warn "Could not start the mem0 sidecar: #{e.message}"

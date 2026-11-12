@@ -1,33 +1,33 @@
 # Memories
 
-By the end of this chapter you'll have a chat agent that **remembers
-you across conversations** — tell it you're vegetarian and that your
-main project is a Ruby agent toolkit, quit, come back tomorrow, ask
-"what do you know about me?", and it answers from what you told it
-yesterday. Where the vector-DB chapter's vector DB gave the agent recall *over a
-corpus you handed it*, memories are recall *of notes the agent took
-itself* — facts it extracted from your side of the conversation,
-stored, and surfaced back when they're relevant. You'll also have a
-clear sense of how that store works under the hood (mem0 + Qdrant, a
-separate non-reasoning model deciding what's worth keeping) and why
-the whole thing is only safe on an agent that can't reach the
-internet.
+[The OS assistant](os-assistant.md) remembered your machine in
+`MACHINE.md`: memory you can see, where every new fact lands as a diff
+you approve. This chapter builds the other kind. By the end you'll
+have a chat agent that **remembers you across conversations** — tell
+it you're vegetarian and that your main project is a Ruby agent
+toolkit, quit, come back tomorrow, ask "what do you know about me?",
+and it answers from what you told it yesterday, though you never
+approved a single write. Where
+[pikuri's vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md)
+gave the agent recall *over a corpus you handed it*, memories are
+recall *of notes the agent took itself* — facts it extracted from your
+side of the conversation, stored, and surfaced back when they're
+relevant. You'll also have a clear sense of how that store works under
+the hood (mem0 + Qdrant, a separate non-reasoning model deciding
+what's worth keeping).
 
-The defaults — local llama, no tools that could send your data out,
-verified MCPs — are designed to be safe even with real data;
-[the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) explains why. Every earlier chapter
-carried that reassurance as a forward promise. This is the chapter
-where it stops being abstract: you are about to give the assistant a
-durable place to keep facts about you, accumulated passively, and
-recalled automatically. A memory store *is* private data by
-definition — and a private store plus an outbound leg is exactly the
-exfiltration risk [the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) names. So the demo
-agent is wired with no outbound leg at all: its only tools are
-`recall` and a calculator, and it has no `web_search`, no `fetch`, no
-`bash`. Why that single absence is what makes *automatic* capture and
-*automatic* recall safe is the ["Why this agent can't leak your
-memories"](#why-this-agent-cant-leak-your-memories) section near the
-end.
+A memory store *is* private data by definition, accumulated passively
+and recalled automatically — and a private store plus an outbound leg
+is exactly the exfiltration risk
+[the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+names. So, like the OS assistant, the demo agent is safe because of
+the leg it lacks: its only tools are `recall` and a calculator, and it
+has no `web_search`, no `fetch`, no `bash`. Why that single absence is
+what makes *automatic* capture and recall safe is the ["Why this agent
+can't leak your memories"](#why-this-agent-cant-leak-your-memories)
+section near the end. And because this is the workshop, the section
+after it asks the question this book always asks: the store itself is
+code you didn't write, holding every memory — what can *it* reach?
 
 ## Memory is three retrieval tiers
 
@@ -63,10 +63,10 @@ nothing and injects nothing.
 slice hints there's more on a topic than the few facts it surfaced,
 the model calls `recall(topic: …)` to dig. This is the "mined, deep"
 mode — the model's own decision, the same Thought → Tool-call →
-Observation loop from the first-conversation chapter, with memory sitting alongside
+Observation loop from [pikuri's first-conversation chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md), with memory sitting alongside
 `calculator` as a capability it reaches for when warranted.
 
-If that two-step shape feels familiar, it's the one the vector-DB chapter already
+If that two-step shape feels familiar, it's the one [the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md) already
 ships: prefetch is to `recall` what `vectordb_search` (a cheap ranked
 slice) is to `vectordb_read` (pull the hit in full). Memory reuses the
 pattern, just with a different source — the agent's own notes — and a
@@ -97,7 +97,7 @@ needs a second model, which the next section sets up.
 
 ## Prerequisites: a non-reasoning extractor and the mem0 sidecar
 
-Two new pieces on top of the vector-DB chapter's setup: one more model in your
+Two new pieces on top of [the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md)'s setup: one more model in your
 llama.cpp router, and a small Docker stack for the store.
 
 ### 1. A non-reasoning extraction model
@@ -164,10 +164,11 @@ and the same Qdrant engine, pinned to the same image tag —
 the vector-DB chapter used. `Pikuri::Memory::Mem0Server` clones mem0 at
 a pinned commit, builds the image, and brings up a `docker compose`
 stack of mem0 + Qdrant (**no Postgres**, see
-["Storage"](#storage-mem0--qdrant-no-postgres) below) plus a ~5 MB
-relay container explained in the next section, all bound to
-`127.0.0.1` only, so your memory never listens on a routable
-interface.
+["Storage"](#storage-mem0--qdrant-no-postgres) below) plus two ~5 MB
+socat relays — one explained in the next section, one in ["…and
+neither can the store"](#and-neither-can-the-store) — with the one
+published port bound to `127.0.0.1` only, so your memory never
+listens on a routable interface.
 
 That needs **`docker` (with the compose plugin), `git`, and
 `socat`** on `PATH` — all four are part of
@@ -196,7 +197,7 @@ them expect a container on the other end of the line.
 The first fix a search engine will offer is
 `DOCKERD_ROOTLESS_ROOTLESSKIT_DISABLE_HOST_LOOPBACK=false`.
 **Don't.** It's daemon-wide: *every* container — including the
-deliberately untrusted MCP servers the two MCP chapters put in
+deliberately untrusted MCP servers the next two chapters put in
 containers precisely so they can't touch your machine — would gain
 a network path to *every* loopback service on the host. You'd be
 drilling through the exact wall those chapters build.
@@ -204,12 +205,12 @@ drilling through the exact wall those chapters build.
 pikuri instead builds a hole exactly one service wide. The
 supervisor runs `socat` on the host, listening on a **unix socket
 file** under `~/.cache/pikuri/mem0/sock/` and forwarding to the
-router; the stack's third container (`router-proxy`, a ~5 MB socat
+router; the stack's `router-proxy` container (a ~5 MB socat
 image) bind-mounts that socket and relays it onto the stack's
 internal network, where mem0 calls it as `http://router-proxy:8080`.
 The socket file *is* the capability: only a container that mounts
 it can reach the router, your loopback stays sealed for everything
-else, and an MCP container three chapters from now gets nothing.
+else, and the MCP container in the next chapter gets nothing.
 And because no part of this depends on how the daemon routes to the
 host, the same wiring works on rootful and rootless Docker alike —
 there is no special case to configure.
@@ -226,7 +227,13 @@ On first run you'll see the supervisor come up, then the banner:
 
 ```
 I, [..] INFO -- Memory::Mem0Server: relay: socat ~/.cache/pikuri/mem0/sock/router.sock → localhost:8080
-I, [..] INFO -- Memory::Mem0Server: starting pikuri-internal-mem0 (mem0 + Qdrant + relay) on 127.0.0.1:8888; first run builds the mem0 image and may take a few minutes
+I, [..] INFO -- Memory::Mem0Server: starting pikuri-internal-mem0 (mem0 + Qdrant + relays) on 127.0.0.1:8888; first run builds the mem0 image and may take a few minutes
+Trifecta: pikuri-memory — 2 of 3 legs (private, untrusted); no egress leg found.
+
+pikuri-memory [:private, :untrusted_hard]
+  calculator []
+  recall [:private, :untrusted_hard]
+
 Pikuri Memory: a private assistant that remembers you across conversations (no internet access).
 Memory: self-managed mem0 + Qdrant sidecar  •  user: mavi
 Tell me things about yourself, then quit and come back — I will remember.
@@ -235,6 +242,9 @@ Try: "I'm vegetarian and my main project is a Ruby agent toolkit called pikuri."
 Press Ctrl+C or Ctrl+D to quit.
 > 
 ```
+
+The trifecta report reads exactly like the OS assistant's: private and
+untrusted, no way out. A different agent, the same cut.
 
 Tell it something durable about yourself:
 
@@ -327,8 +337,8 @@ small prefetch slice, so this bug was disqualifying.
 **No Postgres — for footprint.** The pgvector provider also connects
 to Postgres eagerly at boot, which would force a whole Postgres
 container into the stack. Defaulting to Qdrant lets the whole thing
-run Postgres-free — the only third container is the 5 MB socat relay,
-not a database. The patch is applied with `git apply`
+run Postgres-free — the only other containers are two 5 MB socat
+relays, not a database. The patch is applied with `git apply`
 and is *fail-loud*: if it neither applies cleanly nor is already
 applied, the supervisor raises rather than building a wrong image.
 
@@ -446,6 +456,77 @@ full argument. An assistant where memory, vector search and MCP share
 one agent, and the cuts have to be made, is still being worked out in
 [the apps built on pikuri](https://codeberg.org/mvysny/pikuri/src/branch/master/book/apps.md).
 
+## …and neither can the store
+
+Everything in the last section is about the *agent*. Its tool list has
+no way out, and you can check that by reading it. But your memories
+don't live in the agent. They live in the mem0 container: a Python
+server cloned from GitHub and built on your machine, holding every
+fact the agent ever kept about you. That's code you didn't write,
+sitting next to the most private data in this book. What can *it*
+reach?
+
+On an ordinary Docker network, the answer would be "the internet". A
+container there has a route out, and mem0 uses it: by default it
+reports usage telemetry to PostHog. As far as its telemetry code
+shows, those events carry your platform details and an ID, not the text
+of your memories. But "as far as the code shows" is a filter, and this
+book's whole argument is that you don't trust filters with the third
+leg. A store holding your memories, running a stranger's code, with a
+route to the internet, is the trifecta in one box, even when the agent
+in front of it is clean.
+
+So the store gets the same treatment as the agent: the leg is cut, not
+asked to behave. Two layers:
+
+- **`MEM0_TELEMETRY=false`.** One environment variable, and mem0 stops
+  trying. That's mem0 honouring a setting, which is a promise, not a
+  wall.
+- **No route out.** mem0, Qdrant and `router-proxy` sit on a Docker
+  network declared `internal: true`, which has no gateway: no packet
+  leaves it, whatever the code inside wants.
+
+That second layer has one wrinkle: Docker won't publish a port from a
+container that's only on an internal network, and pikuri needs to reach
+the API. The fix is the same move as the router relay. A fourth
+container, `front-door`, is the same 5 MB socat image, attached to the
+internal network *and* an ordinary one, publishing `127.0.0.1:8888` and
+forwarding it to mem0. It runs one fixed command and holds no data.
+Again, a hole exactly one service wide.
+
+Here is what that looks like from inside the mem0 container:
+
+```
+mem0 → example.com          Temporary failure in name resolution
+mem0 → us.i.posthog.com     Temporary failure in name resolution
+mem0 → 1.1.1.1:443          Network is unreachable
+mem0 → qdrant:6333          200
+mem0 → router-proxy:8080    connected
+host → 127.0.0.1:8888       200   (through front-door)
+```
+
+No name resolution, and no route even by IP address, while everything
+the store legitimately needs still answers. Building the image still
+downloads mem0's dependencies; that happens on Docker's build network,
+before any memory exists.
+
+Two doors are deliberately closed by this. Qdrant used to publish its
+own port "for inspection"; that was a second unauthenticated way into
+your memories, so it's gone. And the supervisor used to accept a
+"route the container to the router yourself" override; on a network
+with no gateway there's nothing to route to, so that's gone too.
+
+What the cut does *not* close: the published API itself. Anything on
+your machine that can connect to `127.0.0.1:8888` can read every
+memory, with no password (the stack runs mem0 with its auth layer off,
+since there's nothing to back it). That includes another user on the
+same machine, and processes that can't
+see your disk, like a coding agent's `bash` inside
+[the shell chapter's cage](shell.md#where-the-cage-stops), whose
+shared network reaches your loopback. The memory store is as private
+as your loopback, and on a machine where an agent with egress runs
+next to it, that's a leg worth counting.
+
 ## The forget story
 
 Right-to-forget in v1 is deliberately coarse: drop the whole store, or
@@ -478,19 +559,14 @@ for readers who want the full design journey rather than the tour.
 
 ## What's next
 
-This chapter and the vector-DB one are the two halves of recall: vector search *over a
-corpus you indexed*, and memory *of facts the agent learned about
-you*. They pair naturally inside one assistant, but an assistant
-where these private capabilities share an agent that *also* has
-egress leans hardest on the security kit.
+This chapter and pikuri's vector-DB one are the two halves of recall:
+vector search *over a corpus you indexed*, and memory *of facts the
+agent learned about you*. Both lean on a container running somebody
+else's code, and this chapter had to ask what that container can
+reach.
 
-First, [Your first MCP server](mcp.md) adds the last capability
-such an assistant needs: external tool servers that give
-the agent integrations pikuri itself doesn't ship. It goes one step
-gentler than this chapter — the server you wire in reads only a public
-book catalogue, so nothing of yours is at stake while you learn the
-mechanics. Then [Security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) is the chapter
-every "the security chapter explains why" reassurance has been pointing at: read
-it before pointing a memory-equipped agent at anything you care about.
-
-→ Continue to [Your first MCP server](mcp.md).
+[Your first MCP server](mcp.md) asks the same question of a tool. An
+MCP server is a stranger's program the agent *calls*, not just a
+store it reads — and it starts gently, with a server that reads only
+a public book catalogue, so nothing of yours is at stake while you
+learn the mechanics.
