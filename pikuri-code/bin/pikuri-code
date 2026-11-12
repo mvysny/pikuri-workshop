@@ -1,14 +1,13 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Dev / demo entry point — runs from a source checkout only. The pikuri
-# gem ships as a library; this script is not installed by `gem install
-# pikuri`. It exists to demonstrate how to wire Pikuri::Agent +
-# Pikuri::Tool::* into a working coding binary, and to support development.
-# Production binaries built on pikuri (e.g. the planned pikuri-tui) live
-# in their own gems.
+# Dev / demo entry point — runs from a source checkout only; `gem install
+# pikuri-code` installs the library, not this script. It exists to
+# demonstrate how to wire Pikuri::Agent + Pikuri::Tool::* into a working
+# coding binary, and to support development. Production binaries built on
+# pikuri live in their own gems.
 #
-# Pin Bundler to pikuri's own Gemfile so locked dependency versions win
+# Pin Bundler to the workshop's own Gemfile so locked dependency versions win
 # and the script works when invoked via a symlink (e.g. ~/.local/bin/
 # pikuri-code) from any working directory. `__dir__` resolves through
 # symlinks, so this points at the real checkout.
@@ -72,7 +71,7 @@ parser = OptionParser.new do |opts|
   end
   opts.on('--no-confirm', 'Auto-approve every confirmation (skip the y/n prompt for writes + bash).') { confirm_enabled = false }
   opts.on('--yolo', 'Combines --no-sandbox + --no-confirm + opens the filesystem ' \
-                    '(credential denylist only). Use only inside a container.') do
+                    '(credential denylist only). Use only inside a VM.') do
     sandbox_enabled = false
     confirm_enabled = false
     yolo = true
@@ -117,9 +116,8 @@ end
 # Rationale: pikuri has a single project anchor and zero "cwd" concept;
 # the file tools, Bash, Grep, Glob all operate against +project_root+.
 # Keeping the Ruby process's cwd aligned with the workspace means there
-# is one truth, not two (which the LLM would otherwise have to reason
-# about — see the discussion in AGENTS.md / IDEAS.md). Loud about it
-# so the user isn't surprised by +pwd+ output later.
+# is one truth, not two, which the LLM would otherwise have to reason
+# about. Loud about it so the user isn't surprised by +pwd+ output later.
 launch_cwd   = Pathname.new(Dir.pwd)
 project_root = Pikuri::Workspace::ProjectRoot.find(cwd: launch_cwd) || launch_cwd
 if Dir.pwd != project_root.to_s
@@ -166,6 +164,11 @@ private_repo =
 # while skipping that one fails silent. --yolo therefore lands on false for
 # free, which it must — Filesystem::AllowAll refuses the flag outright.
 #
+# Asked only when the project actually ships a skill or a command: the catalog
+# grades a base only by the bundles it stored, so with none here the answer
+# would change nothing, and a question that changes nothing teaches you to
+# click through the ones that do.
+#
 # The answer reaches the skill catalog and NOTHING ELSE. It deliberately does
 # not become Filesystem(trusted:), which would be dishonest here whatever you
 # answer: ToolchainPaths.readable puts ~/.m2/repository and ~/.cargo/registry
@@ -173,8 +176,11 @@ private_repo =
 # somebody else's bytes and its :hard leg is correct. The catalog reached
 # .pikuri/skills under this root and nothing else, so its :none is correct
 # too. Same question, two reachable sets, two honest answers.
+project_ships_bundles = [Pikuri::Skill::Catalog::Bundled, Pikuri::Command::Registry].any? do |scanner|
+  !scanner.new(search_bases: [project_root]).empty?
+end
 repo_sources_are_mine =
-  confirm_enabled && $stdin.tty? &&
+  project_ships_bundles && confirm_enabled && $stdin.tty? &&
   Pikuri::Workspace::Confirmer::Terminal.new.confirm?(
     request: Pikuri::Workspace::Confirmer::Request.new(
       question: 'Did you write the files under this directory yourself?',
@@ -248,9 +254,9 @@ command_registry = Pikuri::Command::Registry.new(search_bases: bundle_bases)
 #
 # --yolo swaps in +Filesystem::AllowAll+: every path resolves except
 # those under the credential denylist (~/.ssh, ~/.aws, …, /etc/shadow).
-# Intended for use inside a container where the container itself is
-# the security boundary; the toolchain/skill readable list is moot
-# since everything is reachable anyway.
+# Intended for use inside a VM, which is then the security boundary;
+# the toolchain/skill readable list is moot since everything is
+# reachable anyway.
 filesystem = if yolo
               # --readable/--writable are moot under AllowAll (everything
               # short of the credential denylist resolves anyway); warn so
@@ -492,8 +498,8 @@ begin
     # below) lists them in its +tool_names+ and receives them through
     # the +agent+ delegation tool. So untrusted web content can only
     # land in a child context with no file read/write/bash to hijack
-    # a prompt injection. See SECURITY.md §"Defense: capability
-    # boundaries via sub-agents". The `skill` tool, when the catalog
+    # a prompt injection (pikuri's SECURITY.md, the privilege-separated
+    # sub-agents). The `skill` tool, when the catalog
     # is non-empty, is appended by the Skill::Extension below.
     # The file tools (read/grep/glob/file_list/edit/write) share one
     # Workspace composite (Filesystem + this session's read record) so
@@ -554,8 +560,7 @@ begin
     # lookup / library research. Both keep the parent's context clean
     # during exploration and put potentially-injected content (file
     # contents, scraped pages) in a child that has no bash/write/edit
-    # to hijack. See IDEAS.md §"The lethal trifecta" + §"Personas for
-    # Tool::SubAgent" for the framing.
+    # to hijack.
     c.add_extension Pikuri::SubAgent::Extension.new(
       personas: [
         Pikuri::SubAgent::FILE_MINER,
@@ -602,7 +607,7 @@ begin
   warnings << 'Confirmer: AUTO-APPROVE.' unless confirm_enabled
   warnings << 'Filesystem: ALLOW_ALL (credential denylist only).' if yolo
   unless warnings.empty?
-    warnings << 'Use only with an outer sandbox (docker / dev-container) or in a throwaway environment.'
+    warnings << 'Use only inside a VM around this whole process: a container shares your kernel.'
     puts warnings.join(' ')
   end
 

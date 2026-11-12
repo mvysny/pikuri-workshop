@@ -138,7 +138,7 @@ Three MCP-specific consequences are worth being explicit about:
   (issues:read, contents:read), never a classic full-access
   token. Restated in the threat-model section below.
 
-Bubblewrap (the coding-agent chapter) is `pikuri-code`'s inner-process isolation
+Bubblewrap ([the shell chapter](shell.md)) is `pikuri-code`'s inner-process isolation
 for `bash`; Docker is the outer-process isolation this chapter
 uses for MCP. Different tools, different problems — bubblewrap
 is lightweight and bind-mount-based, Docker is heavier and

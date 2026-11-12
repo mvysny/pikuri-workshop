@@ -82,7 +82,7 @@ outer wall.
 
 ## Wrapping pikuri in Docker
 
-Bubblewrap (the coding-agent chapter) and Docker (the MCP-revisited chapter) are both isolation
+Bubblewrap ([the shell chapter](shell.md)) and Docker (the MCP-revisited chapter) are both isolation
 mechanisms, but each protects only one thing. Bubblewrap wraps a
 single `bash` invocation; Docker wraps a single MCP server. The
 rest of pikuri's process — the file tools, the LLM transport, the

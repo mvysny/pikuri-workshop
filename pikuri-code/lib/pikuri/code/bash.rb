@@ -166,7 +166,7 @@ module Pikuri
           LOGGER.warn(
             'Code::Bash is unsandboxed: commands run under your UID and can read ' \
             'sensitive files (~/.ssh, AWS credentials, browser sessions, ...). ' \
-            'Use Sandbox::Bubblewrap or an outer container for isolation.'
+            'Use Sandbox::Bubblewrap, or run the whole process inside a VM.'
           )
         end
         super(

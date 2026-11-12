@@ -1,17 +1,13 @@
 # The OS assistant: your machine
 
-This is the first *complete, fully-implemented* assistant in the
-guide — and the gentlest possible introduction to the densest part
-of pikuri. `pikuri-os` is a single local agent whose job is to
+`pikuri-os` is a single local agent whose job is to
 understand and operate the computer you're sitting at: answer
 questions about the system, find and read your files, explain what a
-log is complaining about, advise on configuration. Everyone already
-owns the concept "an assistant for my machine," and that familiarity
-is exactly why this chapter — not the coding agent — is where you
-first meet the four seams that the rest of the toolkit is built on:
-`Workspace` (what the LLM sees on the filesystem), `Confirmer` (how
-user-state changes get approved), `Bash` (running a real shell), and
-`Sandbox` (what that shell can actually touch).
+log is complaining about, advise on configuration. It is built from
+the parts [the shell chapter](shell.md) introduced — `Workspace`
+(what the LLM sees on the filesystem), `Confirmer` (how user-state
+changes get approved), `Bash` (running a real shell), and `Sandbox`
+(what that shell can actually touch) — cut the other way.
 
 There is one thesis sentence to carry through both this chapter and
 the next. [The security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) named the lethal trifecta —
@@ -20,20 +16,14 @@ you defeat it by *structurally* removing a leg. This is the first
 agent that does it, and because reading your whole disk is the entire
 point, the leg it removes is **egress**: the network is severed by
 the kernel, so a prompt injection in a log file has the data but
-nowhere to send it. [The coding-agent chapter](code.md) takes these same four
-seams and makes the *opposite* cut — it keeps the network (builds
-need it) and confines the disk instead. Same adversary, opposite leg.
-Hold onto that; it's the through-line.
+nowhere to send it. [The shell chapter](shell.md) made the
+*opposite* cut — it kept the network (builds need it) and confined
+the disk instead. Same adversary, opposite leg. Hold onto that; it's
+the through-line.
 
-One honest note about layering before we start. `pikuri-os` is a thin
-gem: it rides on top of `pikuri-workspace` (the file tools) and
-`pikuri-code` (the shell and the sandbox), the two gems
-[the coding-agent chapter](code.md) returns to directly. We'll meet their
-concepts *as this agent uses them*, at introductory depth — the
-sharper edges (bubblewrap's overlays, the git-config hardening, the
-project-root containment algorithm) wait for the coding-agent chapter, where a
-developer audience needs them. Reading order isn't dependency order:
-the relatable agent comes first, then we peel back a layer.
+`pikuri-os` is a thin gem: it rides on top of `pikuri-workspace` (the
+file tools) and `pikuri-code` (the shell and the sandbox), the same
+two gems the shell chapter used.
 
 The chapter runs in three parts. **Part 1** builds the agent as described
 above — full disk, network severed. **Part 2** does the harder thing:
@@ -106,7 +96,7 @@ property — a prompt injection in a file the agent reads can ignore it.
 So the posture is precise: **a network sandbox with no filesystem
 sandbox.** The `Sandbox` seam governs what the `bash` subprocess can
 touch, independently of what the LLM sees through its file tools. The
-coding agent (the coding-agent chapter) uses it to confine bash to a project
+coding agent ([the shell chapter](shell.md)) uses it to confine bash to a project
 directory while keeping the network. The OS assistant wants the
 *inverse*, and that's a sandbox variant of its own:
 
@@ -134,7 +124,7 @@ reading your machine *is* its job. So you cut the leg you can spare.
 An injection that says "append a curl beacon to `~/.bashrc`" has no
 network to beacon to, and the same severed leg also contains the more
 mundane danger: the model's own honest mistake can't phone home
-either. The coding-agent chapter will keep the network and cut disk-reach instead —
+either. The shell chapter kept the network and cut disk-reach instead —
 the opposite leg, forced by the opposite need.
 
 **One subtlety, and it's the kind that bites anyone building this
@@ -167,7 +157,7 @@ looking for the socket instead.
 `Workspace` is the *other* filesystem seam — not what the shell
 touches, but what the LLM observes through `read` / `write` / `edit` /
 `grep` / `glob`. For this agent the whole host is in scope, and — unlike
-the coding agent of the coding-agent chapter — the file tools are opened all the way up
+the coding agent of the shell chapter — the file tools are opened all the way up
 to see exactly what `bash` sees:
 
 ```ruby
@@ -189,11 +179,11 @@ human is writes.**
 
 `project_root` is just the anchor for relative paths ("what's in *this*
 folder?") and where `bash` starts; absolute paths reach anywhere. There's
-no containment fence — the opposite of the coding-agent chapter's project-rooted
+no containment fence — the opposite of the shell chapter's project-rooted
 workspace, and deliberate: the job is the whole machine. One gate still
 stands: the **read-before-edit gate**, where `edit` (and an overwriting
 `write`) refuses a path the agent hasn't `read` first — so a change can't
-land on bytes the model never saw. The coding-agent chapter raises the perimeter too,
+land on bytes the model never saw. The shell chapter raised the perimeter too,
 fencing the file tools into the project, when the stakes are a shared
 repo rather than your own machine.
 
@@ -286,8 +276,8 @@ environment so a hostile repo-local `core.fsmonitor` is neutralised
 regardless of what the repo says. That's the headline vector closed
 deterministically; the residual (diff-driver execution on a repo whose
 `.git/config` an attacker handed you) is documented and accepted — a
-genuinely untrusted repo belongs in a VM. The coding-agent chapter unpacks that
-hardening; here, take it as the reason there's no per-repo trust prompt.
+genuinely untrusted repo belongs in a VM. [The shell chapter](shell.md#even-git-status-runs-code)
+unpacks that hardening; here, take it as the reason there's no per-repo trust prompt.
 
 There's a cheaper lever, too, and it's mostly in the system prompt:
 the agent already has non-confirming `read`/`grep`/`glob` tools, so the

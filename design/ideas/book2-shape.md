@@ -1,9 +1,10 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed, nothing rewritten yet.** Carried over from pikuri's
-`pikuri-workshop.md` idea, which deferred it until this repo existed. The chapters moved here
-as they were, so `book/README.md` lists them in a provisional order and their "What's next"
-links still follow pikuri's old order.
+Status: **running order agreed; chapter-by-chapter rewrite under way, the shell chapter
+done** (see "Progress" below). Carried over from pikuri's
+`pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
+lists the chapters in the order below; the ones not yet revisited moved here as they were, so
+their "What's next" links still follow pikuri's old order.
 
 `Q_book2_shape`: book 2 ends on **a simple coding agent** (`pikuri-code`), the way pikuri's
 book ends on a plain CLI personal assistant (`bin/pikuri-secretary`). The two climaxes pair
@@ -61,6 +62,49 @@ What that does to the book:
    `code.md`'s other half plus `security-revisited.md`, and tasks carries its own lesson
    ("the training prior always wins").
 10. **The coding agent, completed**: the climax.
+
+## How each chapter is revisited
+
+In running order, one chapter per commit:
+
+1. **Audit**: the chapter against its bin and the code it describes; what's wrong, stale, or
+   badly illustrated by the bin.
+2. **Decide**: a short findings list goes to the owner, each marked text-fix or code-fix.
+3. **Rewrite + code**: the chapter, the bin, specs where code changes, `rake check`.
+4. **Commit**: with the chapter's "What's next", its `book/README.md` line, and inbound links.
+   Grep finished chapters for anything a code change touched.
+
+Each finished chapter strikes its part of this file; after the climax the file graduates.
+
+## Progress
+
+| # | Chapter | Source files | State |
+|---|---|---|---|
+| 1 | The shell and its cage | `shell.md` (from `code.md`'s first half, `os-assistant.md` Part 1 seams) | done |
+| 2 | The OS assistant | `os-assistant.md` | — |
+| 3 | Memories | `memories.md` | — |
+| 4 | Your first MCP server | `mcp.md` | — |
+| 5 | MCPs revisited | `mcp-revisited.md` | — |
+| 6 | Skills | `skills.md` | — |
+| 7 | The wire | `wire.md` | — |
+| 8 | Language intelligence | `lsp.md` | — |
+| 9 | Task tracking | `tasks.md` | — |
+| 10 | The coding agent, completed | `code.md` (rest), `security-revisited.md` | — |
+
+### Carried forward
+
+- **The OS assistant.** Only its opening and its pointers were fixed when `shell.md` landed.
+  Its Workspace, Confirmer and passive-command-detector sections now repeat `shell.md`: cut
+  them down to what differs (`AllowAll(denylist: [])`, confirm-all-writes, the unwritable
+  short-circuit), and add `shell.md` to its prerequisites.
+- **The coding agent, completed.** `code.md`'s wiring block is stale: it shows `add_tool` per
+  file tool and `Bash`, where the bin now uses `Workspace::Extension` + `Code::Extension`
+  (which also adds `git_clone` and plan mode) plus `Command` and `Lsp`; "four extensions" and
+  "six tools take `workspace`" are wrong. The private-repo boot question and the trifecta
+  banner get one line in `shell.md`; their full story is pikuri's trifecta chapter.
+- **Language intelligence.** `lsp.md` cites "a rule from the coding agent chapter" for its
+  walked-path note; that rule (credential denylist on walked paths) lives in neither chapter
+  now. Find its home when that chapter is revisited.
 
 ## Open for the climax
 

@@ -9,19 +9,21 @@ out to make that safe. Each chapter says what its cage buys and where it stops.
 **This page is the running order.** Chapters are named, not numbered, and the sequence lives
 here and nowhere else.
 
-The chapters moved here from pikuri's book as they were, and the running order below is a
-draft: their "What's next" links still follow pikuri's old order, and the book is meant to end
-on a simple coding agent, the way pikuri's ends on its secretary.
+The book is being revisited chapter by chapter, in this order. Chapters past the shell
+chapter moved here from pikuri's book as they were, so their "What's next" links may still
+follow pikuri's old order. The book ends on the coding agent, completed, the way pikuri's ends
+on its secretary.
 
 ## Chapters
 
-- [The in-repo coding agent](code.md) — a shell, and the sandbox around it.
+- [The shell and its cage](shell.md) — a bare `pikuri-code`: `bash`, the Bubblewrap sandbox, the human gate, and where they stop.
 - [The OS assistant: your machine](os-assistant.md) — the opposite cut: the whole disk, no network.
 - [Memories](memories.md) — automatic capture with mem0, on the agents that can afford it.
-- [Agent Skills](skills.md) — instructions and scripts loaded on demand, and slash commands.
-- [The messages array is not the prompt](wire.md) — what reaches the model, and what it drops.
 - [Your first MCP server](mcp.md) — a stranger's code as a tool.
 - [MCPs revisited: containerised servers](mcp-revisited.md) — putting that code in a box.
+- [Agent Skills](skills.md) — instructions and scripts loaded on demand, and slash commands.
+- [The messages array is not the prompt](wire.md) — what reaches the model, and what it drops.
 - [Language intelligence](lsp.md) — the questions grep cannot answer.
 - [Task tracking](tasks.md) — the agent's working memory on long work.
+- [The in-repo coding agent](code.md) — the whole wiring, and the sub-agents that keep untrusted content off the shell.
 - [Security revisited: the coding-agent shape](security-revisited.md) — what each defense buys, with all three legs present.

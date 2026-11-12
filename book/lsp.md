@@ -1,6 +1,6 @@
 # Language intelligence: the questions grep cannot answer
 
-The coding agent you built in [the in-repo coding agent chapter](code.md)
+The coding agent you met in [the shell chapter](shell.md)
 can read files, search them, and run your build. Ask it a question about
 *meaning* and it starts guessing.
 
