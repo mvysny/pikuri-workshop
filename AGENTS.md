@@ -25,6 +25,7 @@ a cage, and the book says what the cage buys and where it stops.
 | `<gem>/design/architecture.md` | that gem's own cross-symbol picture + its threat model | lazy |
 | yardoc (source headers) | what one symbol does, why it is shaped so | at the symbol |
 | `book/` | book 2, "the workshop": a learner reading in order, after pikuri's book | — |
+| `SECURITY.md` | what the workshop adds to pikuri's threat model, and where the promise and the code disagree | — |
 | `CHANGELOG.md` | what changed and what you must do about it | — |
 
 Every fact lives in exactly one of these; the others link to it. pikuri's own docs are the
