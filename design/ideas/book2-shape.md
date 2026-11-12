@@ -1,7 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite under way, the shell, OS and
-memories chapters done** (see "Progress" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite paused after three of ten
+chapters (shell, OS assistant, memories). Next: audit "Your first MCP server"** (see
+"Progress" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -76,13 +77,26 @@ In running order, one chapter per commit:
 
 Each finished chapter strikes its part of this file; after the climax the file graduates.
 
+Habits that paid off on the first three chapters:
+
+- **Run, don't just read.** Boot the bin (`< /dev/null` skips the TTY prompts and prints the
+  trifecta report), probe the sandbox directly (`Code::Bash.run` with `AUTO_APPROVE`), bring
+  a docker stack up and test from inside it. Each chapter had at least one claim the code
+  contradicted, and two had a security gap only a run showed.
+- **Check pikuri's book before renaming or cutting.** pikuri's chapters link into this repo
+  (`~/work/my/pikuri/book`, `grep pikuri-workshop/blob`); they link files, plus one anchor.
+- **Prefer the book's own question over the old text.** "What can this cage reach, and
+  where does it stop?" found the mem0 store's open network, which the chapter never asked.
+- **The dev box has no `socat`** and the llama.cpp router isn't always up: say what went
+  untested rather than skip the run.
+
 ## Progress
 
 | # | Chapter | Source files | State |
 |---|---|---|---|
-| 1 | The shell and its cage | `shell.md` (from `code.md`'s first half, `os-assistant.md` Part 1 seams) | done |
-| 2 | The OS assistant | `os-assistant.md` | done |
-| 3 | Memories | `memories.md` | done; end-to-end recall untested (no `socat` on the dev box) |
+| 1 | The shell and its cage | `shell.md` (from `code.md`'s first half, `os-assistant.md` Part 1 seams) | done, `828ad36` |
+| 2 | The OS assistant | `os-assistant.md` | done, `d660655` |
+| 3 | Memories | `memories.md` | done, `7932dc7`; end-to-end recall untested |
 | 4 | Your first MCP server | `mcp.md` | — |
 | 5 | MCPs revisited | `mcp-revisited.md` | — |
 | 6 | Skills | `skills.md` | — |
@@ -91,15 +105,39 @@ Each finished chapter strikes its part of this file; after the climax the file g
 | 9 | Task tracking | `tasks.md` | — |
 | 10 | The coding agent, completed | `code.md` (rest), `security-revisited.md` | — |
 
+What the three done chapters changed beyond their text:
+
+- **Shell:** new `book/shell.md`; `code.md` lost its first half; `bin/pikuri-code` asks the
+  skills trust question only when the project ships bundles, and points `--yolo` at a VM.
+- **OS assistant:** Part 1 cut to what differs from `shell.md`, plus "Lifting the cage, and
+  where" (`--yolo` is for trying it in a VM). The flags stay, by the owner's call; both OS
+  bins point them at a VM. The promise now says the OS assistant keeps its cage on the host.
+- **Memories:** the mem0 stack has no route out (`internal: true` network, a socat
+  `front-door`, `MEM0_TELEMETRY=false`), verified from inside the container; `Mem0Server`
+  lost `container_router_url:` and `qdrant_port:`. New section "…and neither can the store".
+
 ### Carried forward
 
+- **Memories, end to end.** Store-and-recall through the new network cut is untested: it needs
+  `socat` on the host and the llama.cpp router up. Run `pikuri-memory/bin/pikuri-memory`, tell
+  it a fact, quit, rerun, ask.
+- **Your first MCP server (next).** Already spotted: `mcp.md`'s opening assumes pikuri's old
+  order ("the security chapter explains why", "up to the memories chapter every tool … was
+  bundled"). Ask the book's question of its container too: what can the Open Library server
+  reach, and does it need more than that one host?
+- **MCPs revisited.** Opens with ordinals ("[8](code.md) and [9](security-revisited.md)"),
+  which the book bans; it wires the GitHub MCP into `pikuri-code`, which the bare-first plan
+  allows.
 - **The coding agent, completed.** `code.md`'s wiring block is stale: it shows `add_tool` per
   file tool and `Bash`, where the bin now uses `Workspace::Extension` + `Code::Extension`
   (which also adds `git_clone` and plan mode) plus `Command` and `Lsp`; "four extensions" and
   "six tools take `workspace`" are wrong. The private-repo boot question and the trifecta
   banner get one line in `shell.md`; their full story is pikuri's trifecta chapter. pikuri's
   `book/security.md` links `security-revisited.md#wrapping-pikuri-in-docker`, the one anchor pikuri
-  holds into this repo: renaming that section to the outer VM means fixing pikuri too.
+  holds into this repo: renaming that section to the outer VM means fixing pikuri too. The
+  accounting should also count the mem0 API: unauthenticated on `127.0.0.1:8888`, so the
+  coding agent's sandboxed `bash` (shared network) can read every memory. The fix, a
+  unix-socket front door, is in `pikuri-memory/design/architecture.md`.
 - **Language intelligence.** `lsp.md` cites "a rule from the coding agent chapter" for its
   walked-path note; that rule (credential denylist on walked paths) lives in neither chapter
   now. Find its home when that chapter is revisited.
