@@ -134,6 +134,7 @@ memory_ext = Pikuri::Memory::Extension.new(client: client, user_id: user_id)
 # the prompt. Outside a turn (at the `> ` input) the default handler is
 # restored so Ctrl+C still exits the REPL the way it did before.
 def run_turn(agent, message)
+  agent.cancellable&.reset!
   prev_trap = trap('INT') { agent.cancellable&.cancel! }
   agent.run_loop(user_message: message)
 rescue Pikuri::Agent::Control::Cancellable::Cancelled
