@@ -11,6 +11,12 @@ module Pikuri
         # filesystem half follows — an unlisted directory isn't mounted, an
         # unlisted variable isn't passed.
         #
+        # The *second* wall. The first is pikuri's rule that the environment is
+        # not a secret store: every other child pikuri spawns inherits the
+        # environment whole, so a token belongs in a permissioned file, not an
+        # export. This one catches, for sandboxed bash alone, what that review
+        # missed.
+        #
         #   wall = EnvWall.new(pass: ['ACME_HOME'])
         #   wall.passes?('JAVA_HOME', '/usr/lib/jvm/java-21')  # => true  (a path)
         #   wall.passes?('GITHUB_TOKEN', 'ghp_…')             # => false

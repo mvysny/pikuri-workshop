@@ -53,10 +53,15 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   build tooling (`./gradlew test`, `npm run build`), **it** chose to run that, with those args
   — and it could just as easily hallucinate `rm -rf ~/*`. `pikuri-code`'s `Bash` wraps every
   spawned argv through `Bash::Sandbox::Bubblewrap` by default, which blocks exactly that plus
-  reads of files it shouldn't touch, and withholds the environment variables you exported
-  except paths, the shell's own and build-tool options (`D_sandbox_env_wall`), so a token in
-  your shell stays out. It does *not* block network egress (that would break `git` and package
-  managers) — see Non-goals. See {Pikuri::Code::Bash::Sandbox}.
+  reads of files it shouldn't touch. It does *not* block network egress (that would break
+  `git` and package managers) — see Non-goals. See {Pikuri::Code::Bash::Sandbox}.
+- **Secrets in environment variables — keep them out; the sandbox is the second wall.** The
+  environment pikuri starts with reaches every child it spawns, and most children have no walls
+  (language servers, bare MCP servers, `--no-sandbox` bash). Review what your shell exports and
+  move tokens into permissioned files: pikuri's config file, or a tool's own credential store.
+  Behind that, Bubblewrap withholds inherited variables except paths, the shell's own and
+  build-tool options, so a token you missed doesn't reach sandboxed `bash`; the banner lists
+  what it withheld (`D_sandbox_env_wall`).
 - **MCP server processes — don't trust → Docker.** The `mcp` gem spawns stdio MCPs as raw
   subprocesses; pikuri does not sandbox them. An MCP whose code calls `os.system('rm -rf')` is
   unstoppable at the pikuri layer. Run untrusted MCPs in a Docker container — most are Node /

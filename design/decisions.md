@@ -1377,6 +1377,15 @@ naming "Bubblewrap `--clearenv`". It was never wired: revisiting the
 MCP-revisited chapter, an exported `GITHUB_PERSONAL_ACCESS_TOKEN` was
 readable by sandboxed `bash`, one `env | curl` from leaving.
 
+**The first wall stays pikuri's rule: keep secrets out of the environment.**
+Review what your shell exports and move tokens into permissioned files (the
+config file, `gh`'s and `aws`'s own stores), which the sandbox's mounts
+already hide. The environment pikuri starts with reaches every child, and
+most have no wall: language servers, bare MCP servers, `--no-sandbox` bash;
+any process running as you reads it from `/proc/<pid>/environ`. What follows
+is the second wall, for the one child that has walls, catching what the
+review missed.
+
 **Decision.** The environment is part of the filesystem's wall. Wherever
 pikuri walls off the filesystem it walls off the environment, by the same
 rule; where it doesn't, the environment passes whole. `Sandbox::Bubblewrap`
@@ -1415,7 +1424,9 @@ visibly*, as a build missing `FOO_HOME`, whose name is on screen.
 `#withheld_env_names`, so a host's own sandbox must add both. A build that
 needs a non-path variable outside the lists breaks until the user names it
 in `sandbox_env:`. A token inside the project (`.env`) is still readable; the
-workspace is reachable by design.
+workspace is reachable by design. The banner's list of withheld names
+doubles as the review the first wall asks for: a secret there should leave
+your shell, not just the sandbox.
 
 ---
 

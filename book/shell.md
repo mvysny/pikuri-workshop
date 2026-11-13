@@ -229,8 +229,17 @@ every process you start, and that's where people keep tokens: `export GITHUB_TOK
 `.bashrc`, an `OPENAI_API_KEY` for one script. A cage that hid `~/.aws` but passed on
 `AWS_SECRET_ACCESS_KEY` would leave a door beside the wall, one `env | curl …` wide.
 
-So the cage builds the environment the way it builds the filesystem: nothing gets in unless
-it's let in. A variable passes if it is
+**The first wall is yours: keep secrets out of the environment.** pikuri's rule is that the
+environment is not a secret store, and for good reason. Everything pikuri starts inherits it:
+a language server, an MCP server you didn't put in a container, `bash` with `--no-sandbox`.
+None of those has walls, and any process running as you can read pikuri's environment from
+`/proc`. Go through what your shell exports, and move each token somewhere with permissions:
+pikuri's config file (`chmod 600`), or the tool's own store (`gh auth login`,
+`~/.aws/credentials`), which the cage's mounts already hide.
+
+The cage adds a second wall for the one child it guards, because a review misses things. It
+builds the environment the way it builds the filesystem: nothing gets in unless it's let in.
+A variable passes if it is
 
 - what a shell and a terminal need: `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, …;
 - a build tool's options: `MAVEN_OPTS`, `NODE_OPTIONS`, `CC`, `CFLAGS`, …;
@@ -244,14 +253,16 @@ Everything else stays outside, and the banner says what by name:
 ```
 The sandbox withholds 3 environment variable(s) from bash: AWS_SECRET_ACCESS_KEY,
 DBUS_SESSION_BUS_ADDRESS, GITHUB_TOKEN. To pass one, list it under sandbox_env: in
-~/.pikuri-examples-config.yaml.
+~/.pikuri-examples-config.yaml. A secret among them belongs out of your shell's
+environment altogether.
 ```
 
-The model sees the same names (never the values) in the `bash` tool's description, so when a
-build fails for want of a variable it can tell you which one. The wrong guess costs a broken
-build you can see, not a key you can't. Only this cage filters: `--no-sandbox` passes the
-environment whole, since a command that can read `~/.aws/credentials` gains nothing from a
-missing variable.
+That list is also your review: a token on it got past the first wall, and the cage only
+saved this one child. The model sees the same names (never the values) in the `bash` tool's
+description, so when a build fails for want of a variable it can tell you which one. The
+wrong guess costs a broken build you can see, not a key you can't. Only this cage filters:
+`--no-sandbox` passes the environment whole, since a command that can read
+`~/.aws/credentials` gains nothing from a missing variable.
 
 ### Three things it refuses to start with
 
