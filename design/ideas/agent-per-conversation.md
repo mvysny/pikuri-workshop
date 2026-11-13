@@ -22,6 +22,12 @@ kills them.
 - `pikuri-memory`, `pikuri-os` (`MachineMemory`, `SystemInfo`): yardoc says "refreshed on
   clear_conversation" — now "taken when the agent is built", which a /clear still triggers.
 - `pikuri-mcp` `Connect`: the activated set is already per instance; fine.
+- `Agent.new` takes no `interloper:` any more — every agent builds its own (`Agent#interloper`,
+  `c.interloper` inside the block). Drop the kwarg in `pikuri-code/bin/pikuri-code`, the three
+  `pikuri-tui` apps and `pikuri-webui-chat` (whose factory hands its own to `Agents::Runner` —
+  read `agent.interloper` instead). `pikuri-skills`: the interloper is never `nil` now, so the
+  "needs an interloper" raise and the no-interloper warning in `arm_gate` go. TUI
+  `deliver_pending_injections` moving leftovers to a rebuilt agent reads both agents' queues.
 - Hosts: `pikuri-tui` `AgentSession#clear_conversation` → build a new agent, close the old; the
   `Event::Reset` handling (e.g. `skill_activation_listener.rb`) goes. `pikuri-webui`
   `Runner#restore!` → pass `history:` to the factory's `Agent.new`; `HistoryLoaded` now fires

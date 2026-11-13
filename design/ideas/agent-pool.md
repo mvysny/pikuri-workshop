@@ -1,6 +1,6 @@
 # A slim `Agent` and a `SessionList`: one design, two layers
 
-Status: **brainstorming the concrete shape; nothing built.** Grew out of pikuri's early-cancel fix
+Status: **first step done in pikuri** — `ServerPermits` / `RequestThrottle` deleted, `Agent.new(around_request:)` in (see "Leaves `Agent`"); the rest is the concrete shape, unbuilt. Grew out of pikuri's early-cancel fix
 (`pikuri:D_host_resets_cancel`). Names are working names (`Q_naming`). Covers both layers because
 they are one design: what leaves `Agent` is what the `SessionList` takes.
 
@@ -64,8 +64,8 @@ does, not of what it needs.
 | Errors reach the UI with their class (`EmptyTurnError`, `UnsupportedAttachmentError`, other) | wants it | ✓ | ✓ | — | `TurnEnded` event |
 | Turn thread named per conversation; per-turn thread priority | ✓ (`D_puma_thread_dump`) | | ✓ (−3, `R_gvl_main_loop`) | — | `SessionList` |
 | Shutdown without waiting / with a timeout | ✓ no wait | quits | cancel+join | — | `SessionList#shutdown` |
-| Side LLM calls (titler) on the shared executor, throttled | ✓ | | ✓ | — | `SessionList#executor`, throttle on the transport |
-| Throttle covers sub-agents, the titler, the MCP Thinker | ✓ | ✓ | ✓ | — | `ChatTransport#around_request` |
+| Side LLM calls (titler) on the shared executor, throttled | ✓ | | ✓ | — | `SessionList#executor`, `around_request: list.around_request` |
+| Throttle covers sub-agents, the titler, the MCP Thinker | ✓ | ✓ | ✓ | — | `Agent.new(around_request:)`, passed on by each builder |
 | Status snapshot read under the host's own lock | ✓ (`status_data`) | | | — | `Session#status` |
 | Lock order host lock → pool lock → `Interloper` lock | ✓ | | ✓ | — | pool never calls out under its lock |
 
@@ -87,9 +87,10 @@ agent.transport = other                 # switch, between turns only
 
 | kwarg | Change |
 |---|---|
-| `transport:` | stated facts only — `context_window`, `modalities`; `Agent` never probes. Carries `around_request` |
+| `transport:` | stated facts only — `context_window`, `modalities`; `Agent` never probes |
 | `system_prompt:` | unchanged |
 | `cancellable:` | unchanged — shared down to sub-agents; the caller resets it per turn |
+| `around_request:` | **done** — `call(api_base, cancellable) { request }`, shared down to sub-agents like `cancellable:` |
 | `interloper:` | **dropped** — every agent owns one (`agent.interloper` never `nil`); every caller passes `Interloper.new` today |
 | `id:` | unchanged (sub-agent tool only) |
 | `streaming:` | unchanged |
@@ -108,17 +109,22 @@ agent.transport = other                 # switch, between turns only
 Errors unchanged: `Cancellable::Cancelled`, `EmptyTurnError`, `UnsupportedAttachmentError` (from the
 transport's stated modalities; unknown goes out).
 
-**The one new seam: `ChatTransport#around_request`**, a callable
-`call(cancellable) { request }` that `Agent`'s ruby_llm instrumenter runs around every HTTP
-request (the only seam that brackets exactly one, `pikuri:D_llm_request_throttle`). Default
-`nil`, a pass-through. On the transport rather than on `Extension`, because every `Agent` built
-from a transport inherits it — sub-agents (`parent.transport.with(...)`), the MCP Thinker
-(`c.transport`), a host's titler — where extensions are deliberately not inherited. `around`, not
-a `before`/`after` pair: a permit must be released when a request raises, is cancelled, or
-streams for 20 s, and around gets the `ensure` right once.
+**The one new seam: `Agent.new(around_request:)`** (done), a callable
+`call(api_base, cancellable) { request }` that `Agent`'s ruby_llm instrumenter runs around every
+HTTP request (the only seam that brackets exactly one, `pikuri:D_llm_request_throttle`). Default
+`nil`: no instrumenter installed. On the agent rather than the transport, so a model switch can't
+drop it and a fresh lambda can't break `ChatTransport#==`; `api_base` is handed per call because
+a switch may change server. Not inherited by itself: `SubAgentTool` passes `parent.around_request`;
+the MCP Thinker must pass `c.around_request` (a `Configurator` reader) — **not done yet**, so a
+Thinker runs unthrottled until it does. The throttle is one object per list, not per server: it
+looks up its permits by `api_base`.
 
-**Leaves `Agent`**: `ServerPermits` and `RequestThrottle` move to the `SessionList` gem as the
-throttle it hangs on transports; the `/props` probe call (`detect_and_emit_context_cap!`,
+**Leaves `Agent`**: `ServerPermits` and `RequestThrottle` — **deleted from pikuri**, recover them
+for the `SessionList` gem with `git show 5c87269:pikuri-core/lib/pikuri/agent/server_permits.rb`
+(likewise `request_throttle.rb`, `spec/pikuri/agent/{server_permits,request_throttle,throttle_integration}_spec.rb`,
+and `D_probe_when_unknown` in `design/decisions.md`, the reasoning for re-seeding slots from the
+probe). The probe no longer seeds slots and is skipped once cap + modalities are stated. Still to
+go: the `/props` probe call (`detect_and_emit_context_cap!`,
 `@cap_pending`) goes. `ContextWindowDetector` itself stays in core as a transport utility
 (`Q_detector_home`) — a bin resolves its transport at boot in one visible line.
 
@@ -144,11 +150,11 @@ session.submit('also, ripe?')                           # => :injected
 
 | Method | Behaviour |
 |---|---|
-| `new(system_prompt:, configure:, on_turn_end: nil, streaming: true, priority: 0, executor: nil)` | the pool builds every `Agent` itself, wiring what it owns — `cancellable:`, the forwarding listener, the throttled transport — then calls `configure`. `priority` is each turn thread's |
+| `new(system_prompt:, configure:, on_turn_end: nil, streaming: true, priority: 0, executor: nil)` | the pool builds every `Agent` itself, wiring what it owns — `cancellable:`, the forwarding listener, its `around_request` — then calls `configure`. `priority` is each turn thread's |
 | `open(id:, transport:, listener:, history: nil, boot: true)` → `Session` | a conversation. `listener` hears the agent's events and the session's, fixed for its life. `boot: false` leaves it in `:new` until the first `submit` (Puri) |
 | `[](id)`, `each` | lookup |
 | `limit(server, permits)` | an explicit permit count, overriding the probe's `total_slots` |
-| `throttled(transport)` → `ChatTransport` | the transport with the list's `around_request`, for side agents (titler); `open` and `switch_model` apply it themselves |
+| `around_request` | the list's throttle, for side agents the host builds (titler); `open` wires it itself |
 | `executor` | for host side work (titler) on the same threads |
 | `shutdown(timeout: 0)` | cancel every turn; running turns unwind, run `on_turn_end`, close their agents; waits at most `timeout`, never on a host lock. `0` returns at once (webui's Puma `:state` hook) |
 
@@ -199,7 +205,7 @@ queue, not two.
 
 - **webui**: `Runner` and `claim_running`/`finish_turn` go; `Registry` keeps sessions;
   `on_turn_end` persists (idle still means saved); `discard!` is `close` → `:busy` → 409;
-  `status_data` is `session.status`; the titler uses `list.throttled(transport)` on
+  `status_data` is `session.status`; the titler passes `around_request: list.around_request` on
   `list.executor` and can move to `TurnEnded` (`titler-first-turn-permit.md`); `ServerPermits.limit`
   is `list.limit`. Must also drop `Listener::RateLimited` (removed from pikuri in 613103e).
 - **tui**: `AgentSession`'s flag, `deliver_pending_injections` and the picker's `take_pending` go;
@@ -263,13 +269,17 @@ queue, not two.
   the LSP client for `Thread.current` affinity.
 - `Q_book` — the chapter: lost cancels, stranded injections, a lock-order inversion around a
   synchronous core.
+- `Q_permit_scope` — `list.limit` makes the permit registry per list, where
+  `pikuri:D_rate_limiter_scope` says one per process, keyed by server: two lists against one
+  llama.cpp would each hand out its slots. Keep the registry process-global inside the gem, or
+  record why per-list is fine.
 - `Q_naming` — `SessionList` / `Session`, and the gem's name, per pikuri's "name a gem after
   what it refuses to become".
 
 ## Done when
 
 - pikuri's `Agent` has the shape above, its bins and the workshop's bins follow, and pikuri's
-  `D_llm_request_throttle`, `D_deferred_cap_probe`, `D_probe_when_unknown` say where those moved.
+  `D_llm_request_throttle` (done) and `D_deferred_cap_probe` say where those moved.
 - The gem exists; pikuri-tui (first — one conversation, the cheapest test), then pikuri-webui,
   then Puri drive their conversations through it, their own turn state machines gone.
 - The nuggets land in durable homes: the threading model and the conversation/agent split in the
