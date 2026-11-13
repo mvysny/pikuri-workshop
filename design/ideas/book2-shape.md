@@ -1,8 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite at seven of ten chapters (shell,
-OS assistant, memories, first MCP server, MCPs revisited, skills, wire). Next: language
-intelligence** (see "Carried forward" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite at eight of ten chapters (shell,
+OS assistant, memories, first MCP server, MCPs revisited, skills, wire, language
+intelligence). Next: task tracking** (see "Carried forward" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -107,7 +107,7 @@ Habits that paid off on the first three chapters:
 | 5 | MCPs revisited | `mcp-revisited.md` | done; headed Playwright vs. a desktop, dummy iface, docker untested |
 | 6 | Skills | `skills.md` | done; the TTY trust prompt after a clean git check untested |
 | 7 | The wire | `wire.md` | done, text only; canary re-run on Qwen3.6 and Ornith-1.5 |
-| 8 | Language intelligence | `lsp.md` | — |
+| 8 | Language intelligence | `lsp.md` | done; ruby-lsp only (jdtls installed, not run) |
 | 9 | Task tracking | `tasks.md` | — |
 | 10 | The coding agent, completed | `code.md` (rest), `security-revisited.md` | — |
 
@@ -146,6 +146,14 @@ What the done chapters changed beyond their text:
   `Pikuri::Bundle::Unreviewed` (hash-object `--no-filters`; `git status` ran a repo's clean
   filter in the run). `Tasks::ListChanged#to_s` stops the raw-event print. New section "What a
   skill can reach, and where it stops".
+
+- **Language intelligence:** a readiness race found by re-running `bin/pikuri-lsp-check`
+  cold (2 in 9 runs: "index ready", then nothing): the quiet clock started at spawn, so
+  ruby-lsp's ~6s handshake counted as silence. `Readiness#restart_quiet_clock!` at
+  `initialized` (`W_quiet_from_initialized`); the check now says *no answer* when it
+  measured nothing. New section "The server itself is in no cage" (ruby-lsp `eval_gemfile`s
+  your Gemfile as you; VM is the wall); architecture's "unsandboxed child" premise
+  (`bash` netless) corrected. Walked-path rule now stated in place, citing the tripwire.
 
 Habits added by the MCPs revisited chapter: a host's AppArmor profile attaches by path inside a rootless
 container (Ubuntu's tinyproxy profile blocked the config and every signal, so `podman rm -f`
@@ -188,9 +196,6 @@ mounts tmpfs on `/tmp`; `--tmpfs /tmp` stays for docker.
   accounting should also count the mem0 API: unauthenticated on `127.0.0.1:8888`, so the
   coding agent's sandboxed `bash` (shared network) can read every memory. The fix, a
   unix-socket front door, is in `pikuri-memory/design/architecture.md`.
-- **Language intelligence.** `lsp.md` cites "a rule from the coding agent chapter" for its
-  walked-path note; that rule (credential denylist on walked paths) lives in neither chapter
-  now. Find its home when that chapter is revisited.
 
 ## Open for the climax
 

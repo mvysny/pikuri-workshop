@@ -155,6 +155,27 @@ describe Pikuri::Lsp::Readiness do
     end
   end
 
+  describe '#restart_quiet_clock!' do
+    it 'counts silence from when the server was told to start, not from spawn' do
+      readiness = gate.call
+      sleep settle * 2 # a handshake longer than the window, as ruby-lsp's cold one is
+
+      readiness.restart_quiet_clock!
+      refute readiness.ready?, 'the handshake was not the server going quiet'
+      sleep settle * 2
+      assert readiness.ready?
+    end
+
+    it 'keeps a task the server opened during the handshake' do
+      readiness = gate.call
+      readiness.observe('$/progress', progress.call('begin'))
+      readiness.restart_quiet_clock!
+      sleep settle * 2
+
+      refute readiness.ready?, 'an open token is an open token'
+    end
+  end
+
   describe '#reset!' do
     it 'shuts the gate again, because a restarted server indexes from nothing' do
       readiness = gate.call

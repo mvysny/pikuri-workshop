@@ -23,6 +23,10 @@ general: *a protocol designed for a human staring at an editor pane
 answers an agent's questions with well-formed lies, and the framework's
 job is to keep the lies apart from the truths.*
 
+The transcripts below were measured in pikuri's own repository, where this
+gem was written, so they name pikuri's classes. Run against the workshop's
+checkout the names differ; the shapes do not.
+
 ## What a language server actually is
 
 Sixty seconds of protocol, because the shape explains most of the design.
@@ -139,7 +143,7 @@ section.
 ### What a shipped client does instead, and why it is worse
 
 This is not a strawman. Claude Code ships its own LSP tool with nine
-operations, and run against this very repo on the same ruby-lsp version,
+operations, and run against pikuri's repo on the same ruby-lsp version,
 its first `goToDefinition` after startup returned:
 
 ```
@@ -172,7 +176,7 @@ So the first call against a cold server blocks until the index is built,
 and the rule is one line, the same for every server: **no progress token
 open, and nothing said for 1.5 seconds.**
 
-Three things about that rule earned their way in by measurement:
+Four things about that rule earned their way in by measurement:
 
 - **You have to ask for progress.** Declare
   `window.workDoneProgress: true` in the handshake and tokens flow; omit
@@ -195,7 +199,19 @@ Three things about that rule earned their way in by measurement:
   which is why a server's data directory belongs in a persistent cache
   rather than a per-run temp dir.
 
-Waiting costs real time only once. In a fresh run against this monorepo
+- **The window opens at `initialized`, not at spawn.** This one was found
+  re-running the chapter's diagnostic for this book: on a cold start, two
+  runs in nine declared the index ready and then got nothing for every
+  question. ruby-lsp spends about six seconds answering `initialize`, and
+  only after `initialized` does it open its indexing token. pikuri had
+  started the quiet clock when it spawned the child, so the handshake
+  itself counted as 1.5 seconds of silence, and a wait that began before
+  the token arrived returned at once, to an empty index: the exact `[]`
+  this section exists to prevent. The clock now restarts when `initialized`
+  goes out, keeping any task the server opened meanwhile; six cold runs
+  after the fix answered correctly every time.
+
+Waiting costs real time only once. In a fresh run against pikuri's monorepo
 the first call paid 6.1 seconds for ruby-lsp's index; every later call in
 the same session came back in 0.00–0.41s.
 
@@ -206,7 +222,7 @@ can do. The instinct is to record that per binary — "ruby-lsp supports
 these things" — and it is wrong.
 
 The same ruby-lsp binary advertises **different capabilities in different
-projects**. In this monorepo it offers no document-formatting provider,
+projects**. In pikuri's monorepo it offers no document-formatting provider,
 purely because pikuri's `Gemfile` has no rubocop in it ("Auto detected
 formatter: none"); in a rubocop-bundled project that row flips. Capability
 knowledge has to come from *this* workspace's response, every session.
@@ -489,13 +505,11 @@ chapter started.
 
 ## The path in a row is a path nobody asked for
 
-One security note, because it is a variation on a rule from [the coding
-agent chapter](code.md) rather than a new one.
-
 Every path in those transcripts is a **walked path**: the model did not
 supply it, so no path-resolution gate stood in front of it. That is the
-same category as a `grep` hit or a directory listing row, and it carries
-the same obligation — every row is checked against the workspace's
+same category as a `grep` hit or a directory listing row, and pikuri holds
+every tool that walks to paths on its own to the same rule (one of the five
+seams `rake tripwires` re-checks): every row is checked against the workspace's
 credential denylist before it is rendered, and a path is *printed* only
 where the workspace could actually open it. Elsewhere the row keeps a bare
 basename, which is why `Object` above reads `outside the workspace:
@@ -525,8 +539,9 @@ into your context *in bulk*: 22,639 bytes of attached source arrived from
 a sources jar in one measured call.
 
 So the `lsp` tool declares its untrusted-content leg **unconditionally**,
-where the `read` tool declares it conditionally on whether you vouched for
-this checkout. A human who answered "yes, I trust this repo" made a claim
+where the `read` tool declares it conditionally on whether the host vouched
+for this checkout (`pikuri-code` never does, since its file tools also read
+your dependency caches). A human who answered "yes, I trust this repo" made a claim
 about the code they checked out, not about four hundred jars Maven
 resolved or a `-sources.jar` nobody has ever diffed. The consequence is
 deliberate and worth knowing before it surprises you: on a *trusted* repo,
@@ -540,6 +555,36 @@ workspace root is the server's working directory *and* the `rootUri` it
 indexes. There is no `root:` field in a server entry, so the server's idea
 of your project cannot drift away from the boundary that confines the
 agent.
+
+## The server itself is in no cage
+
+Everything above gates what comes *back* from the server. The server
+process is another matter, and it is the answer to the book's standing
+question, what can this reach and where does it stop: **a language server
+runs as you, on your host, outside every sandbox in this book.** The `bash`
+tool runs inside Bubblewrap; the language server sees your whole home
+directory, `~/.ssh` included, and the network.
+
+And it runs your project's code to do its job. ruby-lsp builds a private
+bundle in `.ruby-lsp/`, whose `Gemfile` begins with
+`eval_gemfile(File.expand_path("../Gemfile", __dir__))`: your project's
+`Gemfile`, which is Ruby, evaluated by a process with your full rights,
+before the model has asked anything. jdtls importing a Gradle project runs
+`build.gradle` and its plugins the same way. For your own repository that
+is what your editor already does every day. For a repository you just
+cloned from a stranger, the first `lsp` call is the moment its build
+script runs on your machine, unsandboxed.
+
+Caging the server the way `bash` is caged doesn't work: a server without
+the network cannot import a Gradle project that resolves dependencies, and
+one without your home cannot find the toolchain it indexes. A cage that
+breaks the tool on both reference servers is a removal, not a defense. So
+the containment is the same trust decision an MCP entry carries: you chose
+the binary, and the results are gated on the way back in.
+
+**Where it stops.** Don't configure a language server for a repository you
+don't trust. When you need one anyway, the wall is the same as everywhere
+else in this book: a virtual machine around the whole process.
 
 ## Wiring it
 
@@ -625,21 +670,31 @@ Probes
              the server took the utf-8 offer, so offsets need no conversion
              guards: PositionEncoding exists at all: pikuri converts when it is not
   ok       open / ask / close, twice over, gives the same answer (S_reopen_works)
-             two open/close rounds, the same answer (4 location(s))
+             two open/close rounds, the same answer (5 location(s))
              guards: the document-sync policy: re-open on read, never didChange, and close what was opened
   ok       a bare name may score below the index threshold (H_qualified_name_match)
-             the index returned 23 hit(s) and none is "Bash"
+             the index returned 22 hit(s) and none is "Bash"
              guards: why symbol-only lookup is best-effort and file+line is what the tool teaches
   ok       the operations the enum names are advertised here
              not advertised here: goToImplementation, goToTypeDefinition,
              incomingCalls, outgoingCalls — the gate refuses these cleanly
              guards: the capability gate at dispatch, per workspace
   ok       an advertised provider actually answers (H_subtypes_stub: the # TODO trap)
-             supertypes: 20 row(s); subtypes: 0 row(s)
+             supertypes: 13 row(s); subtypes: 0 row(s)
              guards: relay-do-not-work-around: no per-server known-stub list
 
 5 probes: 5 ok, 0 drifted, 0 unanswered.
 ```
+
+That is the workshop's checkout, anchored on `class Bash`. The same check
+once printed `5 probes: 5 ok` here with every answer empty: zero
+locations twice ("the same answer"), zero hits ("none is `Bash`"), and a
+hierarchy that answered nothing ("an empty answer is not a stub"). Each
+probe compared nothing with nothing and called it a pass. That was the
+readiness race from earlier in the chapter, and the diagnostic built to
+catch silent failures had rounded one to a clean bill of health. A probe
+that got nothing to measure now says `no answer` and why, the same rule
+the `lsp` tool applies to the model.
 
 `ok` means the finding still holds. `DRIFT` means the server changed its
 mind and a decision wants re-reading — an invitation, not a failure, which
@@ -701,12 +756,11 @@ will look.
 
 ## What's next
 
-[Task tracking](tasks.md) covers `pikuri-tasks` — the in-memory task list
+[Task tracking](tasks.md) covers `pikuri-tasks`, the in-memory task list
 that lets the model externalize a multi-step plan into a structured slot it
-sees on every turn. [Agent Skills (stub)](skills.md) is the other short
-chapter of the pair, and [the messages array is not the
-prompt](wire.md) is the one to read next if this chapter's taste for
-silent failures appealed to you.
+sees on every turn: a short chapter, and the last piece bolted onto
+`pikuri-code` before [the completed coding agent](code.md) accounts for
+all of them.
 
 The vocabulary you have now is enough to read
 [`pikuri-lsp`](../pikuri-lsp/README.md)'s sources directly — start at

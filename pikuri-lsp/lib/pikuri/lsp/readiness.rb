@@ -136,6 +136,20 @@ module Pikuri
         end
       end
 
+      # Start the quiet window now, keeping every task already open. Called once
+      # the server has been sent +initialized+: before that it had not been told
+      # to start, so its silence is not idleness. ruby-lsp spends about six
+      # seconds answering +initialize+ on a cold start and only then opens its
+      # indexing token; counted from spawn, that handshake already filled the
+      # window, and a wait beginning before the token arrived returned at once,
+      # to an empty index.
+      #
+      # @return [void]
+      def restart_quiet_clock!
+        @mutex.synchronize { @quiet_since = now }
+        nil
+      end
+
       # Forget everything: a restarted server has an empty index, so its previous
       # tokens say nothing and the quiet clock starts over.
       #

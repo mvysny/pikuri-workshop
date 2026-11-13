@@ -212,6 +212,15 @@ describe Pikuri::Lsp::ClientWrapper do
       end
     end
 
+    it 'counts the quiet window from initialized, so a slow handshake is not idleness' do
+      over_pipes.call(readiness: gate.call) do |wrapper, wire|
+        sleep settle * 2 # the server answers initialize later than the whole window
+        start.call(wrapper, wire)
+
+        refute wrapper.ready?, 'ruby-lsp opens its indexing token only after initialized'
+      end
+    end
+
     it 'blocks the caller until the index is built, relaying what the server says' do
       over_pipes.call(readiness: gate.call) do |wrapper, wire|
         start.call(wrapper, wire)

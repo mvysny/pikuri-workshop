@@ -454,6 +454,7 @@ module Pikuri
         @server_info = result['serverInfo']
         @position_encoding = @capabilities['positionEncoding'] || PositionEncoding::DEFAULT
         @connection.notify('initialized', {})
+        @readiness.restart_quiet_clock!
         LOGGER.info("#{@entry.id}: ready — #{@server_info&.fetch('name', nil) || 'unnamed server'}, " \
                     "#{@position_encoding}, #{@capabilities.keys.size} capabilities")
       rescue Connection::Closed => e

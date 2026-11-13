@@ -326,7 +326,10 @@ begin
     reopen.call
     second = client.request('textDocument/definition', params.call)
     release.call
-    if first == second
+    if Array(first).empty? && Array(second).empty?
+      [:unknown, 'the anchor answered nothing in either round, so two equal answers measure nothing — ' \
+                 'an index that was not built yet looks exactly like this']
+    elsif first == second
       [:ok, "two open/close rounds, the same answer (#{Array(first).length} location(s))"]
     else
       [:drift, "the second answer differs from the first: #{first.inspect} vs #{second.inspect}"]
@@ -338,7 +341,10 @@ begin
     if client.supports?('workspaceSymbolProvider')
       hits = Array(client.request('workspace/symbol', { query: symbol }))
       names = hits.map { |hit| hit['name'] }
-      if names.any? { |name| Pikuri::Lsp::SymbolName.matches?(name, symbol) }
+      if hits.empty?
+        [:unknown, "the index returned nothing at all for #{symbol.inspect}, not even fuzzy neighbours, " \
+                   'so a miss proves nothing about the threshold']
+      elsif names.any? { |name| Pikuri::Lsp::SymbolName.matches?(name, symbol) }
         [:ok, "#{symbol.inspect} was returned by the index (#{hits.length} hit(s)) — " \
               'the route works here, which the design already treats as luck rather than contract']
       else
@@ -373,7 +379,7 @@ begin
     begin
       prepared = Array(client.request('textDocument/prepareTypeHierarchy', params.call))
       if prepared.empty?
-        [:ok, "prepare answered nothing for #{symbol.inspect}; an empty answer is not a stub"]
+        [:unknown, "prepare answered nothing for #{symbol.inspect}, so there was no hierarchy to catch lying"]
       else
         supertypes = Array(client.request('typeHierarchy/supertypes', { item: prepared.first }))
         subtypes = begin

@@ -159,10 +159,14 @@ of the files, not of who reads them.
 
 ## The unsandboxed child
 
-`Code::Bash` defaults to `FullFsNoNet` (`--unshare-net`), and the coding
-agent's prompt tells the model that the commands it runs cannot reach the
-internet. **The LSP child is not sandboxed at all.** So a repo gets network
-through jdtls that it explicitly does not get through `bash`.
+`pikuri-code` runs `bash` inside Bubblewrap: a narrowed view of the
+filesystem, credentials masked, the network shared, and a confirmer in
+front of anything not provably read-only. **The LSP child is not sandboxed
+at all.** It runs as the user, sees the whole home directory and the
+network, and runs project code to do its job with nobody asked: ruby-lsp's
+`.ruby-lsp/Gemfile` is `eval_gemfile` of the project's `Gemfile`, and a
+jdtls Gradle import runs `build.gradle`. So a repo gets, through the
+language server, the host that `bash` explicitly does not give it.
 
 That asymmetry is deliberate, and it cannot simply be resolved by
 inheriting the bash posture: a netless jdtls cannot import a Gradle project
@@ -171,7 +175,9 @@ shells out to `bundle install`. A sandbox that breaks the tool on its two
 reference servers is not a defense, it is a removal. What contains the
 child instead is the boundary above — a user-chosen binary, the same trust
 decision an MCP entry already carries, with the *results* gated on the way
-back in.
+back in. For a repository the user doesn't trust, the answer is not to
+configure a server, or the workshop's usual wall: a VM around the whole
+process.
 
 One thing pikuri does correct: the child is spawned de-bundlerized
 ({Pikuri::BundlerEnv}), so a Ruby language server resolves gems from the
@@ -197,7 +203,7 @@ throwaway clients' transcripts were not kept — these paragraphs are the
 durable part, which is also why the fixtures are faithful reconstructions
 rather than captures.
 
-### F — first runs, `rubocop --lsp` and `ruby-lsp` 0.26.10 over this monorepo
+### F — first runs, `rubocop --lsp` and `ruby-lsp` 0.26.10 over pikuri's monorepo
 
 Later re-run through a third, independent client (Claude Code's own LSP
 tool) against the same repo and server version.
@@ -489,7 +495,7 @@ quiet. jdtls ignores the field outright. That inversion is why pikuri
 derives the value from a built-in table instead of asking a user to type
 it.
 
-### E — the `lsp` tool driven end-to-end, `ruby-lsp` 0.26.10 over this monorepo
+### E — the `lsp` tool driven end-to-end, `ruby-lsp` 0.26.10 over pikuri's monorepo
 
 A fourth run, and the first through the *tool* rather than the protocol:
 `LspTool` over a real `Servers`, called across all ten operations, so
@@ -528,3 +534,15 @@ prints no column by design, so column-distinct results are row-identical, and
 the dedupe has to be on the rendered row: `Location` identity does not
 collapse them. Not specific to endless-method style — any `foo(foo(x))`, or a
 declaration whose body re-invokes it on one line, does the same.
+
+### W — `ruby-lsp` 0.26.11 over the workshop's checkout, cold starts
+
+**W_quiet_from_initialized.** On a cold start (`.ruby-lsp/` deleted), ruby-lsp
+took about six seconds to answer `initialize` and opened its indexing token
+only after `initialized`. With the quiet clock started at spawn, the handshake
+counted as silence: two runs of `bin/pikuri-lsp-check` in nine declared the
+index ready, then got zero locations, zero `workspace/symbol` hits and an empty
+`prepareTypeHierarchy` — and the check, comparing nothing with nothing, printed
+`5 ok`. Fixed by `Readiness#restart_quiet_clock!` when `initialized` goes out
+(open tokens kept), after which six cold runs answered correctly; and the
+check now reports a probe that got nothing to measure as *no answer*.
