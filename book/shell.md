@@ -222,6 +222,37 @@ Two details keep this honest:
   warning, and mounts toolchains read-only instead. Builds that install into them then fail
   with `EROFS`, which the model sees in the command's output.
 
+### The environment, walled too
+
+Files aren't the only thing a command inherits. Your shell's environment variables travel with
+every process you start, and that's where people keep tokens: `export GITHUB_TOKEN=…` in a
+`.bashrc`, an `OPENAI_API_KEY` for one script. A cage that hid `~/.aws` but passed on
+`AWS_SECRET_ACCESS_KEY` would leave a door beside the wall, one `env | curl …` wide.
+
+So the cage builds the environment the way it builds the filesystem: nothing gets in unless
+it's let in. A variable passes if it is
+
+- what a shell and a terminal need: `PATH`, `HOME`, `USER`, `LANG`, `LC_*`, `TERM`, …;
+- a build tool's options: `MAVEN_OPTS`, `NODE_OPTIONS`, `CC`, `CFLAGS`, …;
+- **a path**, such as `JAVA_HOME=/usr/lib/jvm/java-21` or `GOPATH=~/go`. A path tells the
+  command nothing the mounts don't already decide: `JAVA_HOME` works because the JDK is
+  mounted, and `GOOGLE_APPLICATION_CREDENTIALS=~/key.json` is harmless because the file isn't.
+  A token is never a path.
+
+Everything else stays outside, and the banner says what by name:
+
+```
+The sandbox withholds 3 environment variable(s) from bash: AWS_SECRET_ACCESS_KEY,
+DBUS_SESSION_BUS_ADDRESS, GITHUB_TOKEN. To pass one, list it under sandbox_env: in
+~/.pikuri-examples-config.yaml.
+```
+
+The model sees the same names (never the values) in the `bash` tool's description, so when a
+build fails for want of a variable it can tell you which one. The wrong guess costs a broken
+build you can see, not a key you can't. Only this cage filters: `--no-sandbox` passes the
+environment whole, since a command that can read `~/.aws/credentials` gains nothing from a
+missing variable.
+
 ### Three things it refuses to start with
 
 Bubblewrap checks its workspace at construction and raises rather than run a cage that isn't

@@ -53,8 +53,10 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   build tooling (`./gradlew test`, `npm run build`), **it** chose to run that, with those args
   — and it could just as easily hallucinate `rm -rf ~/*`. `pikuri-code`'s `Bash` wraps every
   spawned argv through `Bash::Sandbox::Bubblewrap` by default, which blocks exactly that plus
-  reads of files it shouldn't touch. It does *not* block network egress (that would break
-  `git` and package managers) — see Non-goals. See {Pikuri::Code::Bash::Sandbox}.
+  reads of files it shouldn't touch, and withholds the environment variables you exported
+  except paths, the shell's own and build-tool options (`D_sandbox_env_wall`), so a token in
+  your shell stays out. It does *not* block network egress (that would break `git` and package
+  managers) — see Non-goals. See {Pikuri::Code::Bash::Sandbox}.
 - **MCP server processes — don't trust → Docker.** The `mcp` gem spawns stdio MCPs as raw
   subprocesses; pikuri does not sandbox them. An MCP whose code calls `os.system('rm -rf')` is
   unstoppable at the pikuri layer. Run untrusted MCPs in a Docker container — most are Node /

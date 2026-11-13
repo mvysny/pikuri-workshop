@@ -42,6 +42,12 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
       assert described_class.egress?
       refute described_class.confined_to_workspace?
     end
+
+    it 'passes the environment whole: no filesystem walls, so no environment walls' do
+      delta = { 'GIT_CONFIG_COUNT' => '1' }
+      assert_same delta, described_class.env(delta)
+      assert_empty described_class.withheld_env_names
+    end
   end
 
   describe described_class::Bubblewrap do
@@ -391,6 +397,60 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
 
         assert result.status.success?, "spawn failed: #{result.output}"
         assert_includes result.output, 'sandboxed'
+      end
+
+      describe 'the environment wall' do
+        # Every process the sandbox can see, and its environment block: the
+        # token must be in none of them — bwrap's own pid 1 included, which
+        # is where --clearenv would leave it.
+        let(:probe) do
+          'echo "own=${PIKURI_SPEC_TOKEN:-unset} path=$PIKURI_SPEC_DIR pass=${PIKURI_SPEC_PASS:-unset}"; ' \
+            'for p in /proc/[0-9]*; do tr "\0" "\n" < $p/environ 2>/dev/null | ' \
+            'grep -q PIKURI_SPEC_TOKEN && echo "leak in $p"; done; true'
+        end
+
+        before do
+          ENV['PIKURI_SPEC_TOKEN'] = 'ghp_not_a_real_token'
+          ENV['PIKURI_SPEC_DIR']   = '/usr/lib'
+          ENV['PIKURI_SPEC_PASS']  = 'license-server:27000'
+        end
+
+        after do
+          %w[PIKURI_SPEC_TOKEN PIKURI_SPEC_DIR PIKURI_SPEC_PASS].each { |k| ENV.delete(k) }
+        end
+
+        def run_walled(sandbox, delta = {})
+          argv = sandbox.wrap(['bash', '-c', probe])
+          Pikuri::Subprocess.spawn(*argv, chdir: root.to_s, env: sandbox.env(delta)).wait.output
+        end
+
+        it 'withholds a token from the command and from every process it can see' do
+          out = run_walled(described_class.new(filesystem: filesystem))
+
+          assert_includes out, 'own=unset'
+          refute_includes out, 'leak in'
+        end
+
+        it 'passes a path-valued variable and a name the user let through' do
+          out = run_walled(described_class.new(filesystem: filesystem, pass_env: ['PIKURI_SPEC_PASS']))
+
+          assert_includes out, 'path=/usr/lib'
+          assert_includes out, 'pass=license-server:27000'
+        end
+
+        it "lets the caller's own delta win over the wall" do
+          out = run_walled(described_class.new(filesystem: filesystem), 'PIKURI_SPEC_TOKEN' => 'set-by-pikuri')
+
+          assert_includes out, 'own=set-by-pikuri'
+        end
+
+        it 'reports withheld names, never values' do
+          names = described_class.new(filesystem: filesystem).withheld_env_names
+
+          assert_includes names, 'PIKURI_SPEC_TOKEN'
+          refute_includes names, 'PIKURI_SPEC_DIR'
+          refute_includes names, 'PATH'
+        end
       end
 
       it 'end-to-end: the sandbox cannot see paths outside the workspace' do

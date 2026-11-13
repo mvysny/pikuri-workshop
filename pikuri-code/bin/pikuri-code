@@ -345,8 +345,18 @@ code_passive_detector = confirm_enabled ? Pikuri::Code::Bash::PassiveCommandDete
 # kernel lacks user-namespace support — fail-loud, so a host that
 # expects the sandbox doesn't silently run without one. Disable with
 # --no-sandbox / --yolo.
+#
+# The environment is walled like the filesystem: bash sees PATH, HOME,
+# the locale, path-valued variables and known build-tool options, and
+# nothing else you exported (a token in your shell stays out). A build
+# that needs another variable gets it through `sandbox_env:` in the
+# config file, e.g. `sandbox_env: [ACME_LICENSE_SERVER]`; the banner
+# lists what is withheld.
 sandbox = if sandbox_enabled
-            Pikuri::Code::Bash::Sandbox::Bubblewrap.new(filesystem: filesystem)
+            Pikuri::Code::Bash::Sandbox::Bubblewrap.new(
+              filesystem: filesystem,
+              pass_env: Array(examples_config['sandbox_env'])
+            )
           else
             Pikuri::Code::Bash::Sandbox::NONE
           end
@@ -598,6 +608,11 @@ begin
   unless command_registry.empty?
     names = command_registry.list.map { |cmd| "/#{cmd.name}#{cmd.refused? ? ' (unavailable)' : ''}" }
     puts "Loaded #{command_registry.list.size} command(s): #{names.sort.join(', ')}."
+  end
+  withheld = Pikuri::Code::Bash.withheld_env_names(sandbox: sandbox, filesystem: filesystem)
+  unless withheld.empty?
+    puts "The sandbox withholds #{withheld.size} environment variable(s) from bash: " \
+         "#{withheld.join(', ')}. To pass one, list it under sandbox_env: in #{examples_config_path}."
   end
   # Print reduced-safety status only when a layer is off. Silent at
   # defaults; loud when something the user might want to know about has

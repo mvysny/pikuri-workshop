@@ -25,6 +25,21 @@ module Pikuri
       # overlay/concurrency reasoning, and which to pick — is in
       # +pikuri-code/design/architecture.md+.
       #
+      # == The environment
+      #
+      # A sandbox also owns the subprocess's *environment*, through
+      # +#env(delta) → Hash+: given the delta the caller means to spawn with
+      # (de-bundlerizing, git hardening), it returns the delta actually
+      # spawned. {NONE} and {FullFsNoNet} return it unchanged — they wall off no
+      # part of the filesystem, so filtering variables there would hide a token
+      # whose file is readable anyway. {Bubblewrap} adds a +nil+ (Ruby's spawn
+      # unsets it) for every inherited variable its {EnvWall} withholds, so the
+      # environment gets the same wall as the filesystem. Caller-set entries
+      # always win: they are pikuri's own deliberate settings, not ambient
+      # inheritance. +#withheld_env_names+ reports what is withheld, by name,
+      # so the model and the user can see why a build lacks a variable. See
+      # +design/decisions.md+ +D_sandbox_env_wall+.
+      #
       # == Posture predicates
       #
       # A sandbox also answers two questions about itself, which is how {Bash}
@@ -85,6 +100,14 @@ module Pikuri
           # @return [Boolean] +false+ — an unwrapped command has the host's
           #   whole filesystem, whatever the workspace was scoped to
           def self.confined_to_workspace? = false
+
+          # @param delta [Hash{String => String, nil}]
+          # @return [Hash{String => String, nil}] +delta+ unchanged — no walls,
+          #   so the environment passes whole
+          def self.env(delta) = delta
+
+          # @return [Array<String>] +[]+
+          def self.withheld_env_names = []
         end
 
         # Bubblewrap (+bwrap+(1)) filesystem sandbox for the bash subprocess:
@@ -127,6 +150,16 @@ module Pikuri
         # *kept* shared because bash routinely needs +git pull+/+mvn+/+gem
         # install+/+curl+. +--die-with-parent --new-session+: dies with pikuri,
         # own session group (no terminal-control bleed).
+        #
+        # == The environment
+        #
+        # Walled too, by {EnvWall}: {#env} unsets every inherited variable the
+        # wall withholds, in the environment +bwrap+ *itself* is spawned with.
+        # Not +--clearenv+: that empties the child's environment but leaves the
+        # secret in +bwrap+'s own start-up block, which the sandbox reads back
+        # as +/proc/1/environ+ (measured). The unshared PID namespace is what
+        # makes the wall real — pikuri's own +/proc/<pid>/environ+ is out of
+        # sight.
         #
         # Blast-radius containment, *not* a malware boundary — the non-defenses
         # (project source, poisoned deps, network exfil) and the container-as-
@@ -203,8 +236,11 @@ module Pikuri
           #   contains a {DENIED_CONTAINER_SOCKETS} entry, or if +bwrap+ is
           #   missing / fails its basic probe. A *separate* overlayfs probe
           #   failure does NOT raise — it degrades to read-only binds.
-          def initialize(filesystem:)
+          # @param pass_env [Array<String>] variable names to let through the
+          #   {EnvWall} whatever their value, e.g. +["ACME_LICENSE_SERVER"]+.
+          def initialize(filesystem:, pass_env: [])
             @filesystem = filesystem
+            @env_wall = EnvWall.new(pass: pass_env)
             reject_unbounded_workspace!
             reject_unaliased_temp!
             reject_container_socket_exposure!
@@ -217,6 +253,25 @@ module Pikuri
           #   +argv+, ready for {Pikuri::Subprocess.spawn}.
           def wrap(argv)
             [BWRAP_BINARY, *bwrap_args, *argv]
+          end
+
+          # The spawn delta with the environment walled: every inherited
+          # variable {EnvWall} withholds becomes +nil+ (unset), unless +delta+
+          # sets it itself. Reads +ENV+ per call, so it walls what the process
+          # holds now.
+          #
+          # @param delta [Hash{String => String, nil}] the caller's own
+          #   environment changes; they win over the wall.
+          # @return [Hash{String => String, nil}] the delta to spawn +bwrap+ with
+          def env(delta)
+            withheld = @env_wall.withheld(ENV.to_h).reject { |name| delta.key?(name) }
+            withheld.to_h { |name| [name, nil] }.merge(delta)
+          end
+
+          # @return [Array<String>] the names of the inherited variables the
+          #   wall withholds right now, sorted; values never leave this object
+          def withheld_env_names
+            @env_wall.withheld(ENV.to_h)
           end
 
           # @return [Boolean] +true+ — this sandbox contains the filesystem but
@@ -552,6 +607,18 @@ module Pikuri
           # @return [Boolean] +false+ — +--dev-bind / /+ hands the subprocess
           #   the whole real root, whatever the workspace was scoped to
           def confined_to_workspace? = false
+
+          # The environment passes whole: the full-root bind walls off no file,
+          # so a token withheld here would sit beside the readable file it came
+          # from, and pikuri's own +/proc/<pid>/environ+ is visible anyway (PID
+          # is shared). The severed network is this sandbox's wall.
+          #
+          # @param delta [Hash{String => String, nil}]
+          # @return [Hash{String => String, nil}] +delta+ unchanged
+          def env(delta) = delta
+
+          # @return [Array<String>] +[]+
+          def withheld_env_names = []
 
           private
 

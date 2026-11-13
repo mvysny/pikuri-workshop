@@ -64,7 +64,7 @@ module Pikuri
         - Always cloned with `--depth 1 --no-recurse-submodules`; you get the current tip, no history, no submodules.
         - Target directory name is derived from the URL's last segment (without `.git`). If that directory already exists, the call fails — pick a different URL or work with what you cloned.
         - On success returns the relative path to the cloned repo; use `file_list`, `read`, `grep`, `glob` to navigate it.
-        - Clones run inside a sandbox bound to your workspace — host files, SSH keys, and `~/.gitconfig` are NOT visible to the cloned repo's hooks/filters.
+        - Clones run inside a sandbox bound to your workspace — host files, SSH keys, `~/.gitconfig` and the host's tokens in environment variables are NOT visible to the cloned repo's hooks/filters.
       DESC
 
       # @param filesystem [Pikuri::Workspace::Filesystem] captured for
@@ -135,7 +135,10 @@ module Pikuri
           'git', 'clone', '--depth', '1', '--no-recurse-submodules', '--quiet',
           '--', url, target_name
         ])
-        result = Pikuri::Subprocess.spawn(*argv, chdir: @filesystem.project_root.to_s).wait
+        # The environment is walled like the filesystem: a cloned repo's
+        # filters run here and must not read the host's tokens either.
+        result = Pikuri::Subprocess.spawn(*argv, chdir: @filesystem.project_root.to_s,
+                                                 env: sandbox.env({})).wait
 
         if result.status.success?
           Pikuri::Tool::Result.new(

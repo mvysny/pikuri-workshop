@@ -126,6 +126,11 @@ What the done chapters changed beyond their text:
   over docker, adds `--cap-drop=all --security-opt=no-new-privileges --read-only`, and catches
   `InjectionDetected`. New section "What the box can reach": the whole internet, the host's
   non-loopback services, the LAN (llama-server included); the VM is the wall.
+- **Shell, again (found auditing MCPs revisited):** sandboxed `bash` inherited every exported
+  variable, so a token in your shell was one `env | curl` away. `D_sandbox_env_wall`:
+  `Sandbox::EnvWall` withholds all but the baseline, build-tool options, path-valued variables
+  and `sandbox_env:` names; `git_clone` too; the tool description and the banner name what is
+  withheld. `shell.md` gained "The environment, walled too".
 
 ### Carried forward
 
@@ -135,13 +140,24 @@ What the done chapters changed beyond their text:
 - **First MCP server, the rejection path.** `bin/pikuri-openlibrary`'s new
   `InjectionDetected` rescue never fired in a run (the real server passes). A spec-support
   server with a poisoned description would exercise it.
-- **MCPs revisited (next).** Opens with ordinals ("[8](code.md) and [9](security-revisited.md)"),
+- **MCPs revisited (next), audited.** The GitHub recipe exports the PAT and puts it in argv:
+  it lands in the INFO audit line and `ps`. Fix: a `github_token:` config key, `env:` on the
+  entry, `-e GITHUB_PERSONAL_ACCESS_TOKEN` by name, `private: true`; `bin/pikuri-code`'s
+  commented examples (`ENV.fetch('HUBSPOT_TOKEN')`) too. Other findings: the npx recipe's
+  phantom `~/.npm` mount, Playwright's per-spawn `npx`, unpinned GitHub image, `node:20` past
+  EOL, the Playwright networking section written for slirp4netns, the Docker-in-Docker caveat
+  vs. the VM promise, "What's next" → Skills. Egress: text plus `--network=none` for the
+  bind-mount-only case. Running it needs a PAT and the image pulls (owner's go-ahead pending).
+  Also: opens with ordinals ("[8](code.md) and [9](security-revisited.md)"),
   which the book bans, and calls the coding-agent chapters prerequisites; it wires the GitHub
   MCP into `pikuri-code`, which the bare-first plan allows. Every `docker run`/`build` there
   becomes podman-first, with the cheap flags `mcp.md` introduced. It now owns the promised
   egress question: `mcp.md` defers narrowing a server to its one host (an egress proxy) to it,
   so either do it or say why not. Its "Wrapping pikuri in Docker" caveat links the anchor
   pikuri holds (see the climax note).
+- **pikuri's "Environment is not a secret store"** still holds (pikuri filters nothing), but
+  its one line could point at `pikuri-workshop:D_sandbox_env_wall` for where clearing does
+  happen. A pikuri-side edit.
 - **pikuri's `security.md:167`** says "the Verifier you already met in the MCP chapter", but
   pikuri's readers reach `mcp.md` after it. A pikuri-side fix.
 - **The coding agent, completed.** `code.md`'s wiring block is stale: it shows `add_tool` per

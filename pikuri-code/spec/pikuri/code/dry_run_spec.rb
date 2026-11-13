@@ -29,6 +29,8 @@ RSpec.describe 'trifecta dry run: pikuri-code' do
       def self.wrap(argv) = argv
       def self.egress? = true
       def self.confined_to_workspace? = true
+      def self.env(delta) = delta
+      def self.withheld_env_names = []
     end
   end
 

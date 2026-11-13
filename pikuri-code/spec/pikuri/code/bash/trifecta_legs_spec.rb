@@ -30,6 +30,8 @@ RSpec.describe 'Bash trifecta legs' do
         def self.wrap(argv) = argv
         def self.egress? = false
         def self.confined_to_workspace? = true
+        def self.env(delta) = delta
+        def self.withheld_env_names = []
       end
       assert_equal :no_egress, bash(sandbox: severed).trifecta_legs.egress_payload_review
     end
@@ -51,6 +53,8 @@ RSpec.describe 'Bash trifecta legs' do
         def self.wrap(argv) = argv
         def self.egress? = true
         def self.confined_to_workspace? = true
+        def self.env(delta) = delta
+        def self.withheld_env_names = []
       end
       assert_equal :none, bash(sandbox: confined, trusted: true).trifecta_legs.untrusted
       assert_equal :hard, bash(sandbox: confined).trifecta_legs.untrusted

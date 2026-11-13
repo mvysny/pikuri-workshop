@@ -27,8 +27,11 @@ module Pikuri
     # coreutils handles the SIGTERM-then-SIGKILL race (Ruby's +Timeout.timeout+
     # can't reliably kill subprocesses); +--kill-after=5s+ gives 5s to handle
     # SIGTERM before SIGKILL. The environment is de-bundlerized first, or a
-    # +bundle exec+ against another project would pick up *pikuri's* Gemfile.
-    # See {.subprocess_env} and {Pikuri::BundlerEnv}.
+    # +bundle exec+ against another project would pick up *pikuri's* Gemfile
+    # (see {.subprocess_env} and {Pikuri::BundlerEnv}), then handed to the
+    # sandbox's +#env+, which walls off the inherited variables a walled
+    # sandbox withholds. The withheld *names* are listed in the tool
+    # description, so a build that fails for want of one is explicable.
     #
     # == Timeout detection
     #
@@ -111,6 +114,10 @@ module Pikuri
       # @return [Integer] bytes preserved from the end of the output.
       OUTPUT_TAIL = 15 * 1024
 
+      # @return [Integer] most withheld variable names the description lists;
+      #   a desktop session withholds a few dozen, and the rest are counted.
+      MAX_WITHHELD_LISTED = 40
+
       # Description shown to the LLM. opencode-shape: summary + +Usage:+
       # bullets. Per-parameter constraints (default, max) live in the
       # parameter descriptions.
@@ -171,7 +178,7 @@ module Pikuri
         end
         super(
           name: 'bash',
-          description: DESCRIPTION,
+          description: DESCRIPTION.sub("# Git\n", "#{Bash.send(:withheld_env_note, sandbox, filesystem)}# Git\n"),
           parameters: Parameters.build { |p|
             p.required_string :command,
                               'Bash command to execute. Multi-line is fine. ' \
@@ -251,7 +258,7 @@ module Pikuri
           'bash', '-c', command
         ])
         result = Pikuri::Subprocess.spawn(*argv, chdir: filesystem.project_root.to_s,
-                                                 env: subprocess_env(filesystem)).wait
+                                                 env: sandbox.env(subprocess_env(filesystem))).wait
 
         output = truncate(result.output)
         exit_code = result.status.exitstatus
@@ -305,6 +312,36 @@ module Pikuri
         Pikuri::BundlerEnv.clean_delta.merge(git_hardening_delta).merge(filesystem.env)
       end
       private_class_method :subprocess_env
+
+      # The inherited variables a bash command under +sandbox+ won't see, by
+      # name. Names pikuri sets or unsets itself ({.subprocess_env}: Bundler's
+      # leftovers, git hardening) are not "withheld" and are left out. +[]+
+      # when nothing is withheld ({Sandbox::NONE}, {Sandbox::FullFsNoNet}).
+      #
+      # @param sandbox [Code::Bash::Sandbox]
+      # @param filesystem [Pikuri::Workspace::Filesystem]
+      # @return [Array<String>] sorted names; values never leave the sandbox
+      def self.withheld_env_names(sandbox:, filesystem:)
+        sandbox.withheld_env_names - subprocess_env(filesystem).keys
+      end
+
+      # The description's bullet naming {.withheld_env_names}, so the model can
+      # tell the user which variable a failing build lacks.
+      #
+      # @param sandbox [Code::Bash::Sandbox]
+      # @param filesystem [Pikuri::Workspace::Filesystem]
+      # @return [String] a bullet line ending in a newline, or +""+
+      def self.withheld_env_note(sandbox, filesystem)
+        names = withheld_env_names(sandbox: sandbox, filesystem: filesystem)
+        return '' if names.empty?
+
+        listed = names.first(MAX_WITHHELD_LISTED).join(', ')
+        listed += " and #{names.size - MAX_WITHHELD_LISTED} more" if names.size > MAX_WITHHELD_LISTED
+        '- The sandbox withholds these host environment variables from your commands ' \
+          "(names only; their values never reach the sandbox): #{listed}. If a command " \
+          "fails for want of one, tell the user its name; they can let it through.\n"
+      end
+      private_class_method :withheld_env_note
 
       # Emit {GIT_HARDENING} as a +GIT_CONFIG_COUNT+ / +GIT_CONFIG_KEY_<n>+ /
       # +GIT_CONFIG_VALUE_<n>+ env delta. This protocol has the same top
