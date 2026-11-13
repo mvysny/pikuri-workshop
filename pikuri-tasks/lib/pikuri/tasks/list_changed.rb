@@ -13,6 +13,21 @@ module Pikuri
     # diff event-by-event. Fired on the agent's thread — a listener
     # feeding another thread serializes inside +on_event+ and hands off
     # only the immutable result (see {List}'s thread-confinement note).
-    ListChanged = Data.define(:items)
+    #
+    # A terminal that renders unknown events through +to_s+ prints:
+    #
+    #   · tasks: 1/3 done, now: write the spec
+    #   · tasks: none                              (after a /clear)
+    ListChanged = Data.define(:items) do
+      # @return [String] the done count and the task in progress, one line
+      def to_s
+        return 'tasks: none' if items.empty?
+
+        done = items.count { |item| item.status == 'completed' }
+        current = items.find { |item| item.status == 'in_progress' }
+        line = "tasks: #{done}/#{items.size} done"
+        current ? "#{line}, now: #{current.content}" : line
+      end
+    end
   end
 end

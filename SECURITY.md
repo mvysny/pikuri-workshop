@@ -62,17 +62,22 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   Behind that, Bubblewrap withholds inherited variables except paths, the shell's own and
   build-tool options, so a token you missed doesn't reach sandboxed `bash`; the banner lists
   what it withheld (`D_sandbox_env_wall`).
-- **MCP server processes — don't trust → Docker.** The `mcp` gem spawns stdio MCPs as raw
+- **MCP server processes — don't trust → a container.** The `mcp` gem spawns stdio MCPs as raw
   subprocesses; pikuri does not sandbox them. An MCP whose code calls `os.system('rm -rf')` is
-  unstoppable at the pikuri layer. Run untrusted MCPs in a Docker container — most are Node /
-  Python and containerize trivially.
+  unstoppable at the pikuri layer. Run untrusted MCPs in a podman (or rootless Docker)
+  container — most are Node / Python and containerize trivially — and narrow one that holds a
+  token to its one host with `pikuri-mcp/containers/mcp-egress-proxy.Containerfile`
+  (`book/mcp-revisited.md`).
 - **Skills — text, not code, until they ship scripts.** Skills are Markdown + YAML frontmatter
   the user dropped under `.pikuri/skills/` / `.claude/skills/` / `.agents/skills/`. They
   don't execute; they're prompts, and a script a skill ships runs only through `bash`. Treat a
   skill that arrived with a repo like any other source you'd `git clone` — read before you
   trust — because pikuri assumes you haven't: it counts as attacker-authored in the boot
   advisory unless you say otherwise, which is what `pikuri-code` asks when it asks whether you
-  wrote the files under this directory yourself. Your own `~/.claude/skills` needs no such
+  wrote the files under this directory yourself. It asks only when every project bundle file
+  matches a commit: the agent can create a project skill without a prompt, so an untracked or
+  changed one, or a project outside git, counts as attacker-authored without the question
+  (`Pikuri::Bundle::Unreviewed`). Your own `~/.claude/skills` needs no such
   question: the agent cannot write there (skill dirs are readable, never writable, and
   sandboxed `bash` only ever writes to a throwaway overlay). Turn off *both* the sandbox and
   confirmation and that stops being true, so those modes stop vouching for it.

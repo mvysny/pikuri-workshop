@@ -1,8 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite at five of ten chapters (shell,
-OS assistant, memories, first MCP server, MCPs revisited). Next: Skills, still a stub** (see
-"Carried forward" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite at six of ten chapters (shell,
+OS assistant, memories, first MCP server, MCPs revisited, skills). Next: the wire chapter**
+(see "Carried forward" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -105,7 +105,7 @@ Habits that paid off on the first three chapters:
 | 3 | Memories | `memories.md` | done, `7932dc7`; end-to-end recall untested |
 | 4 | Your first MCP server | `mcp.md` | done; verifier rejection path untested |
 | 5 | MCPs revisited | `mcp-revisited.md` | done; headed Playwright vs. a desktop, dummy iface, docker untested |
-| 6 | Skills | `skills.md` | — |
+| 6 | Skills | `skills.md` | done; the TTY trust prompt after a clean git check untested |
 | 7 | The wire | `wire.md` | — |
 | 8 | Language intelligence | `lsp.md` | — |
 | 9 | Task tracking | `tasks.md` | — |
@@ -139,7 +139,15 @@ What the done chapters changed beyond their text:
   vendor image with Chromium's sandbox back on (`--cap-add=SYS_CHROOT` + `--sandbox`, checked
   at `chrome://sandbox`). The bin's MCP examples and `pikuri-mcp/README.md` lost bare `npx`.
 
-Habits added by this chapter: a host's AppArmor profile attaches by path inside a rootless
+- **Skills:** de-stubbed around the owner's real `cop` skill. Measured: a model-invoked `lol`
+  never fires (three runs), typed `/lol` does. `bin/pikuri-code` gained `/clear` (MCP
+  connections and plan mode survive it), and a git check before the trust question: project
+  bundle files not matching `HEAD` (or no git) grade the project untrusted unasked, via new
+  `Pikuri::Bundle::Unreviewed` (hash-object `--no-filters`; `git status` ran a repo's clean
+  filter in the run). `Tasks::ListChanged#to_s` stops the raw-event print. New section "What a
+  skill can reach, and where it stops".
+
+Habits added by the MCPs revisited chapter: a host's AppArmor profile attaches by path inside a rootless
 container (Ubuntu's tinyproxy profile blocked the config and every signal, so `podman rm -f`
 hung; `journalctl -k | grep apparmor` found it). Under pasta the host's LAN IP is the
 container's own; reach the host as `host.containers.internal`. Podman's `--read-only` already
@@ -158,6 +166,9 @@ mounts tmpfs on `/tmp`; `--tmpfs /tmp` stays for docker.
   dev-server recipe (needs sudo); every recipe under docker (run on podman 5.7 only). The
   chapter says so in place. Its "Wrapping pikuri in Docker" link keeps the anchor pikuri holds
   (see the climax note).
+- **`/clear` and MCP.** `Mcp::Extension` has no `on_conversation_reset`, so servers the model
+  `mcp_connect`ed stay active after a `/clear` while the conversation forgot connecting. Harmless
+  so far; decide when the climax accounts for `pikuri-code`'s wiring.
 - **pikuri's "Environment is not a secret store"** still holds (pikuri filters nothing), but
   its one line could point at `pikuri-workshop:D_sandbox_env_wall` for where clearing does
   happen. A pikuri-side edit.

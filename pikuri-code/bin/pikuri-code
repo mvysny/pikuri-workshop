@@ -176,11 +176,30 @@ private_repo =
 # somebody else's bytes and its :hard leg is correct. The catalog reached
 # .pikuri/skills under this root and nothing else, so its :none is correct
 # too. Same question, two reachable sets, two honest answers.
-project_ships_bundles = [Pikuri::Skill::Catalog::Bundled, Pikuri::Command::Registry].any? do |scanner|
-  !scanner.new(search_bases: [project_root]).empty?
+#
+# Before asking, git gets the first word. The agent's own write tool creates
+# a new .claude/skills/x/SKILL.md without a prompt, and the next session
+# would load it; "did you write these?" invites a yes that would vouch for
+# it. So a bundle file no commit vouches for (untracked, ignored, changed
+# since HEAD), or a project outside git, makes the project untrusted without
+# the question: committing is how you say you reviewed what is there.
+project_scanners = [Pikuri::Skill::Catalog::Bundled, Pikuri::Command::Registry].map do |scanner|
+  scanner.new(search_bases: [project_root])
+end
+project_ships_bundles = project_scanners.any? { |scanner| !scanner.empty? }
+unreviewed_bundles =
+  project_ships_bundles ? Pikuri::Bundle::Unreviewed.files(repo: project_root, roots: project_scanners.flat_map(&:roots)) : []
+if unreviewed_bundles.nil?
+  puts 'This project is not a git repository, so its skills and commands count as untrusted: ' \
+       'there is no commit to review them against.'
+elsif !unreviewed_bundles.empty?
+  listed = unreviewed_bundles.first(8).join(', ')
+  listed += " and #{unreviewed_bundles.size - 8} more" if unreviewed_bundles.size > 8
+  puts "These skill and command files match no commit, so this project's bundles count as untrusted " \
+       "(an agent may have written them; review and commit them to vouch for them): #{listed}."
 end
 repo_sources_are_mine =
-  project_ships_bundles && confirm_enabled && $stdin.tty? &&
+  project_ships_bundles && unreviewed_bundles&.empty? && confirm_enabled && $stdin.tty? &&
   Pikuri::Workspace::Confirmer::Terminal.new.confirm?(
     request: Pikuri::Workspace::Confirmer::Request.new(
       question: 'Did you write the files under this directory yourself?',
@@ -624,7 +643,7 @@ begin
   puts agent.trifecta.render
   puts
   puts "Pikuri Coding Agent. Working in #{filesystem.project_root}. Press Ctrl+C or Ctrl+D to quit."
-  puts 'Type /plan to enter plan mode (read-only research + design), /impl to leave.'
+  puts 'Type /plan to enter plan mode (read-only research + design), /impl to leave; /clear starts over.'
   puts 'Trusted repo: read-only git (status/diff/log/show/…) runs without confirmation.' if trusted_repo
   context_paths.each { |path| puts "Loaded context from #{path}." }
   unless skill_catalog.empty?
@@ -663,14 +682,17 @@ begin
     message = line.chomp
     next if message.strip.empty?
 
-    # Host-side plan-mode toggle. These flip the shared read-only flag
-    # directly and are NOT sent to the LLM; Code::Extension emits a
-    # PlanModeChanged event on the flip, which the Terminal listener
-    # renders (so no puts here). activate!/deactivate! are idempotent,
-    # so a repeat is a silent no-op.
+    # Host built-ins, never sent to the LLM. /plan and /impl flip the shared
+    # read-only flag; Code::Extension emits a PlanModeChanged event on the
+    # flip, which the Terminal listener renders (so no puts here), and
+    # activate!/deactivate! are idempotent, so a repeat is a silent no-op.
+    # /clear empties the conversation but keeps the wiring: the task list,
+    # the read-before-edit marks and every fired paths: skill reset with it,
+    # while plan mode and the MCP servers already connected stay as they are.
     case message.strip.downcase
-    when '/plan' then read_only.activate!;   next
-    when '/impl' then read_only.deactivate!; next
+    when '/plan'  then read_only.activate!;   next
+    when '/impl'  then read_only.deactivate!; next
+    when '/clear' then agent.clear_conversation; next
     end
 
     # Slash commands, resolved *after* the built-ins above: a cloned repo

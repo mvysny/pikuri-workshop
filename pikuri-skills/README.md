@@ -19,6 +19,9 @@ Provides:
   from `.pikuri/commands` and `.claude/commands` under the same search
   bases. Never shown to the model, so they cost nothing in the system
   prompt.
+- `Pikuri::Bundle::Unreviewed` — the bundle files under a project that
+  no git commit vouches for, so a host can grade a skill the agent may
+  have written itself as untrusted.
 
 ## Install
 
@@ -125,9 +128,8 @@ and dispatches a typed `/name`.
 
 - **Narrative walkthrough:**
   [the skills chapter of the pikuri guide](../book/skills.md) —
-  how skill folders are discovered, the `SKILL.md` format, and a
-  worked drop-in example. (Currently a stub chapter; the API
-  surface lives in the YARD docs below.)
+  how skill folders are discovered, why a skill needs a trigger,
+  writing a description that fires, and what a skill can reach.
 - **API reference:** browse the YARD docs at
   <https://rubydoc.info/gems/pikuri-skills> (once published), or
   run `bundle exec yard` in this directory for a local copy.
