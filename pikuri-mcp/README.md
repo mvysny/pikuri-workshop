@@ -54,16 +54,17 @@ end
 The extension's `configure` builds the shared `Mcp::Servers` (which
 eager-starts every configured server), appends `<available_mcps>` to
 the system prompt, and registers a close handler so the agent's
-`#close` tears down the MCP subprocesses. Its `bind(agent)` adds a
-per-agent `mcp_connect` tool — sub-agents share the live MCP clients
-via the same extension instance but each has its own connect tool +
-activation set.
+`#close` tears down the MCP subprocesses. Its `bind(ctx)` adds a
+per-agent `mcp_connect` tool with its own activation set. Sub-agents
+don't inherit extensions, so they get neither the servers nor
+`mcp_connect`.
 
 ## Further reading
 
 - **Narrative walkthrough:** [the MCP chapter of the guide](../book/mcp.md) is the gentle MCP intro — one
   low-stakes server in a locally-built container (run via
-  `bin/pikuri-openlibrary`), rootless Docker as the boundary, the
+  `bin/pikuri-openlibrary`), podman or rootless Docker as the boundary
+  and what that box can still reach, the
   verifier and synthesizer in depth.
   [The MCP-revisited chapter](../book/mcp-revisited.md) picks
   the thread back up at the harder end: the official GitHub MCP

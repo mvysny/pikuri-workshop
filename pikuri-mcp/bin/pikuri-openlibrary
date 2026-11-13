@@ -6,7 +6,8 @@
 # pikuri-mcp`. It is the worked example of book/mcp.md: a
 # minimal agent wired to exactly one MCP server — the community
 # Open Library catalogue reader (https://github.com/8enSmith/mcp-open-library)
-# running inside a locally-built Docker container.
+# running inside a locally-built container (podman when installed, else
+# docker).
 #
 # The registry below is HARDCODED on purpose. This binary exists so that
 # chapter's reader can watch the pikuri-mcp machinery fire end-to-end
@@ -20,14 +21,17 @@
 # (untrusted content) — two legs of the lethal trifecta. The third leg,
 # private data, is structurally absent: no files, no memory, no token,
 # nothing of yours is wired in, so a misbehaving server has nothing to
-# exfiltrate. Keep it that way — see book/security.md before
-# bolting more tools onto this agent.
+# exfiltrate. Keep it that way — pikuri's security chapter
+# (https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+# says why, before you bolt more tools onto this agent.
 #
-# Prerequisite: build the server image once (the chapter walks through
-# reading its source first):
+# Prerequisite: build the server image once, from a pinned checkout you
+# have read (the chapter walks through it):
 #
-#   git clone https://github.com/8enSmith/mcp-open-library
-#   cd mcp-open-library && docker build -t mcp-open-library .
+#   git clone --branch v1.2.6 https://github.com/8enSmith/mcp-open-library
+#   cd mcp-open-library
+#   podman build -f <workshop>/pikuri-mcp/containers/mcp-open-library.Containerfile \
+#                -t mcp-open-library:1.2.6 .
 #
 # Same Bundler bootstrap as the other bundled bins so callers don't need
 # the `bundle exec` ceremony.
@@ -43,7 +47,7 @@ require 'pikuri-mcp'
 
 # Example-only config: the LLM connection + provider API keys live verbatim
 # in a YAML file the user owns — no CLI flags, never the environment (see
-# AGENTS.md "Environment is not a secret store"). Shared by convention across
+# pikuri's AGENTS.md "Environment is not a secret store"). Shared by convention across
 # the example scripts; chmod 600 it. Absent file ⇒ {} ⇒ built-in defaults.
 examples_config_path = File.expand_path('~/.pikuri-examples-config.yaml')
 examples_config = File.exist?(examples_config_path) ? (YAML.safe_load_file(examples_config_path) || {}) : {}
@@ -80,19 +84,30 @@ cancel_flag = Pikuri::Agent::Control::Cancellable.new
 system_prompt = custom_prompt || Pikuri.prompts(:'pikuri-openlibrary', :'agent-loop')
 system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
 
-# The one hardcoded MCP server. The argv is the exact `docker run`
-# command the chapter smoke-tests by hand: `-i` keeps stdin open for the
-# JSON-RPC pipe, `--rm` deletes the container when the agent closes, and
-# `node ./build/index.js` overrides the image's default mcp-proxy
-# wrapper — pikuri speaks stdio directly, no HTTP proxy wanted. To
-# pikuri this is just a subprocess that speaks MCP; the container is the
-# isolation boundary around the server's 401-package npm dependency
-# tree.
+# Podman when installed: rootless and daemonless, so there is no socket for
+# any process in your account to ask for a root container. Docker otherwise.
+engine = %w[podman docker].find do |bin|
+  ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? { |dir| File.executable?(File.join(dir, bin)) }
+end
+abort 'Neither podman nor docker is on PATH; book/mcp.md says how to get one.' if engine.nil?
+
+image = 'mcp-open-library:1.2.6'
+
+# The one hardcoded MCP server. The argv is the exact `run` command the
+# chapter smoke-tests by hand: `-i` keeps stdin open for the JSON-RPC pipe,
+# `--rm` deletes the container when the agent closes. The next three take
+# away what the server never needs: every capability, any privilege gain
+# through setuid binaries, and a writable filesystem. The network stays
+# open: the server needs openlibrary.org, and this box can reach far more
+# than that (the chapter's "What the box can reach"). To pikuri this is just
+# a subprocess that speaks MCP; the container is the boundary around the
+# server's npm dependency tree.
 mcp_registry = Pikuri::Mcp::Registry.new(entries: [
   Pikuri::Mcp::Registry::StdioEntry.new(
     id:      'openlibrary',
-    command: ['docker', 'run', '-i', '--rm',
-              'mcp-open-library', 'node', './build/index.js']
+    command: [engine, 'run', '-i', '--rm',
+              '--cap-drop=all', '--security-opt=no-new-privileges', '--read-only',
+              image]
   )
 ])
 
@@ -151,6 +166,13 @@ begin
 rescue Pikuri::Agent::Control::Cancellable::Cancelled
   warn 'Cancelled during startup'
   exit 130
+rescue Pikuri::Mcp::Verifier::InjectionDetected => e
+  # A flagged server aborts the whole boot, not just that server: the
+  # Configurator has already run, and an agent missing the one server it
+  # exists for has nothing to do. Show what the model flagged.
+  warn 'The prompt-injection verifier rejected the Open Library MCP server:'
+  warn e.message
+  exit 1
 ensure
   trap('INT', prev_boot_trap || 'DEFAULT')
 end
@@ -160,16 +182,17 @@ end
 # so the first turn doesn't inherit a stale cancellation.
 cancel_flag.reset!
 
-# A spawn failure (missing image, docker not running) is logged as a
+# A spawn failure (missing image, no container engine) is logged as a
 # warning by Mcp::Servers and the server is skipped — the agent would
 # boot with no MCP tools at all, which defeats the whole demo. Fail
 # loud with the build hint instead.
 unless mcp_ext.servers.live_ids.include?('openlibrary')
   agent.close
+  containerfile = File.expand_path('../containers/mcp-open-library.Containerfile', __dir__)
   warn 'The Open Library MCP server failed to start (see the warning above).'
-  warn 'Is docker running, and did you build the server image? One-time setup:'
-  warn '  git clone https://github.com/8enSmith/mcp-open-library'
-  warn '  cd mcp-open-library && docker build -t mcp-open-library .'
+  warn "Did you build the #{image} image? One-time setup:"
+  warn '  git clone --branch v1.2.6 https://github.com/8enSmith/mcp-open-library'
+  warn "  cd mcp-open-library && #{engine} build -f #{containerfile} -t #{image} ."
   warn 'book/mcp.md is the full walkthrough.'
   exit 1
 end

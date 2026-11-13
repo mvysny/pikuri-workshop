@@ -9,11 +9,12 @@ homed elsewhere, and is deliberately **not** repeated here:
   per-agent activation, container isolation; and the *doesn't*-protect
   list: server execution, LLM-judge fallibility, token blast radius,
   plain HTTP, poisoned runtime responses) — is `book/mcp-revisited.md`.
-  The defense-kit synthesis is `book/security.md`; the shipped
-  defenses are `SECURITY.md`.
+  The defense-kit synthesis is pikuri's
+  [`book/security.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md);
+  the shipped defenses are `SECURITY.md`.
 - **The invariants** — the `Subprocess.spawn` stdio carve-out, why MCP
   tools bypass `Pikuri::Tool`, and the `env` credential channel — are
-  this gem's [`AGENTS.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/AGENTS.md) seams whose authoritative text lives in the
+  this gem's [`AGENTS.md`](../AGENTS.md) seams whose authoritative text lives in the
   {Pikuri::Mcp::Servers} / {Pikuri::Mcp::ClientWrapper} /
   {Pikuri::Mcp::Registry} YARD.
 

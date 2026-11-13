@@ -1,8 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite paused after three of ten
-chapters (shell, OS assistant, memories). Next: audit "Your first MCP server"** (see
-"Progress" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite at four of ten chapters (shell,
+OS assistant, memories, first MCP server). Next: audit "MCPs revisited"** (see "Progress"
+below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -88,7 +88,13 @@ Habits that paid off on the first three chapters:
 - **Prefer the book's own question over the old text.** "What can this cage reach, and
   where does it stop?" found the mem0 store's open network, which the chapter never asked.
 - **The dev box has no `socat`** and the llama.cpp router isn't always up: say what went
-  untested rather than skip the run.
+  untested rather than skip the run. The LLM URL is in `~/.pikuri-examples-config.yaml`, not
+  always `localhost:8080`.
+- **Podman over docker when installed**, in commands, chapters and bins (the owner's call);
+  docker stays the fallback.
+- **Read an upstream Dockerfile before building it.** Open Library's re-cloned `main` inside
+  the build, so "read the source, then build" was false; the workshop now ships its own
+  Containerfile.
 
 ## Progress
 
@@ -97,7 +103,7 @@ Habits that paid off on the first three chapters:
 | 1 | The shell and its cage | `shell.md` (from `code.md`'s first half, `os-assistant.md` Part 1 seams) | done, `828ad36` |
 | 2 | The OS assistant | `os-assistant.md` | done, `d660655` |
 | 3 | Memories | `memories.md` | done, `7932dc7`; end-to-end recall untested |
-| 4 | Your first MCP server | `mcp.md` | — |
+| 4 | Your first MCP server | `mcp.md` | done; verifier rejection path untested |
 | 5 | MCPs revisited | `mcp-revisited.md` | — |
 | 6 | Skills | `skills.md` | — |
 | 7 | The wire | `wire.md` | — |
@@ -105,7 +111,7 @@ Habits that paid off on the first three chapters:
 | 9 | Task tracking | `tasks.md` | — |
 | 10 | The coding agent, completed | `code.md` (rest), `security-revisited.md` | — |
 
-What the three done chapters changed beyond their text:
+What the done chapters changed beyond their text:
 
 - **Shell:** new `book/shell.md`; `code.md` lost its first half; `bin/pikuri-code` asks the
   skills trust question only when the project ships bundles, and points `--yolo` at a VM.
@@ -115,19 +121,29 @@ What the three done chapters changed beyond their text:
 - **Memories:** the mem0 stack has no route out (`internal: true` network, a socat
   `front-door`, `MEM0_TELEMETRY=false`), verified from inside the container; `Mem0Server`
   lost `container_router_url:` and `qdrant_port:`. New section "…and neither can the store".
+- **First MCP server:** new `pikuri-mcp/containers/mcp-open-library.Containerfile` (builds the
+  pinned v1.2.6 checkout; upstream's re-cloned `main`). `bin/pikuri-openlibrary` picks podman
+  over docker, adds `--cap-drop=all --security-opt=no-new-privileges --read-only`, and catches
+  `InjectionDetected`. New section "What the box can reach": the whole internet, the host's
+  non-loopback services, the LAN (llama-server included); the VM is the wall.
 
 ### Carried forward
 
 - **Memories, end to end.** Store-and-recall through the new network cut is untested: it needs
   `socat` on the host and the llama.cpp router up. Run `pikuri-memory/bin/pikuri-memory`, tell
   it a fact, quit, rerun, ask.
-- **Your first MCP server (next).** Already spotted: `mcp.md`'s opening assumes pikuri's old
-  order ("the security chapter explains why", "up to the memories chapter every tool … was
-  bundled"). Ask the book's question of its container too: what can the Open Library server
-  reach, and does it need more than that one host?
-- **MCPs revisited.** Opens with ordinals ("[8](code.md) and [9](security-revisited.md)"),
-  which the book bans; it wires the GitHub MCP into `pikuri-code`, which the bare-first plan
-  allows.
+- **First MCP server, the rejection path.** `bin/pikuri-openlibrary`'s new
+  `InjectionDetected` rescue never fired in a run (the real server passes). A spec-support
+  server with a poisoned description would exercise it.
+- **MCPs revisited (next).** Opens with ordinals ("[8](code.md) and [9](security-revisited.md)"),
+  which the book bans, and calls the coding-agent chapters prerequisites; it wires the GitHub
+  MCP into `pikuri-code`, which the bare-first plan allows. Every `docker run`/`build` there
+  becomes podman-first, with the cheap flags `mcp.md` introduced. It now owns the promised
+  egress question: `mcp.md` defers narrowing a server to its one host (an egress proxy) to it,
+  so either do it or say why not. Its "Wrapping pikuri in Docker" caveat links the anchor
+  pikuri holds (see the climax note).
+- **pikuri's `security.md:167`** says "the Verifier you already met in the MCP chapter", but
+  pikuri's readers reach `mcp.md` after it. A pikuri-side fix.
 - **The coding agent, completed.** `code.md`'s wiring block is stale: it shows `add_tool` per
   file tool and `Bash`, where the bin now uses `Workspace::Extension` + `Code::Extension`
   (which also adds `git_clone` and plan mode) plus `Command` and `Lsp`; "four extensions" and
