@@ -191,8 +191,9 @@ Consequences: no "route the container yourself" escape hatch (an
 internal network reaches nothing but the relay), and no published Qdrant
 port. The residual is the published API: unauthenticated
 (`AUTH_DISABLED`), so any local process that can reach the host's
-loopback — another user, or a sandboxed coding agent's `bash`, whose
-Bubblewrap cage shares the network — can read every memory. Closing it
+loopback — another user, any of yours, or a sandboxed coding agent's
+`bash` on a box without `pasta`, where its cage shares the host's loopback
+(`D_sandbox_own_loopback`) — can read every memory. Closing it
 means a unix-socket front door instead of a TCP port, which `Mem0Client`
 (Faraday over `Net::HTTP`) doesn't speak today.
 

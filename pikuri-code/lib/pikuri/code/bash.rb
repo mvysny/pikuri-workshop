@@ -178,7 +178,10 @@ module Pikuri
         end
         super(
           name: 'bash',
-          description: DESCRIPTION.sub("# Git\n", "#{Bash.send(:withheld_env_note, sandbox, filesystem)}# Git\n"),
+          description: DESCRIPTION.sub(
+            "# Git\n",
+            "#{Bash.send(:withheld_env_note, sandbox, filesystem)}#{Bash.send(:loopback_note, sandbox)}# Git\n"
+          ),
           parameters: Parameters.build { |p|
             p.required_string :command,
                               'Bash command to execute. Multi-line is fine. ' \
@@ -342,6 +345,25 @@ module Pikuri
           "fails for want of one, tell the user its name; they can let it through.\n"
       end
       private_class_method :withheld_env_note
+
+      # The description's bullet saying +localhost+ is the sandbox's own, so
+      # the model doesn't read a refused +curl localhost:3000+ as a dead
+      # server. Silent when the sandbox shares the host's loopback, or has no
+      # network to speak of.
+      #
+      # @param sandbox [Code::Bash::Sandbox]
+      # @return [String] a bullet line ending in a newline, or +""+
+      def self.loopback_note(sandbox)
+        ports = sandbox.host_loopback_ports
+        return '' if ports.nil? || !sandbox.egress?
+
+        forwarded = ports.empty? ? '' : " Only these ports reach this machine's own localhost: #{ports.join(', ')}."
+        '- Commands run in a network of their own: the internet and the LAN work, but `localhost` is ' \
+          "the sandbox's, not this machine's. A server you start inside one command is reachable from " \
+          "that same command; one already running on the machine is not.#{forwarded} If a task needs " \
+          "a service on this machine, tell the user its port; they can let it through.\n"
+      end
+      private_class_method :loopback_note
 
       # Emit {GIT_HARDENING} as a +GIT_CONFIG_COUNT+ / +GIT_CONFIG_KEY_<n>+ /
       # +GIT_CONFIG_VALUE_<n>+ env delta. This protocol has the same top

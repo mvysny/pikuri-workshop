@@ -395,7 +395,8 @@ drops the network cut, `--no-confirm` the gate, `--yolo` both. On your
 host, `--no-sandbox` turns this agent into the one the security chapter
 warned about: your whole disk, your untrusted logs, and now a way out.
 So the rule is [the shell chapter's](shell.md#where-the-cage-stops):
-**lifting the cage takes a VM.**
+**lifting the cage takes a VM**, and outside one the banner says so in
+red.
 
 Here that has a twist. Inside a VM, the OS assistant looks after the
 VM, not your machine — so a VM can't be how you *use* it, only how you

@@ -49,9 +49,13 @@ module Pikuri
       #
       # * +#egress?+ — can the wrapped command reach a network sink?
       # * +#confined_to_workspace?+ — does it see only the workspace?
+      # * +#host_loopback_ports+ — which of the host's +127.0.0.1+ ports can
+      #   it reach? +nil+ means all of them (the host's loopback *is* its
+      #   loopback), an array means only those. Feeds the tool description,
+      #   not the trifecta: a local service is a sink like any other.
       #
-      # Both are **conservative at the identity element**: {NONE} answers
-      # +true+/+false+ respectively, so a host that subclasses one of these
+      # All three are **conservative at the identity element**: {NONE} answers
+      # +true+/+false+/+nil+ respectively, so a host that subclasses one of these
       # (the {Bubblewrap} header invites it) inherits an answer that is wrong
       # only in the safe direction. A sandbox that could ever *degrade* to a
       # networked run rather than raising must answer +egress? == true+, and a
@@ -101,6 +105,9 @@ module Pikuri
           #   whole filesystem, whatever the workspace was scoped to
           def self.confined_to_workspace? = false
 
+          # @return [nil] the host's loopback is the command's loopback
+          def self.host_loopback_ports = nil
+
           # @param delta [Hash{String => String, nil}]
           # @return [Hash{String => String, nil}] +delta+ unchanged — no walls,
           #   so the environment passes whole
@@ -147,9 +154,34 @@ module Pikuri
         #
         # +--unshare-all --share-net+: PID/mount/IPC/user/UTS unshared (can't
         # see host processes, mount on the host, or ptrace); the network is
-        # *kept* shared because bash routinely needs +git pull+/+mvn+/+gem
+        # *kept* because bash routinely needs +git pull+/+mvn+/+gem
         # install+/+curl+. +--die-with-parent --new-session+: dies with pikuri,
         # own session group (no terminal-control bleed).
+        #
+        # == Its own loopback
+        #
+        # A shared network namespace shares loopback too, and loopback is where
+        # unauthenticated local services live: a web server's admin API, adb,
+        # a memory store, CUPS (measured: Caddy's admin API answered from
+        # inside). So when +pasta+(1) is installed, +bwrap+ runs inside a
+        # network namespace of its own that +pasta+ connects outward:
+        #
+        #   pasta --config-net … --tcp-ns none --map-host-loopback none -- bwrap …
+        #
+        # The internet and the LAN still work; +127.0.0.1+ is the sandbox's,
+        # so a server started inside one command is reachable from that
+        # command, and the host's are not, except +loopback_ports+ (+-T+). The
+        # host's own LAN address is shadowed by the namespace's copy, so a
+        # service on +0.0.0.0+ is cut as well. DNS goes through
+        # +--dns-forward+, since a +127.0.0.53+ resolver is loopback too. Without
+        # +pasta+ it logs a warning and keeps the shared namespace;
+        # {#host_loopback_ports} then answers +nil+.
+        #
+        # == Implementation details
+        #
+        # +pasta+ runs its command as root of a fresh user namespace, so
+        # +--uid+/+--gid+ put bash back under your ids; without them every tool
+        # sees uid 0 (measured). About 50 ms per command.
         #
         # == The environment
         #
@@ -185,6 +217,15 @@ module Pikuri
             /etc/localtime
             /etc/hosts
           ].freeze
+
+          # The +pasta+(1) binary (Debian/Ubuntu package +passt+), resolved on
+          # +PATH+.
+          PASTA_BINARY = 'pasta'
+
+          # The nameserver the sandbox's +resolv.conf+ names; +pasta+ forwards
+          # it to the host's first nameserver. Link-local, so it shadows
+          # nothing the namespace routes.
+          DNS_FORWARD = '169.254.1.53'
 
           # Container / VM control sockets that, if reachable from inside the
           # sandbox, give the bash subprocess a one-step path to
@@ -238,21 +279,36 @@ module Pikuri
           #   failure does NOT raise — it degrades to read-only binds.
           # @param pass_env [Array<String>] variable names to let through the
           #   {EnvWall} whatever their value, e.g. +["ACME_LICENSE_SERVER"]+.
-          def initialize(filesystem:, pass_env: [])
+          # @param loopback_ports [Array<Integer>] host +127.0.0.1+ TCP ports the
+          #   sandbox may still reach, e.g. +[3000]+ for a dev server you run;
+          #   moot without +pasta+, where every port is reachable.
+          # @param own_network [Boolean] +false+ keeps the shared namespace even
+          #   when +pasta+ is installed.
+          def initialize(filesystem:, pass_env: [], loopback_ports: [], own_network: true)
             @filesystem = filesystem
             @env_wall = EnvWall.new(pass: pass_env)
+            @loopback_ports = loopback_ports.map { |port| Integer(port) }.uniq.sort.freeze
             reject_unbounded_workspace!
             reject_unaliased_temp!
             reject_container_socket_exposure!
             check_bwrap!
+            @own_network = own_network && pasta_works?
           end
 
           # @param argv [Array<String>] the +timeout … bash -c <cmd>+ argv
           #   {Bash.run} would have spawned unmediated.
           # @return [Array<String>] +bwrap+ + isolation flags + bind-mounts +
-          #   +argv+, ready for {Pikuri::Subprocess.spawn}.
+          #   +argv+, behind +pasta+ when it runs, ready for
+          #   {Pikuri::Subprocess.spawn}.
           def wrap(argv)
-            [BWRAP_BINARY, *bwrap_args, *argv]
+            bwrap = [BWRAP_BINARY, *bwrap_args, *argv]
+            @own_network ? [*pasta_args, *bwrap] : bwrap
+          end
+
+          # @return [Array<Integer>, nil] the forwarded +loopback_ports+ when
+          #   the sandbox has its own network, +nil+ when it shares the host's
+          def host_loopback_ports
+            @own_network ? @loopback_ports : nil
           end
 
           # The spawn delta with the environment walled: every inherited
@@ -360,6 +416,59 @@ module Pikuri
                   'bubblewrap / pacman -S bubblewrap) or pass --no-sandbox.'
           end
 
+          # Probe the whole +pasta+ → +bwrap+ chain once. Missing or failing
+          # degrades to the shared namespace with a warning, never raises: the
+          # filesystem cage still holds, and +passt+ is not on every box.
+          #
+          # @return [Boolean] whether {#wrap} can run behind +pasta+
+          def pasta_works?
+            result = Pikuri::Subprocess.spawn(
+              *pasta_args, BWRAP_BINARY, '--unshare-all', '--share-net', '--ro-bind', '/', '/',
+              '--die-with-parent', '/bin/true', chdir: '/'
+            ).wait
+            return true if result.status.success?
+
+            warn_shared_loopback("pasta probe exit #{result.status.exitstatus}")
+          rescue Errno::ENOENT
+            warn_shared_loopback("'#{PASTA_BINARY}' not found on PATH; install passt")
+          end
+
+          # @param why [String]
+          # @return [false]
+          def warn_shared_loopback(why)
+            LOGGER.warn(
+              "#{why}: bash shares this machine's network namespace, so every service " \
+              "listening on its 127.0.0.1 (a web server's admin API, adb, a memory store) " \
+              'is reachable from the sandbox.'
+            )
+            false
+          end
+
+          # Inbound nothing, outbound everything but the host's loopback,
+          # except +loopback_ports+; DNS through {DNS_FORWARD}.
+          #
+          # @return [Array<String>]
+          def pasta_args
+            tcp_ns = @loopback_ports.empty? ? 'none' : @loopback_ports.join(',')
+            [PASTA_BINARY, '--config-net', '--quiet',
+             '--tcp-ports', 'none', '--udp-ports', 'none',
+             '--tcp-ns', tcp_ns, '--udp-ns', 'none',
+             '--map-host-loopback', 'none', '--dns-forward', DNS_FORWARD, '--']
+          end
+
+          # The host's +resolv.conf+ with its nameservers swapped for
+          # {DNS_FORWARD}, written under the workspace's internal temp. Written
+          # on every {#wrap}, like the overlay dirs, so a wiped temp recovers.
+          #
+          # @return [String] the file's path
+          def forwarded_resolv_conf
+            host = File.exist?('/etc/resolv.conf') ? File.read('/etc/resolv.conf') : ''
+            kept = host.lines.reject { |line| line.match?(/\A\s*nameserver\b/) }
+            path = @filesystem.internal_temp + 'resolv.conf'
+            File.write(path, ["nameserver #{DNS_FORWARD}\n", *kept].join)
+            path.to_s
+          end
+
           # Second-stage probe: overlayfs-in-userns needs Linux ≥ 5.11, which
           # the basic {#check_bwrap!} probe doesn't exercise. Unlike that one
           # this does NOT raise on failure — it logs a warning and returns
@@ -397,7 +506,9 @@ module Pikuri
             (SYSTEM_ROOTS + ETC_BASELINE).each do |p|
               next unless File.exist?(p)
               next if mounted.include?(p)
-              args.concat(['--ro-bind', p, p])
+
+              source = p == '/etc/resolv.conf' && @own_network ? forwarded_resolv_conf : p
+              args.concat(['--ro-bind', source, p])
               mounted << p
             end
 
@@ -442,6 +553,7 @@ module Pikuri
               '--die-with-parent', '--new-session',
               '--chdir', @filesystem.project_root.to_s
             ])
+            args.concat(['--uid', Process.uid.to_s, '--gid', Process.gid.to_s]) if @own_network
             args
           end
 
@@ -603,6 +715,10 @@ module Pikuri
           #
           # @return [Boolean]
           def egress? = false
+
+          # @return [Array<Integer>] +[]+ — an unshared network namespace has a
+          #   loopback of its own and no route to the host's
+          def host_loopback_ports = []
 
           # @return [Boolean] +false+ — +--dev-bind / /+ hands the subprocess
           #   the whole real root, whatever the workspace was scoped to

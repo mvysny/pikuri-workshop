@@ -105,12 +105,10 @@ approve prompts on that basis.
 
 ## Further reading
 
-- **Narrative walkthrough:** [the coding-agent chapter of the pikuri guide](../book/code.md) — the three new seams
-  (`Workspace` / `Confirmer` / `Sandbox`), the full wiring block
-  with all four extensions, the privilege-separated `FILE_MINER` and
-  `GIT_REPO_RESEARCHER` personas in action; the threat-model
-  accounting then continues in
-  [the security-revisited chapter](../book/security-revisited.md).
+- **Narrative walkthrough:** [the shell chapter](../book/shell.md) starts the agent bare (the
+  workspace, the cage, the human gate);
+  [the coding agent, completed](../book/code.md) shows the full wiring block and accounts for
+  what each defense buys and where it stops.
 - **API reference:** browse the YARD docs at
   <https://rubydoc.info/gems/pikuri-code> (once published), or run
   `bundle exec yard` in this directory for a local copy.

@@ -131,7 +131,7 @@ If you run `pikuri-code` inside a container instead of a VM, don't also run MCP 
 containers nested inside it: that takes the host's podman socket or a `--privileged` outer
 container, and either hands the agent your host. Lifting the cage is what a VM is for, and
 inside one, podman runs these recipes unchanged; see
-[the security-revisited chapter's "Wrapping pikuri in Docker"](security-revisited.md#wrapping-pikuri-in-docker).
+[the coding agent, completed](code.md#lifting-the-cage-the-outer-vm).
 
 ## Narrowing the box to one host
 
@@ -429,7 +429,7 @@ still needs scoping, since what the token can do doesn't depend on who wrote the
 
 ## Threat model: what `pikuri-mcp` actually protects against
 
-The same exercise the security-revisited chapter does for the coding agent, mapped onto the MCP
+The same exercise [the completed coding agent](code.md#the-accounting) does for the whole agent, mapped onto the MCP
 surface. [pikuri's security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
 is the synthesis behind it: the trifecta, the kit, the worked attacks.
 

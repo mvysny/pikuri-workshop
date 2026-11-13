@@ -9,10 +9,7 @@ out to make that safe. Each chapter says what its cage buys and where it stops.
 **This page is the running order.** Chapters are named, not numbered, and the sequence lives
 here and nowhere else.
 
-The book is being revisited chapter by chapter, in this order. Chapters past the shell
-chapter moved here from pikuri's book as they were, so their "What's next" links may still
-follow pikuri's old order. The book ends on the coding agent, completed, the way pikuri's ends
-on its secretary.
+The book ends on the coding agent, completed, the way pikuri ends on its secretary.
 
 ## Chapters
 
@@ -25,5 +22,4 @@ on its secretary.
 - [The messages array is not the prompt](wire.md) — what reaches the model, and what it drops.
 - [Language intelligence](lsp.md) — the questions grep cannot answer.
 - [Task tracking](tasks.md) — the agent's working memory on long work.
-- [The in-repo coding agent](code.md) — the whole wiring, and the sub-agents that keep untrusted content off the shell.
-- [Security revisited: the coding-agent shape](security-revisited.md) — what each defense buys, with all three legs present.
+- [The coding agent, completed](code.md) — the whole wiring, and what each defense buys and where it stops, with all three legs present.

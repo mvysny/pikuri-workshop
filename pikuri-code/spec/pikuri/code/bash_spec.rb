@@ -414,6 +414,34 @@ RSpec.describe Pikuri::Code::Bash do
     end
   end
 
+  describe 'the description names localhost as the sandbox\'s own' do
+    def sandbox_with(ports, egress: true)
+      Class.new do
+        define_singleton_method(:wrap) { |argv| argv }
+        define_singleton_method(:egress?) { egress }
+        define_singleton_method(:confined_to_workspace?) { true }
+        define_singleton_method(:env) { |delta| delta }
+        define_singleton_method(:withheld_env_names) { [] }
+        define_singleton_method(:host_loopback_ports) { ports }
+      end
+    end
+
+    def description(sandbox)
+      described_class.new(filesystem: filesystem, confirmer: confirmer, sandbox: sandbox).description
+    end
+
+    it 'says so, and lists the forwarded ports, when the sandbox has its own network' do
+      assert_includes description(sandbox_with([])), 'network of their own'
+      refute_includes description(sandbox_with([])), 'Only these ports'
+      assert_includes description(sandbox_with([3000, 8080])), 'Only these ports reach this machine\'s own localhost: 3000, 8080.'
+    end
+
+    it 'stays silent over the host\'s own loopback, and over no network at all' do
+      refute_includes description(sandbox_with(nil)), 'network of their own'
+      refute_includes description(sandbox_with([], egress: false)), 'network of their own'
+    end
+  end
+
   describe 'tool integration (via #run)' do
     it 'validates args and produces a normal observation' do
       result = tool.run('command' => 'echo integ').to_s

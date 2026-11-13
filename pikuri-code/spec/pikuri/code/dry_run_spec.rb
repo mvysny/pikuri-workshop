@@ -31,6 +31,7 @@ RSpec.describe 'trifecta dry run: pikuri-code' do
       def self.confined_to_workspace? = true
       def self.env(delta) = delta
       def self.withheld_env_names = []
+      def self.host_loopback_ports = nil
     end
   end
 

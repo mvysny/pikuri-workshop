@@ -1460,3 +1460,48 @@ in `sandbox_env:`. A token inside the project (`.env`) is still readable; the
 workspace is reachable by design. The banner's list of withheld names
 doubles as the review the first wall asks for: a secret there should leave
 your shell, not just the sandbox.
+
+## D_sandbox_own_loopback — Why does sandboxed `bash` get a network namespace of its own, when the coding agent needs the network?
+
+**Context.** `Sandbox::Bubblewrap` kept the host's network namespace (`--share-net`) because
+`git pull`, `bundle` and `mvn` need the internet. Auditing the coding-agent chapter showed what
+else a shared namespace shares: loopback. From inside the sandbox, Caddy's admin API on
+`127.0.0.1:2019` answered with its live config (and takes a `POST /load` that replaces it); adb,
+CUPS and the mem0 API sat on the same loopback. Those services authenticate nobody because
+"only local processes can reach me" was their whole model, and sandboxed `bash` counted as
+local.
+
+**Decision.** When `pasta`(1) is installed, `bwrap` runs inside a network namespace that `pasta`
+connects outward: `--tcp-ns none --udp-ns none --map-host-loopback none`, no inbound ports, DNS
+through `--dns-forward` to a generated `resolv.conf`. The internet and the LAN work; the host's
+`127.0.0.1` doesn't, except ports the user names under `sandbox_ports:`. Without `pasta` the
+sandbox logs a warning, keeps the shared namespace, and `bin/pikuri-code`'s banner says so. A
+sandbox answers `#host_loopback_ports` (`nil` = all of them), and the `bash` description tells the
+model `localhost` is its own.
+
+**Why.** Loopback is where the host keeps its unauthenticated control planes, and none of them
+is anything a build needs. Cutting it costs a coding agent nothing it does in a normal day; the
+one real use, testing against a dev server you run on the host, is one `sandbox_ports:` entry,
+named by the user, like `sandbox_env:`. `pasta` is podman's own network helper (package `passt`),
+unprivileged, already installed wherever rootless podman is, and measured here: host
+`127.0.0.1` and `::1` refused, the host's own LAN address shadowed (so `0.0.0.0` services are cut
+too), internet, LAN, DNS and `git ls-remote` fine, about 50 ms per command.
+
+**Rejected.**
+- **`--unshare-net` plus an HTTP proxy.** The OS assistant's cut, but a coding agent's tools
+  speak more than HTTP (`git://`, `ssh`, a database client), and a proxy is a service to run.
+- **slirp4netns.** Also installed here, but `pasta` is the one podman now picks, and the three
+  things needed (no host loopback, named forwarded ports, a DNS forward) are one flag each,
+  measured.
+- **Failing without `pasta`.** Unlike `FullFsNoNet`'s severed network, loopback is not the
+  posture's defining property; the filesystem cage still holds, so degrading loudly beats
+  refusing to start on a box without `passt`.
+- **Fixing each service** (a unix socket for mem0, a password on Caddy's admin API). Worth doing
+  for the ones you own, but it leaves every other local service's model broken; the namespace
+  fixes the class.
+
+**Consequences.** The LAN stays reachable, the LLM server included: the VM is still the wall
+for anything on your network. `pasta` runs its command as root of a fresh user namespace, so the
+sandbox passes `--uid`/`--gid` to keep `bash` under your ids. A host's own sandbox must answer
+`#host_loopback_ports`. A background server started in one `bash` call was already gone in the
+next (`--die-with-parent`), so per-command namespaces change nothing there.

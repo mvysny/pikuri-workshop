@@ -324,9 +324,11 @@ confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikur
 # shared network: no allowlisted binary can write or exfiltrate, so this
 # grants nothing the agent's own non-confirming Read/Grep/Glob don't.
 # The gate is asymmetric — only Code::Extension (Bash) gets a
-# passive_detector; Write/Edit (Workspace::Extension below) keep the bare
-# human confirmer, so every overwrite confirms. Under --yolo/--no-confirm
-# there is nothing to skip, so no approver is built.
+# passive_detector. Write (Workspace::Extension below) keeps the bare human
+# confirmer, so overwriting a file that differs confirms; Edit and a brand-new
+# file do not ask at all, since in-project edits are the job and git is the
+# undo. Under --yolo/--no-confirm there is nothing to skip, so no approver is
+# built.
 #
 # Read-only *git* (git diff/status/log/show/…) is gated behind an explicit
 # trust prompt. Bash already hardens the git environment
@@ -373,10 +375,17 @@ code_passive_detector = confirm_enabled ? Pikuri::Code::Bash::PassiveCommandDete
 # that needs another variable gets it through `sandbox_env:` in the
 # config file, e.g. `sandbox_env: [ACME_LICENSE_SERVER]`; the banner
 # lists what is withheld.
+#
+# The network is walled at loopback: with pasta installed, bash gets a
+# network namespace of its own, so the internet and the LAN work but this
+# machine's 127.0.0.1 services (a web server's admin API, adb, a memory
+# store) don't answer. A dev server you run on the host that the agent
+# should test against goes under `sandbox_ports:`, e.g. `sandbox_ports: [3000]`.
 sandbox = if sandbox_enabled
             Pikuri::Code::Bash::Sandbox::Bubblewrap.new(
               filesystem: filesystem,
-              pass_env: Array(examples_config['sandbox_env'])
+              pass_env: Array(examples_config['sandbox_env']),
+              loopback_ports: Array(examples_config['sandbox_ports'])
             )
           else
             Pikuri::Code::Bash::Sandbox::NONE
@@ -664,13 +673,31 @@ begin
   # Print reduced-safety status only when a layer is off. Silent at
   # defaults; loud when something the user might want to know about has
   # been disabled.
+  if sandbox_enabled && sandbox.host_loopback_ports.nil?
+    puts "The sandbox shares this machine's network namespace: every service on its 127.0.0.1 " \
+         'is reachable from bash. Install pasta (package passt) to give bash a loopback of its own.'
+  elsif sandbox_enabled && !sandbox.host_loopback_ports.empty?
+    puts "Bash has a loopback of its own; only port(s) #{sandbox.host_loopback_ports.join(', ')} " \
+         "reach this machine's 127.0.0.1 (sandbox_ports: in #{examples_config_path})."
+  end
   warnings = []
   warnings << 'Sandbox: DISABLED.' unless sandbox_enabled
   warnings << 'Confirmer: AUTO-APPROVE.' unless confirm_enabled
   warnings << 'Filesystem: ALLOW_ALL (credential denylist only).' if yolo
   unless warnings.empty?
-    warnings << 'Use only inside a VM around this whole process: a container shares your kernel.'
-    puts warnings.join(' ')
+    # The promise backed loudly rather than enforced: outside a VM a
+    # prompt injection would run as you, on this machine.
+    case Pikuri::Code::VirtualMachine.inside?
+    when true
+      puts "#{warnings.join(' ')} Running inside a VM, which is the wall now."
+    when false
+      puts Rainbow("#{warnings.join(' ')} NOT INSIDE A VM: a prompt injection now runs as you, " \
+                   'on this machine. Use these flags only inside a VM around this whole process; ' \
+                   'a container shares your kernel.').red.bright
+    else
+      puts "#{warnings.join(' ')} Could not tell whether this is a VM (no systemd-detect-virt): " \
+           'use these flags only inside one.'
+    end
   end
 
   run_turn(agent, ARGV.join(' ')) unless ARGV.empty?

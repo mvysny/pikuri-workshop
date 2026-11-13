@@ -2,6 +2,7 @@
 
 require 'tmpdir'
 require 'fileutils'
+require 'socket'
 
 # Probed once at file load. The `skip` idiom doesn't work cleanly with
 # this project's Minitest-on-RSpec setup (Minitest::Skip bubbles as a
@@ -22,6 +23,14 @@ OVERLAY_AVAILABLE = BWRAP_AVAILABLE && begin
     '--overlay-src', '/usr', '--tmp-overlay', '/tmp', '--die-with-parent',
     '/bin/true', chdir: '/'
   ).wait.status.success?
+rescue Errno::ENOENT
+  false
+end
+
+# pasta(1) gives the sandbox its own network namespace; without it the
+# sandbox keeps the host's, so the loopback tests gate on it.
+PASTA_AVAILABLE = BWRAP_AVAILABLE && begin
+  Pikuri::Subprocess.spawn('pasta', '--version', chdir: '/').wait.status.success?
 rescue Errno::ENOENT
   false
 end
@@ -335,7 +344,7 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
       end
 
       it '#wrap composes the expected bwrap argv shape' do
-        sandbox = described_class.new(filesystem: filesystem)
+        sandbox = described_class.new(filesystem: filesystem, own_network: false)
         argv = sandbox.wrap(['bash', '-c', 'echo hi'])
 
         assert_equal 'bwrap', argv.first
@@ -383,11 +392,37 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
         sandbox = described_class.new(filesystem: filesystem)
         argv = sandbox.wrap(['true'])
 
+        # By destination: with its own network, resolv.conf comes from a
+        # generated file naming the DNS forward.
         described_class::ETC_BASELINE.each do |p|
           next unless File.exist?(p)
-          assert argv.each_cons(2).any? { |a, b| a == '--ro-bind' && b == p },
-                 "expected --ro-bind #{p} in #{argv.inspect}"
+          assert argv.each_cons(3).any? { |a, _src, dest| a == '--ro-bind' && dest == p },
+                 "expected --ro-bind … #{p} in #{argv.inspect}"
         end
+      end
+
+      it 'shares the host network namespace when told to, and says so' do
+        sandbox = described_class.new(filesystem: filesystem, own_network: false)
+
+        assert_equal 'bwrap', sandbox.wrap(['true']).first
+        assert_nil sandbox.host_loopback_ports
+      end
+
+      it 'falls back to the shared namespace, without raising, when pasta is missing' do
+        original = Pikuri::Subprocess.method(:spawn)
+        Pikuri::Subprocess.define_singleton_method(:spawn) do |*args, **kwargs|
+          raise Errno::ENOENT, 'pasta' if args.first == 'pasta'
+
+          original.call(*args, **kwargs)
+        end
+        begin
+          sandbox = described_class.new(filesystem: filesystem)
+        ensure
+          Pikuri::Subprocess.define_singleton_method(:spawn, original)
+        end
+
+        assert_nil sandbox.host_loopback_ports
+        assert_equal 'bwrap', sandbox.wrap(['true']).first
       end
 
       it 'end-to-end: bwrap-wrapped echo runs inside the sandbox' do
@@ -397,6 +432,55 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
 
         assert result.status.success?, "spawn failed: #{result.output}"
         assert_includes result.output, 'sandboxed'
+      end
+
+      if PASTA_AVAILABLE
+        describe 'its own loopback, behind pasta' do
+          # Two listeners on the host's 127.0.0.1: one the sandbox must not
+          # reach, one forwarded through loopback_ports. Probed with bash's own
+          # /dev/tcp, so the spec needs no curl.
+          let(:servers) { Array.new(2) { TCPServer.new('127.0.0.1', 0) } }
+          let(:acceptors) do
+            servers.map do |server|
+              Thread.new { loop { server.accept.tap { |c| c.write("hello\n") }.close } }
+            end
+          end
+
+          before { acceptors }
+
+          after do
+            acceptors.each(&:kill)
+            servers.each(&:close)
+          end
+
+          def reach(port)
+            "exec 3<>/dev/tcp/127.0.0.1/#{port} && head -1 <&3 || echo refused"
+          end
+
+          it 'reaches only the forwarded host port, as your own uid, with DNS forwarded' do
+            cut, forwarded = servers.map { |s| s.addr[1] }
+            sandbox = described_class.new(filesystem: filesystem, loopback_ports: [forwarded])
+            command = "echo cut=$(#{reach(cut)}); echo fwd=$(#{reach(forwarded)}); " \
+                      'echo uid=$(id -u); grep nameserver /etc/resolv.conf'
+            result = Pikuri::Subprocess.spawn(*sandbox.wrap(['bash', '-c', command]), chdir: root.to_s).wait
+
+            assert_equal 'pasta', sandbox.wrap(['true']).first
+            assert_equal [forwarded], sandbox.host_loopback_ports
+            assert_includes result.output, 'cut=refused'
+            assert_includes result.output, 'fwd=hello'
+            assert_includes result.output, "uid=#{Process.uid}"
+            assert_includes result.output, "nameserver #{described_class::DNS_FORWARD}"
+          end
+
+          it 'forwards nothing by default' do
+            sandbox = described_class.new(filesystem: filesystem)
+            argv = sandbox.wrap(['true'])
+
+            assert_equal [], sandbox.host_loopback_ports
+            assert argv.each_cons(2).any? { |a, b| a == '--tcp-ns' && b == 'none' }, argv.inspect
+            assert argv.each_cons(2).any? { |a, b| a == '--map-host-loopback' && b == 'none' }, argv.inspect
+          end
+        end
       end
 
       describe 'the environment wall' do

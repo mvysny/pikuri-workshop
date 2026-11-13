@@ -13,10 +13,10 @@ there `cat ~/.ssh/id_rsa`, `env | grep -i key` (the sandbox withholds exported
 tokens, `D_sandbox_env_wall`; without it they are all there),
 `curl --upload-file ~/.aws/credentials ...` all run as the user, and
 the per-command Confirmer is the only line of defense (`--yolo`
-disables that too). The help text says "use only with an outer
-sandbox" but nothing enforces it. Worth considering: detect a
-container / VM at boot and refuse `--no-sandbox` outside one, or at
-least surface a louder warning than the current `LOGGER.warn`.
+disables that too). The banners now ask `systemd-detect-virt --vm`
+(`Pikuri::Code::VirtualMachine`) and print the lifted-cage line in red
+outside a VM; nothing refuses. Still open: refusing outside a VM, with
+an explicit override, if red text proves easy to scroll past.
 
 ## MCP — open ergonomic / supply-chain questions
 

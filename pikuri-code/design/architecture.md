@@ -26,7 +26,7 @@ opt-out); the other two are deliberate inverses:
 | | {Bubblewrap} | {FullFsNoNet} |
 |---|---|---|
 | Filesystem | curated subset (project + toolchain + `/etc` baseline) | the whole real root, read-write |
-| Network | **kept** (`--share-net`) | **severed** (`--unshare-net`) |
+| Network | **kept**, but its own loopback behind `pasta` (`D_sandbox_own_loopback`) | **severed** (`--unshare-net`) |
 | PID / IPC / UTS | unshared (`--unshare-all`) | kept shared |
 | Written for | the in-repo coding agent (`bin/pikuri-code`) | the offline OS helper (`bin/pikuri-os`) |
 | On probe failure | degrades (overlay → `--ro-bind`) | **raises** — the severed net *is* the property |
@@ -101,13 +101,15 @@ Prompt injection reaching the LLM can still:
 - modify project source under `project_root` (the LLM legitimately needs
   `Write` there);
 - inject a malicious dependency the next build executes;
-- exfiltrate over the network — `--share-net` is intentional so
-  `git pull` / `mvn` / `curl` work.
+- exfiltrate over the network — the internet stays reachable so
+  `git pull` / `mvn` / `curl` work;
+- reach anything on the LAN, the LLM server included. Only the host's own
+  `127.0.0.1` is cut, and only with `pasta` installed.
 
 The overlay specifically prevents *cross-project* contamination via
 shared `$HOME` caches — nothing more. Users needing adversarial
-isolation run pikuri-code inside a container: the container is the outer
-boundary, `bwrap` the inner. ({Pikuri::Workspace::Filesystem::AllowAll}
+isolation run pikuri-code inside a VM: the VM is the outer
+boundary, `bwrap` the inner (a container would share the kernel). ({Pikuri::Workspace::Filesystem::AllowAll}
 is the file-tool-side counterpart.)
 
 ### Concurrency: one umbrella, serialized bwrap

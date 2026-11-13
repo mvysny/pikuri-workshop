@@ -32,6 +32,7 @@ RSpec.describe 'Bash trifecta legs' do
         def self.confined_to_workspace? = true
         def self.env(delta) = delta
         def self.withheld_env_names = []
+        def self.host_loopback_ports = nil
       end
       assert_equal :no_egress, bash(sandbox: severed).trifecta_legs.egress_payload_review
     end
@@ -55,6 +56,7 @@ RSpec.describe 'Bash trifecta legs' do
         def self.confined_to_workspace? = true
         def self.env(delta) = delta
         def self.withheld_env_names = []
+        def self.host_loopback_ports = nil
       end
       assert_equal :none, bash(sandbox: confined, trusted: true).trifecta_legs.untrusted
       assert_equal :hard, bash(sandbox: confined).trifecta_legs.untrusted

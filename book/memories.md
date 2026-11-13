@@ -520,12 +520,12 @@ What the cut does *not* close: the published API itself. Anything on
 your machine that can connect to `127.0.0.1:8888` can read every
 memory, with no password (the stack runs mem0 with its auth layer off,
 since there's nothing to back it). That includes another user on the
-same machine, and processes that can't
-see your disk, like a coding agent's `bash` inside
-[the shell chapter's cage](shell.md#where-the-cage-stops), whose
-shared network reaches your loopback. The memory store is as private
-as your loopback, and on a machine where an agent with egress runs
-next to it, that's a leg worth counting.
+same machine, and any process of yours. A coding agent's `bash` inside
+[the shell chapter's cage](shell.md#loopback-walled-too) is out of
+reach when `pasta` gives it a loopback of its own; without `pasta`, its
+cage shares yours. The memory store is as private as your loopback, and
+on a machine where an agent with egress runs next to it, that's a leg
+worth counting.
 
 ## The forget story
 

@@ -225,8 +225,19 @@ begin
   warnings << 'Network sandbox: DISABLED — bash can reach the internet (egress is OPEN).' unless sandbox_enabled
   warnings << 'Confirmer: AUTO-APPROVE — mutations run without asking.' unless confirm_enabled
   unless warnings.empty?
-    warnings << 'Use only inside a VM.'
-    puts warnings.join(' ')
+    # The promise backed loudly rather than enforced: this assistant's point
+    # is your host, so outside a VM these flags hand a prompt injection your
+    # machine.
+    case Pikuri::Code::VirtualMachine.inside?
+    when true
+      puts "#{warnings.join(' ')} Running inside a VM, which is the wall now."
+    when false
+      puts Rainbow("#{warnings.join(' ')} NOT INSIDE A VM: a prompt injection now runs as you, " \
+                   'on this machine. Use these flags only inside a VM.').red.bright
+    else
+      puts "#{warnings.join(' ')} Could not tell whether this is a VM (no systemd-detect-virt): " \
+           'use these flags only inside one.'
+    end
   end
   if internet_enabled
     # Not a VM-only warning. Web access is quarantined in the

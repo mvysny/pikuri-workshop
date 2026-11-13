@@ -86,7 +86,8 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   usage telemetry by default. The stack sits on an `internal: true` Docker network (no route
   off it, telemetry also switched off); a socat `front-door` publishes only the API, on
   `127.0.0.1`. That API has no auth, so anything that reaches your loopback can read your
-  memories, a sandboxed coding agent's `bash` included.
+  memories: another local user, any process of yours, and a sandboxed coding agent's `bash`
+  when `pasta` isn't installed to give it a loopback of its own (`D_sandbox_own_loopback`).
 - **Language servers — they evaluate the project.** A language server often runs the
   project's build files to learn its classpath; a hostile `build.gradle` runs as you, on
   your host, outside any sandbox today. `pikuri-lsp` starts only the servers your config
@@ -140,8 +141,8 @@ or private data, and a process that reaches the network without the agent seeing
 
 - [pikuri's `SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md)
   — the baseline this page builds on.
-- [Security revisited: the coding-agent shape](book/security-revisited.md) — the teaching
-  companion to this page.
+- [The coding agent, completed](book/code.md) — the teaching companion to this page: what
+  each defense buys and where it stops, with all three legs present.
 - [`pikuri-code/README.md`](pikuri-code/README.md) — the Bubblewrap sandbox shape and the
   workspace seam from the coding agent's perspective.
 - [`pikuri-mcp/`](pikuri-mcp) — `Mcp::Verifier` source if you want to read the pre-flight scan.
