@@ -1,7 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
 Status: **running order agreed; chapter-by-chapter rewrite at four of ten chapters (shell,
-OS assistant, memories, first MCP server). Next: audit "MCPs revisited"** (see "Progress"
+OS assistant, memories, first MCP server). Next: "MCPs revisited", audited and every finding
+decided; its PAT fix is committed (`c78a538`), the rest is to do** (see "Carried forward"
 below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
@@ -146,7 +147,39 @@ What the done chapters changed beyond their text:
   `-e GITHUB_PERSONAL_ACCESS_TOKEN` by name, `private: true`. Done in the chapter's recipe,
   `bin/pikuri-code`'s commented examples (GitHub added, HubSpot off `ENV`) and
   `pikuri-mcp/README.md`; no code change was needed. The chapter's GitHub block still says
-  `docker` (the podman pass below). Other findings: the npx recipe's
+  `docker` (the podman pass below). **All findings decided (2026-11-13), in work:**
+  1. Opening/prereqs/§1 point back at `mcp.md`, `shell.md`, pikuri's security chapter; no
+     ordinals, no "four-extension stack".
+  2. Pin the GitHub image to a release tag (recipe + bin comment); digest how-to in the bullet.
+  3. DinD caveat → two sentences: lifting the cage = the VM, podman inside it unchanged; outer
+     container the weaker option (no socket, no `--privileged`). Threat model gains "shared
+     kernel → VM". Keep `#wrapping-pikuri-in-docker` link; rename in the climax (pikuri too).
+  4. npx: no `~/.npm` mount (npx runs from that cache: poisoning); reasons to bake = speed
+     (`--rm` loses the cache) and an unlocked dep tree resolved per spawn.
+  5. Fully qualified image names (podman short-name resolution); current Node LTS / Python,
+     looked up not typed; "pinning freezes security fixes too, rebuild on EOL".
+  6. Playwright: vendor image `mcr.microsoft.com/playwright/mcp` (verify) for headless; headed
+     = baked Containerfile matching `@playwright/mcp`'s Playwright; `--init` (verify).
+  7. Networking from `mcp.md`'s measured "What the box can reach" (pasta): loopback closed,
+     non-loopback open; dummy iface / LAN IP stay; `--network=host` under rootless podman
+     opens loopback (verify); rootless Docker a one-line note. Dummy iface needs sudo.
+  8. Egress: do it for GitHub: `--internal` network, tinyproxy (Debian package, shipped
+     Containerfile) allowing CONNECT `api.github.com:443`, `HTTPS_PROXY` on the server. Also
+     closes the LAN `mcp.md` names. `--network=none` for bind-mount-only; fetch = open web;
+     maven = `NODE_USE_ENV_PROXY=1`, mentioned not built.
+  9. Podman in every recipe (+ "docker takes the same args"), the three cheap flags,
+     `--tmpfs /tmp`; Playwright's `/dev/shm` + Chromium sandbox decided by the run.
+  10. "What's next" → Skills (trigger vs. always-announced); "Docker as the MCP boundary" →
+     "a container". `skills.md` is still a stub.
+
+  The owner okayed the run (image pulls/builds: github-mcp-server, node/python bases, the
+  Playwright MCP image, `debian:stable-slim` for tinyproxy). Readiness, checked 2026-11-13:
+  `github_token:` not yet in `~/.pikuri-examples-config.yaml` (the owner adds it; never ask
+  for it in chat); that file was mode `664`, owner told to `chmod 600` it; no local podman
+  images; podman 5.7, netavark + pasta; the LLM is at `llm_server` in that file
+  (`192.168.122.1:9081`), up-ness unchecked. Order of work: run first (verify the "(verify)"
+  items above), then rewrite, then one commit for the chapter.
+  Old finding list, for reference: the npx recipe's
   phantom `~/.npm` mount, Playwright's per-spawn `npx`, unpinned GitHub image, `node:20` past
   EOL, the Playwright networking section written for slirp4netns, the Docker-in-Docker caveat
   vs. the VM promise, "What's next" → Skills. Egress: text plus `--network=none` for the
