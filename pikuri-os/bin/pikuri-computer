@@ -149,6 +149,7 @@ read_only = Pikuri::Workspace::ReadOnly.new(
 # Trap SIGINT only during a turn (flips the Cancellable; the next tool-call
 # boundary raises Cancelled). Outside a turn the default handler exits the REPL.
 def run_turn(agent, message)
+  agent.cancellable&.reset!
   prev_trap = trap('INT') { agent.cancellable&.cancel! }
   agent.run_loop(user_message: message)
 rescue Pikuri::Agent::Control::Cancellable::Cancelled

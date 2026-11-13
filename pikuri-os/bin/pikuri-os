@@ -157,6 +157,7 @@ read_only = Pikuri::Workspace::ReadOnly.new(
 # tool-call boundary raises Cancelled). Outside a turn the default handler
 # is restored so Ctrl+C exits the REPL.
 def run_turn(agent, message)
+  agent.cancellable&.reset!
   prev_trap = trap('INT') { agent.cancellable&.cancel! }
   agent.run_loop(user_message: message)
 rescue Pikuri::Agent::Control::Cancellable::Cancelled

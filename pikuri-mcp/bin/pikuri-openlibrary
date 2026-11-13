@@ -129,6 +129,7 @@ mcp_ext = Pikuri::Mcp::Extension.new(
 # the prompt. Outside a turn (at the `> ` input) the default handler is
 # restored so Ctrl+C still exits the REPL the way it did before.
 def run_turn(agent, message)
+  agent.cancellable&.reset!
   prev_trap = trap('INT') { agent.cancellable&.cancel! }
   agent.run_loop(user_message: message)
 rescue Pikuri::Agent::Control::Cancellable::Cancelled
@@ -176,11 +177,6 @@ rescue Pikuri::Mcp::Verifier::InjectionDetected => e
 ensure
   trap('INT', prev_boot_trap || 'DEFAULT')
 end
-# The cancel flag may have been left in a tripped state if the user
-# pressed Ctrl+C between MCP synthesis calls — the trap fired but
-# Agent.new finished before the next thinker pre-call check could raise. Reset
-# so the first turn doesn't inherit a stale cancellation.
-cancel_flag.reset!
 
 # A spawn failure (missing image, no container engine) is logged as a
 # warning by Mcp::Servers and the server is skipped — the agent would
