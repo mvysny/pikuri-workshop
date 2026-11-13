@@ -13,7 +13,8 @@ Provides:
     blank or a duplicate (within the batch or already on the
     list), nothing is added.
   - `Pikuri::Tasks::InProgress` (`task_in_progress`) — mark an item
-    as `in_progress` by numeric id.
+    as `in_progress` by numeric id; any other `in_progress` item goes
+    back to `pending`.
   - `Pikuri::Tasks::Completed` (`task_completed`) — mark an item as
     `completed` by numeric id.
   - `Pikuri::Tasks::Delete` (`task_delete`) — remove an item by
@@ -53,8 +54,10 @@ end
 The extension's `configure` constructs a fresh `Tasks::List`,
 registers all four task tools against it (so they mutate the same
 instance), and appends a short `<tasks_usage>` snippet to the system
-prompt explaining the workflow (create at the start, exactly one
-`in_progress` at a time, `completed` only after verification).
+prompt explaining the workflow (create at the start, one item
+`in_progress` at a time, `completed` only after verification). The
+list enforces the middle rule: starting an item returns any other
+`in_progress` one to `pending`.
 
 Every mutation returns the full rendered list as its observation,
 so the LLM always sees fresh state without a separate read tool:

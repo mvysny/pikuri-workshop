@@ -8,9 +8,10 @@ module Pikuri
     # whole-list snapshot ({List#items}), so a consumer needs no +List+
     # reference — render or serialize the payload as-is.
     #
-    # A batch +task_create+ emits one event per added item, so a renderer
-    # should treat the latest snapshot as authoritative (last-wins), not
-    # diff event-by-event. Fired on the agent's thread — a listener
+    # One event per mutation, and a batch +task_create+ is one
+    # ({List#add_all}); a renderer treats the latest snapshot as
+    # authoritative rather than diffing. +now:+ names the one
+    # +in_progress+ item {List#set_status} allows. Fired on the agent's thread — a listener
     # feeding another thread serializes inside +on_event+ and hands off
     # only the immutable result (see {List}'s thread-confinement note).
     #

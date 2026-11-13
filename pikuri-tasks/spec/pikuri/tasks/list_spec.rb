@@ -35,7 +35,55 @@ RSpec.describe Pikuri::Tasks::List do
     end
   end
 
+  describe '#add_all' do
+    it 'appends every item with sequential ids and fires on_change once' do
+      fired = 0
+      list.on_change = -> { fired += 1 }
+
+      added = list.add_all(%w[a b c])
+
+      assert_equal [1, 2, 3], added.map(&:id)
+      assert_equal %w[a b c], list.items.map(&:content)
+      assert_equal 1, fired
+    end
+
+    it 'adds nothing when a content repeats within the batch or the list' do
+      list.add('a')
+      fired = 0
+      list.on_change = -> { fired += 1 }
+
+      assert_raises(Pikuri::Tasks::DuplicateItem) { list.add_all(%w[b b]) }
+      assert_raises(Pikuri::Tasks::DuplicateItem) { list.add_all(%w[c a]) }
+
+      assert_equal %w[a], list.items.map(&:content)
+      assert_equal 0, fired
+      assert_equal 2, list.add('d').id # the failed batches took no ids
+    end
+  end
+
   describe '#set_status' do
+    it 'returns the previous in_progress item to pending when another starts' do
+      a = list.add('a')
+      b = list.add('b')
+      c = list.add('c')
+      list.set_status(id: c.id, status: 'completed')
+      list.set_status(id: a.id, status: 'in_progress')
+
+      list.set_status(id: b.id, status: 'in_progress')
+
+      assert_equal %w[pending in_progress completed], list.items.map(&:status)
+    end
+
+    it 'leaves the in_progress item alone when another is completed' do
+      a = list.add('a')
+      b = list.add('b')
+      list.set_status(id: a.id, status: 'in_progress')
+
+      list.set_status(id: b.id, status: 'completed')
+
+      assert_equal %w[in_progress completed], list.items.map(&:status)
+    end
+
     it 'updates status to a valid value' do
       item = list.add('task')
       updated = list.set_status(id: item.id, status: 'in_progress')

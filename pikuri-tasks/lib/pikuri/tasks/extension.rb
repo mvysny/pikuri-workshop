@@ -33,7 +33,7 @@ module Pikuri
 
         Workflow:
         - When a task has 3+ steps, call `task_create` once with the full plan (a JSON array of strings, all start as `pending`).
-        - Before starting an item, call `task_in_progress` with its numeric id. Keep exactly one item `in_progress` at a time.
+        - Before starting an item, call `task_in_progress` with its numeric id. Only one item is `in_progress` at a time; starting another returns the previous one to `pending`.
         - When an item is fully done (including any required verification), call `task_completed` with its numeric id.
         - Use `task_delete` to remove items that turn out not to be needed.
 

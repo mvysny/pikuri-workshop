@@ -1,8 +1,9 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite at eight of ten chapters (shell,
+Status: **running order agreed; chapter-by-chapter rewrite at nine of ten chapters (shell,
 OS assistant, memories, first MCP server, MCPs revisited, skills, wire, language
-intelligence). Next: task tracking** (see "Carried forward" below). Carried over from pikuri's
+intelligence, task tracking). Next: the coding agent, completed** (see "Carried forward"
+below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -84,7 +85,9 @@ Habits that paid off on the first three chapters:
   a docker stack up and test from inside it. Each chapter had at least one claim the code
   contradicted, and two had a security gap only a run showed.
 - **Check pikuri's book before renaming or cutting.** pikuri's chapters link into this repo
-  (`~/work/my/pikuri/book`, `grep pikuri-workshop/blob`); they link files, plus one anchor.
+  (`grep pikuri-workshop/blob` in its `book/`); they link files, plus one anchor. pikuri may
+  not be checked out, and the pinned `PIKURI_REF` checkout under `bundle show pikuri-core`
+  still carries the pre-split book, so shallow-clone pikuri's master into the scratchpad.
 - **Prefer the book's own question over the old text.** "What can this cage reach, and
   where does it stop?" found the mem0 store's open network, which the chapter never asked.
 - **The dev box has no `socat`** and the llama.cpp router isn't always up: say what went
@@ -108,7 +111,7 @@ Habits that paid off on the first three chapters:
 | 6 | Skills | `skills.md` | done; the TTY trust prompt after a clean git check untested |
 | 7 | The wire | `wire.md` | done, text only; canary re-run on Qwen3.6 and Ornith-1.5 |
 | 8 | Language intelligence | `lsp.md` | done; ruby-lsp only (jdtls installed, not run) |
-| 9 | Task tracking | `tasks.md` | — |
+| 9 | Task tracking | `tasks.md` | done; Ornith-1.5 only |
 | 10 | The coding agent, completed | `code.md` (rest), `security-revisited.md` | — |
 
 What the done chapters changed beyond their text:
@@ -155,6 +158,16 @@ What the done chapters changed beyond their text:
   your Gemfile as you; VM is the wall); architecture's "unsandboxed child" premise
   (`bash` netless) corrected. Walked-path rule now stated in place, citing the tripwire.
 
+- **Task tracking:** rewritten from four `bin/pikuri-code` runs on Ornith-1.5 in a scratch
+  Ruby project. Asked plainly, a four-step job skipped the list ("a small, clear task"); nine
+  numbered steps or an explicit "plan with the task tools" used it. A batch `task_create`
+  printed `· tasks: 0/1 done` … `0/5 done`: new `List#add_all` emits one `ListChanged` per
+  call. The model started task 2 with task 1 still in progress (and caught it from the
+  returned list): `set_status` now returns any other in-progress item to `pending`. Text: the
+  list is re-stated by every task call, not re-injected each turn (the old "every turn's
+  context" was wrong); new sections "Watching it work" and "What the list can reach, and
+  where it stops"; the in-progress rule as a third verse of the training-prior lesson.
+
 Habits added by the MCPs revisited chapter: a host's AppArmor profile attaches by path inside a rootless
 container (Ubuntu's tinyproxy profile blocked the config and every signal, so `podman rm -f`
 hung; `journalctl -k | grep apparmor` found it). Under pasta the host's LAN IP is the
@@ -181,6 +194,10 @@ mounts tmpfs on `/tmp`; `--tmpfs /tmp` stays for docker.
 - **`/clear` and MCP.** `Mcp::Extension` has no `on_conversation_reset`, so servers the model
   `mcp_connect`ed stay active after a `/clear` while the conversation forgot connecting. Harmless
   so far; decide when the climax accounts for `pikuri-code`'s wiring.
+- **Every reply printed twice.** In all four task-tracking runs of `bin/pikuri-code` on
+  Ornith-1.5, each assistant message showed as reasoning text and then a near-duplicate as the
+  reply ("Now run the tests." / "Now run the tests:"). Not tasks-related; look before the
+  climax quotes a transcript.
 - **pikuri's "Environment is not a secret store"** still holds (pikuri filters nothing), but
   its one line could point at `pikuri-workshop:D_sandbox_env_wall` for where clearing does
   happen. A pikuri-side edit.

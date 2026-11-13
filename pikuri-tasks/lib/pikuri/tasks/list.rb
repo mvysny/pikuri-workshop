@@ -105,16 +105,43 @@ module Pikuri
       # @return [Item] the newly added item
       # @raise [DuplicateItem] if an item with the same +content+ exists.
       def add(content)
-        raise DuplicateItem, content if @items.any? { |i| i.content == content }
-
-        item = Item.new(id: @next_id, content: content, status: 'pending')
-        @next_id += 1
-        @items << item
-        @on_change&.call
-        item
+        add_all([content]).first
       end
 
-      # Update the status of the item whose +id+ matches.
+      # Append several pending items as one mutation: all or nothing, and
+      # {#on_change} fires once, so a five-item +task_create+ shows a
+      # watcher one change rather than five.
+      #
+      # @param contents [Array<String>] non-empty contents; whitespace is
+      #   the caller's responsibility.
+      # @return [Array<Item>] the newly added items, in order
+      # @raise [DuplicateItem] if a content repeats within +contents+ or
+      #   already exists; nothing is added then.
+      def add_all(contents)
+        taken = @items.map(&:content)
+        contents.each do |content|
+          raise DuplicateItem, content if taken.include?(content)
+
+          taken << content
+        end
+
+        added = contents.map do |content|
+          item = Item.new(id: @next_id, content: content, status: 'pending')
+          @next_id += 1
+          item
+        end
+        @items.concat(added)
+        @on_change&.call
+        added
+      end
+
+      # Update the status of the item whose +id+ matches. Marking an item
+      # +in_progress+ returns any other +in_progress+ item to +pending+:
+      # "one at a time" is the list's rule, not a request in the prompt,
+      # which models do not reliably follow.
+      #
+      #   list.set_status(id: 1, status: 'in_progress')
+      #   list.set_status(id: 2, status: 'in_progress')   # #1 is pending again
       #
       # @param id [Integer]
       # @param status [String] one of {STATUSES}.
@@ -130,6 +157,9 @@ module Pikuri
         idx = @items.index { |i| i.id == id }
         raise ItemNotFound, id.to_s if idx.nil?
 
+        if status == 'in_progress'
+          @items.map! { |i| i.status == 'in_progress' ? i.with(status: 'pending') : i }
+        end
         @items[idx] = @items[idx].with(status: status)
         @on_change&.call
         @items[idx]

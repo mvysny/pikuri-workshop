@@ -87,7 +87,7 @@ module Pikuri
         clash = cleaned.find { |c| existing.include?(c) }
         return Pikuri::Tool::Result.error("task already exists: '#{clash}'") if clash
 
-        cleaned.each { |c| list.add(c) }
+        list.add_all(cleaned)
         Pikuri::Tool::Result.new(content: list.render, summary: list.summary)
       end
     end

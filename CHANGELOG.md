@@ -19,5 +19,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 - `bin/pikuri-code` counts a project's skills and commands as untrusted, without asking, when a bundle file matches no commit (untracked, ignored or changed since `HEAD`) or the project is not a git repository, via the new `Pikuri::Bundle::Unreviewed`; commit the bundles you reviewed to be asked again.
 - `bin/pikuri-code` gains a `/clear` built-in that empties the conversation and resets the task list, the read-before-edit marks and every fired `paths:` skill, keeping the wiring.
 - `Pikuri::Tasks::ListChanged#to_s` renders one line (`tasks: 1/3 done, now: …`), so a terminal no longer prints the raw event.
+- A batch `task_create` emits one `Pikuri::Tasks::ListChanged` instead of one per item, via the new `Pikuri::Tasks::List#add_all`; a listener that counted per-item events sees one per call.
+- `task_in_progress` returns any other in-progress task to `pending`, so the list holds at most one in-progress task instead of asking the model to keep it so.
 - `bin/pikuri-openlibrary` prints what the prompt-injection verifier flagged and exits, instead of crashing with a backtrace.
 - `Mem0Server` drops `container_router_url:` and `qdrant_port:` (and `bin/pikuri-memory` its `--mem0-router-url`): an internal network can route nowhere but the relay, and Qdrant is no longer published on the host.

@@ -81,7 +81,7 @@ RSpec.describe Pikuri::Tasks::Extension do
       end
     end
 
-    it 'arms List#on_change to emit a ListChanged snapshot per mutation' do
+    it 'arms List#on_change to emit one ListChanged snapshot per batch create' do
       ext = described_class.new
       ext.configure(configurator)
       ctx = fake_ctx_class.new
@@ -90,12 +90,9 @@ RSpec.describe Pikuri::Tasks::Extension do
       task_create = configurator.tools.find { |t| t.name == 'task_create' }
       task_create.run('items' => %w[one two])
 
-      # One event per added item (batch create mutates item-by-item);
-      # the last snapshot is authoritative.
-      assert_equal 2, ctx.emitted.size
-      assert(ctx.emitted.all? { |e| e.is_a?(Pikuri::Tasks::ListChanged) })
-      assert_equal %w[one], ctx.emitted[0].items.map(&:content)
-      assert_equal %w[one two], ctx.emitted[1].items.map(&:content)
+      assert_equal 1, ctx.emitted.size
+      assert_kind_of Pikuri::Tasks::ListChanged, ctx.emitted.first
+      assert_equal %w[one two], ctx.emitted.first.items.map(&:content)
     end
 
     it 'emits on status change and delete too, carrying frozen snapshots' do

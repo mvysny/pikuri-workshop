@@ -3,7 +3,8 @@
 module Pikuri
   module Tasks
     # The +task_in_progress+ tool: mark the item with the given +id+ as
-    # +in_progress+. The status is baked into the tool name, not a
+    # +in_progress+, returning any other +in_progress+ item to +pending+
+    # ({List#set_status}). The status is baked into the tool name, not a
     # parameter — one fewer degree of freedom for the LLM (no
     # +"in-progress"+/+"inprogress"+ typos) at the cost of one tool class.
     #
@@ -22,7 +23,7 @@ module Pikuri
 
         Usage:
         - Pass the task's numeric `id` as shown in the rendered list (`- #3 [pending] ...` → id 3).
-        - Keep exactly one task `in_progress` at a time. Finish (or revert) the current one before starting another.
+        - Only one task is `in_progress` at a time: starting this one moves any other `in_progress` task back to `pending`. Mark the current one `completed` first if it is done.
         - On `Error: no such task id: ...` the call did nothing — the error includes the current list; pick the right id from it.
         - On success the full current list is returned for you to read back.
       DESC
