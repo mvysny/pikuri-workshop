@@ -40,10 +40,14 @@ Adds the `mcp` gem as a runtime dep on top of `pikuri-core`.
 require 'pikuri-core'
 require 'pikuri-mcp'
 
+# Tokens live in a file you chmod 600, never in ENV: every child inherits ENV.
+config = YAML.safe_load_file(File.expand_path('~/.config/my-agent.yaml'))
+
 registry = Pikuri::Mcp::Registry.new(entries: [
   Pikuri::Mcp::Registry::StdioEntry.new(id: 'gmail', command: %w[npx @gongrzhe/server-gmail-autoauth-mcp]),
   Pikuri::Mcp::Registry::HttpEntry.new(id: 'hubspot', url: 'https://mcp.example.com/v1',
-                                       headers: { 'Authorization' => "Bearer #{ENV.fetch('HUBSPOT_TOKEN')}" })
+                                       headers: { 'Authorization' => "Bearer #{config.fetch('hubspot_token')}" },
+                                       private: true)
 ])
 
 agent = Pikuri::Agent.new(transport: ..., system_prompt: ...) do |c|

@@ -44,9 +44,12 @@ The [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/master/bo
   token scoped to the repositories you want the agent to see,
   with read-only access to issues, pull requests, and contents.
   Anything broader hands the agent permissions the chapter's
-  isolation can't claw back. Export it as
-  `GITHUB_PERSONAL_ACCESS_TOKEN` in the shell that will run
-  `pikuri-code`. A PAT is required even for read-only access to
+  isolation can't claw back. Put it in
+  `~/.pikuri-examples-config.yaml` (`chmod 600`) as
+  `github_token: github_pat_…`, **not** in your shell's
+  environment: an exported token reaches every process pikuri
+  starts, and [the environment wall](shell.md#the-environment-walled-too)
+  stands only around sandboxed `bash`. A PAT is required even for read-only access to
   public repos: the server refuses to start without one (no
   anonymous code path, same as the `gh` CLI), and GitHub's
   unauthenticated REST limit of 60 requests/hour per IP would be
@@ -76,12 +79,26 @@ mcp_registry = Pikuri::Mcp::Registry.new(entries: [
     id:      'github',
     command: [
       'docker', 'run', '-i', '--rm',
-      '-e', "GITHUB_PERSONAL_ACCESS_TOKEN=#{ENV.fetch('GITHUB_PERSONAL_ACCESS_TOKEN')}",
+      '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
       'ghcr.io/github/github-mcp-server'
-    ]
+    ],
+    env:     { 'GITHUB_PERSONAL_ACCESS_TOKEN' => examples_config.fetch('github_token') },
+    private: true
   )
 ])
 ```
+
+The token takes the narrowest path to the one process that needs
+it. It is read from the config file, and `env:` hands it to this
+one child alone: not to pikuri's own environment, not to your
+language servers, not to the other MCP servers. `-e` passes the
+variable by *name*, so docker copies the value from its own
+environment, and the token never shows up in argv, where `ps` and
+pikuri's INFO log line for each server would print it. (The
+github-mcp-server reads its token only from its environment, so an
+environment is where it has to end up; the point is that it ends up in
+just this one.) `private: true` tells the trifecta report what
+the PAT can read: private repos are private data.
 
 `cd` into a repo you have access to and run it:
 

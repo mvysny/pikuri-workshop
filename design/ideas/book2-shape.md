@@ -140,10 +140,13 @@ What the done chapters changed beyond their text:
 - **First MCP server, the rejection path.** `bin/pikuri-openlibrary`'s new
   `InjectionDetected` rescue never fired in a run (the real server passes). A spec-support
   server with a poisoned description would exercise it.
-- **MCPs revisited (next), audited.** The GitHub recipe exports the PAT and puts it in argv:
-  it lands in the INFO audit line and `ps`. Fix: a `github_token:` config key, `env:` on the
-  entry, `-e GITHUB_PERSONAL_ACCESS_TOKEN` by name, `private: true`; `bin/pikuri-code`'s
-  commented examples (`ENV.fetch('HUBSPOT_TOKEN')`) too. Other findings: the npx recipe's
+- **MCPs revisited (next), audited.** PAT leak: **decided and applied, uncommitted**. Tokens
+  live in the config file, never the environment (`github_token:` in
+  `~/.pikuri-examples-config.yaml`, not `gh auth token`: simpler to teach); `env:` on the entry,
+  `-e GITHUB_PERSONAL_ACCESS_TOKEN` by name, `private: true`. Done in the chapter's recipe,
+  `bin/pikuri-code`'s commented examples (GitHub added, HubSpot off `ENV`) and
+  `pikuri-mcp/README.md`; no code change was needed. The chapter's GitHub block still says
+  `docker` (the podman pass below). Other findings: the npx recipe's
   phantom `~/.npm` mount, Playwright's per-spawn `npx`, unpinned GitHub image, `node:20` past
   EOL, the Playwright networking section written for slirp4netns, the Docker-in-Docker caveat
   vs. the VM promise, "What's next" → Skills. Egress: text plus `--network=none` for the

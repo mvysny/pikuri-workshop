@@ -429,10 +429,21 @@ read_only = Pikuri::Workspace::ReadOnly.new(
 # Two entry types: +StdioEntry+ for a local subprocess (argv to spawn)
 # and +HttpEntry+ for a remote endpoint (url + optional headers). Empty
 # by default, so no MCP tool is wired until at least one entry is
-# added here.
+# added here. A server's token comes from the config file and reaches only
+# that server: +env:+ for a subprocess (with +-e NAME+ by name, so the value
+# stays out of argv and the INFO log), +headers:+ for an endpoint; never
+# +ENV+, which every child inherits. +private: true+ marks a server that
+# reaches private data, for the trifecta report.
 #
 # == Examples
 #
+#   Pikuri::Mcp::Registry::StdioEntry.new(
+#     id:      'github',
+#     command: ['podman', 'run', '-i', '--rm', '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
+#               'ghcr.io/github/github-mcp-server'],
+#     env:     { 'GITHUB_PERSONAL_ACCESS_TOKEN' => examples_config.fetch('github_token') },
+#     private: true
+#   ),
 #   Pikuri::Mcp::Registry::StdioEntry.new(
 #     id:      'maven-tools',
 #     command: ['npx', 'mcp-maven-deps']
@@ -444,7 +455,8 @@ read_only = Pikuri::Workspace::ReadOnly.new(
 #   Pikuri::Mcp::Registry::HttpEntry.new(
 #     id:      'hubspot',
 #     url:     'https://mcp.example.com/v1',
-#     headers: { 'Authorization' => "Bearer #{ENV.fetch('HUBSPOT_TOKEN')}" }
+#     headers: { 'Authorization' => "Bearer #{examples_config.fetch('hubspot_token')}" },
+#     private: true
 #   ),
 mcp_registry = Pikuri::Mcp::Registry.new(entries: [
 ])
