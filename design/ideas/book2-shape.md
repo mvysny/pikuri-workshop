@@ -1,8 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite at six of ten chapters (shell,
-OS assistant, memories, first MCP server, MCPs revisited, skills). Next: the wire chapter**
-(see "Carried forward" below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite at seven of ten chapters (shell,
+OS assistant, memories, first MCP server, MCPs revisited, skills, wire). Next: language
+intelligence** (see "Carried forward" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -106,7 +106,7 @@ Habits that paid off on the first three chapters:
 | 4 | Your first MCP server | `mcp.md` | done; verifier rejection path untested |
 | 5 | MCPs revisited | `mcp-revisited.md` | done; headed Playwright vs. a desktop, dummy iface, docker untested |
 | 6 | Skills | `skills.md` | done; the TTY trust prompt after a clean git check untested |
-| 7 | The wire | `wire.md` | — |
+| 7 | The wire | `wire.md` | done, text only; canary re-run on Qwen3.6 and Ornith-1.5 |
 | 8 | Language intelligence | `lsp.md` | — |
 | 9 | Task tracking | `tasks.md` | — |
 | 10 | The coding agent, completed | `code.md` (rest), `security-revisited.md` | — |
@@ -166,6 +166,10 @@ mounts tmpfs on `/tmp`; `--tmpfs /tmp` stays for docker.
   dev-server recipe (needs sudo); every recipe under docker (run on podman 5.7 only). The
   chapter says so in place. Its "Wrapping pikuri in Docker" link keeps the anchor pikuri holds
   (see the climax note).
+- **pikuri's `pikuri-wire-check`, two pikuri-side nits.** From the workshop it runs only as
+  `BUNDLE_GEMFILE=$PWD/Gemfile ruby "$(bundle show pikuri-core)/bin/pikuri-wire-check"` (it
+  pins pikuri's own Gemfile, uninstalled in a bundler checkout); and phase 1 logs a spurious
+  `ContextWindowDetector` WARN probing its fake `wire-check.invalid` server.
 - **`/clear` and MCP.** `Mcp::Extension` has no `on_conversation_reset`, so servers the model
   `mcp_connect`ed stay active after a `/clear` while the conversation forgot connecting. Harmless
   so far; decide when the climax accounts for `pikuri-code`'s wiring.

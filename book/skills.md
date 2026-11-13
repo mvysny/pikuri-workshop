@@ -103,8 +103,8 @@ Weekly log for `$ARGUMENTS`, Monday through today, from my commits.
 
 Saved as `~/.claude/commands/wh.md`, that is `/wh swingai` in `pikuri-code`. What it expands
 to becomes *your* message: the command is a typing shortcut, not a second kind of instruction,
-which is why it lands as a user turn and not as the `:system` text a skill you typed in
-becomes.
+which is why it lands as a plain user turn and not as the reference block, harness framing in
+a `<system-reminder>` envelope, that a skill you typed in becomes.
 
 The distinction to carry away: **who decides**. If the model should notice the situation and
 reach for it, it is a skill, and it costs prompt tokens. If you know when you want it, it is a
@@ -254,8 +254,9 @@ The book asks every cage the same question. A skill has no process of its own, s
 turns into two: whose text reaches the model, and what runs when a skill ships a script.
 
 **A skill is text a folder puts into your prompt.** Every ungated description lands in the
-system prompt at boot; a `paths:` promotion and a skill you type in arrive as `:system`
-messages; a body the model loads arrives as a tool result. The project's skill folders are
+system prompt at boot; a `paths:` promotion and a skill you type in arrive as reference blocks
+(user turns in a `<system-reminder>` envelope, for reasons [the wire chapter](wire.md) gives);
+a body the model loads arrives as a tool result. The project's skill folders are
 whatever the repository you `cd` into ships, and the Agent Skills standard exists precisely so
 bundles travel. A cloned repo's `.claude/skills` reaches your prompt without asking you
 anything. What pikuri does about it is grade it: the trifecta report counts a project's bundles
