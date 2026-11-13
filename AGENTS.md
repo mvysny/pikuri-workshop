@@ -77,7 +77,7 @@ pikuri's gems from its repo at one pinned commit; the `Rakefile` fans out `rake 
 - **A `bin/` script is simple on purpose**, so its simplifications are not policy — never cite one as evidence of how a gem behaves.
 - **Book chapters are named, not numbered** — never an ordinal, anywhere. A new concept is one `book/<slug>.md`, one line in `book/README.md`, and fixed neighbouring "What's next" links.
 - **A chapter's claim is measured, not read off the code**: boot the bin, probe the sandbox, bring the stack up; what went untested is said in place. Every chapter revisited so far had a claim a run contradicted.
-- **pikuri's book links into this one** by file, and once by anchor (`code.md#lifting-the-cage-the-outer-vm`): renaming or cutting a chapter or that heading needs a pikuri-side fix too.
+- **pikuri's book links into this one**, by file and sometimes by heading anchor: renaming or cutting a chapter or a heading needs a pikuri-side fix too (`grep pikuri-workshop/blob` in its `book/`).
 - **Podman over docker** in commands, chapters and bins when it's installed; docker stays the fallback.
 - **A CHANGELOG entry is one sentence**, new work under `[Unreleased]`, a shipped section closed.
 - **The seam checks in `tasks/tripwires.rake` are a closed set of five.** A new invariant is a line here and stays unchecked. See `pikuri:D_tripwire_bar`.

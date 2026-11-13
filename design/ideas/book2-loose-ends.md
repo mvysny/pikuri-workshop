@@ -25,10 +25,6 @@ empty.
 
 ## pikuri-side fixes (pikuri's repo, not this one)
 
-- **Links to `security-revisited.md`.** That chapter merged into `book/code.md`; pikuri's
-  `book/chat.md` and `book/security.md` link it six times, once by the old
-  `#wrapping-pikuri-in-docker` anchor. `book2-loose-ends/pikuri-links.patch` (against pikuri master `54d7fc4`, `git apply` in pikuri)
-  points them at `code.md` and `code.md#lifting-the-cage-the-outer-vm`.
 - **`security.md:167`** says "the Verifier you already met in the MCP chapter", but pikuri's
   readers reach the workshop's `mcp.md` after it.
 - **"Environment is not a secret store"** still holds (pikuri filters nothing), but could point
