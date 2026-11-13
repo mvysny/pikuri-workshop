@@ -119,36 +119,4 @@ RSpec.describe Pikuri::Tasks::Extension do
       assert_equal 1, ext.list.size
     end
   end
-
-  describe '#on_conversation_reset' do
-    let(:fake_ctx_class) do
-      Class.new do
-        attr_reader :emitted
-
-        def initialize
-          @emitted = []
-        end
-
-        def emit_event(event)
-          @emitted << event
-        end
-      end
-    end
-
-    it 'clears the list and emits a ListChanged with an empty snapshot' do
-      ext = described_class.new
-      ext.configure(configurator)
-      ctx = fake_ctx_class.new
-      ext.bind(ctx)
-      ext.list.add('one')
-      ext.list.add('two')
-      ctx.emitted.clear
-
-      ext.on_conversation_reset(ctx)
-
-      assert_equal 0, ext.list.size
-      assert_equal 1, ctx.emitted.size
-      assert_empty ctx.emitted.first.items
-    end
-  end
 end

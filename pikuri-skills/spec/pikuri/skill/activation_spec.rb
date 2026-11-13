@@ -72,23 +72,6 @@ RSpec.describe Pikuri::Skill::Activation do
     end
   end
 
-  describe '#reset' do
-    it 're-hides an activated skill, so the next touch announces it again' do
-      activation.activate([gated])
-      activation.reset
-
-      refute activation.in_play?('rdoc-writer')
-      assert_nil activation.get('rdoc-writer')
-      assert_equal [gated], activation.activate([gated])
-    end
-
-    it 'leaves ungated skills alone' do
-      activation.reset
-
-      assert activation.in_play?('data-viz')
-    end
-  end
-
   describe 'an unknown name' do
     it 'is refused exactly as a withheld one is' do
       refute activation.in_play?('no-such-skill')
@@ -123,10 +106,6 @@ RSpec.describe Pikuri::Skill::Activation do
     it 'refuses an unknown name exactly as a withheld one' do
       refute sealed.in_play?('no-such-skill')
       assert_nil sealed.get('no-such-skill')
-    end
-
-    it 'tolerates a reset, since a host may clear a conversation it holds' do
-      assert_nil sealed.reset
     end
   end
 end

@@ -18,10 +18,10 @@ module Pikuri
     # readable file — and needs no vector store or embedder, fitting the
     # "small enough to audit" posture.
     #
-    # {#content} reads fresh on every call and {#prompt_section} is re-pulled
-    # on every {Pikuri::Agent#clear_conversation}, so a user's or agent's
-    # edit surfaces on the next "/clear" rather than freezing at boot. Read
-    # a handful of times (boot + clears), never per turn.
+    # {#content} reads fresh on every call and {#prompt_section} is taken by
+    # every new agent, so a user's or agent's edit surfaces in the next
+    # conversation rather than freezing at boot. Read a handful of times
+    # (once per conversation), never per turn.
     class MachineMemory
       LOGGER = Pikuri.logger_for('MachineMemory')
 

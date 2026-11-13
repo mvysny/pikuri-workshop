@@ -129,37 +129,6 @@ RSpec.describe Pikuri::Tasks::List do
     end
   end
 
-  describe '#clear' do
-    it 'drops every item' do
-      list.add('a')
-      list.add('b')
-
-      list.clear
-
-      assert list.empty?
-    end
-
-    it 'rewinds the id counter to 1 (unlike #delete, which keeps ids dead)' do
-      list.add('a')
-      list.add('b')
-
-      list.clear
-
-      assert_equal 1, list.add('fresh').id
-    end
-
-    it 'fires on_change, even when already empty' do
-      fired = 0
-      list.on_change = -> { fired += 1 }
-
-      list.clear # empty
-      list.add('a')
-      list.clear # non-empty
-
-      assert_equal 3, fired # clear, add, clear
-    end
-  end
-
   describe '#items' do
     it 'returns a frozen snapshot that does not mutate the underlying list' do
       list.add('a')

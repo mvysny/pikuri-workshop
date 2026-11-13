@@ -35,18 +35,27 @@ RSpec.describe Pikuri::Skill::PathActivationListener do
     )
   end
 
-  def touch(tool, arguments)
-    listener.on_event(Pikuri::Agent::Event::ToolCall.new(tool_call_id: 'c1', name: tool, arguments: arguments,
-                                                     display_name: Pikuri::Tool.display_name_for(tool),
-                                                     argument: ''))
+  def touch(tool, arguments) = touch_via(listener, tool, arguments)
+
+  def touch_via(target, tool, arguments)
+    target.on_event(Pikuri::Agent::Event::ToolCall.new(tool_call_id: 'c1', name: tool, arguments: arguments,
+                                                   display_name: Pikuri::Tool.display_name_for(tool),
+                                                   argument: ''))
+  end
+
+  # A listener over its own empty {Activation}, as a new conversation's agent gets.
+  def fresh_listener
+    described_class.new(
+      activation: Pikuri::Skill::Activation.new(catalog: activation.catalog), root: root,
+      on_promote: ->(skills, path) { promotions << [skills.map(&:name), path] }
+    )
   end
 
   describe 'which tool calls count' do
     it 'promotes on read, write and edit' do
       %w[read write edit].each_with_index do |tool, i|
-        activation.reset
         promotions.clear
-        touch(tool, 'path' => "lib/a#{i}.rb")
+        touch_via(fresh_listener, tool, 'path' => "lib/a#{i}.rb")
 
         assert_equal [[['rdoc-writer'], "lib/a#{i}.rb"]], promotions, tool
       end
@@ -60,7 +69,7 @@ RSpec.describe Pikuri::Skill::PathActivationListener do
     end
 
     it 'ignores an event that is not a tool call' do
-      listener.on_event(Pikuri::Agent::Event::Reset.new)
+      listener.on_event(Pikuri::Agent::Event::Cancelled.new)
 
       assert_equal [], promotions
     end
@@ -119,14 +128,6 @@ RSpec.describe Pikuri::Skill::PathActivationListener do
       touch('edit', 'path' => 'spec/c.rb')
 
       assert_equal 1, promotions.size
-    end
-
-    it 'promotes again after the conversation is cleared' do
-      touch('read', 'path' => 'lib/a.rb')
-      activation.reset
-      touch('read', 'path' => 'lib/a.rb')
-
-      assert_equal 2, promotions.size
     end
 
     it 'promotes several skills in one touch when several match' do

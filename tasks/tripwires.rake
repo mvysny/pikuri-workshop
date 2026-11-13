@@ -88,14 +88,14 @@ module Tripwires
     ),
 
     Check.new(
-      'per-request permit',
-      'Every ruby_llm request rides a Context whose instrumenter is the permit gate.',
+      'per-request hook',
+      "Every ruby_llm request rides a Context whose instrumenter runs the agent's around_request.",
       # Two halves of one seam, both of which a plausible tidy-up breaks
-      # silently — the throttle would simply stop gating, with every spec
-      # still green. A +RubyLLM.chat+ call is a chat built off the *global*
-      # config, i.e. one carrying no throttle; and the +instrumenter+ slot is
-      # single-occupancy, so anything else assigning it displaces the gate
-      # (a host's own instrumenter is chained *by* the gate, not installed
+      # silently — a host's throttle would simply stop gating, with every
+      # spec still green. A +RubyLLM.chat+ call is a chat built off the
+      # *global* config, i.e. one carrying no hook; and the +instrumenter+
+      # slot is single-occupancy, so anything else assigning it displaces the
+      # hook (a host's own instrumenter is chained *by* it, not installed
       # over it).
       # Both halves live in pikuri-core's +agent.rb+, so here nothing may
       # match at all.

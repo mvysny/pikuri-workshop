@@ -240,9 +240,6 @@ bundle_bases = [
   Pikuri::Bundle::Base.new(dir: Dir.home, trusted: home_bundles_are_mine)
 ]
 skill_catalog = Pikuri::Skill::Catalog::Bundled.new(search_bases: bundle_bases)
-# Held in a local (rather than built inline in the wiring block below) because
-# the REPL calls #schedule_load_skill on it to serve a typed /name.
-skill_extension = Pikuri::Skill::Extension.new(catalog: skill_catalog, root: project_root)
 
 # Slash commands: the *human*-invoked half of the same surface, scanned from
 # .pikuri/commands / .claude/commands under those same bases. Never advertised
@@ -533,11 +530,14 @@ ensure
   trap('INT', prev_trap || 'DEFAULT')
 end
 
-# Boot-time LLM work — synthesize_descriptions: + verify_mcp_servers:
-# each run a one-shot thinker agent once per configured MCP server on a cold
-# cache. Trap SIGINT around Agent.new so a Ctrl+C unwinds startup.
-prev_boot_trap = trap('INT') { cancel_flag.cancel! }
-begin
+# One agent is one conversation (pikuri:D_agent_is_one_conversation): /clear
+# closes it and calls this again, so the task list, the read-before-edit marks,
+# the fired paths: skills and the MCP connections all start fresh. What outlives
+# a conversation — plan mode's flag, the catalogs, the registries — is built
+# above and handed in. Answers the skill extension beside the agent: the REPL
+# calls #schedule_load_skill on it to serve a typed /name.
+build_conversation = lambda do
+  skill_extension = Pikuri::Skill::Extension.new(catalog: skill_catalog, root: project_root)
   agent = Pikuri::Agent.new(
     # Connection rides the transport's own RubyLLM::Context (not a global
     # RubyLLM.configure); from_openai_server normalizes a trailing /v1.
@@ -547,12 +547,7 @@ begin
       api_key: examples_config.fetch('llm_api_key', 'not-needed')
     ),
     system_prompt: system_prompt,
-    cancellable: cancel_flag,
-    # Two things land here: the *agent's own* mid-loop injections, which is
-    # what a `paths:`-gated skill needs to be promoted when a matching file
-    # is touched (without one, Skill::Extension leaves every skill
-    # advertised), and this REPL's own typed-/name skill loads.
-    interloper: Pikuri::Agent::Control::Interloper.new
+    cancellable: cancel_flag
   ) do |c|
     c.add_listener Pikuri::Agent::Listener::Terminal.new
     c.add_listener Pikuri::Agent::Listener::TokenLog.new
@@ -635,12 +630,25 @@ begin
       ]
     )
   end
+  [agent, skill_extension]
+end
+
+# Boot-time LLM work — synthesize_descriptions: + verify_mcp_servers:
+# each run a one-shot thinker agent once per configured MCP server on a cold
+# cache. Trap SIGINT around the build so a Ctrl+C unwinds it; the reset first,
+# since a cancelled last turn leaves the flag set and the build would stop on it.
+def start_conversation(build, cancel_flag)
+  cancel_flag.reset!
+  prev_trap = trap('INT') { cancel_flag.cancel! }
+  build.call
 rescue Pikuri::Agent::Control::Cancellable::Cancelled
-  warn 'Cancelled during startup'
+  warn 'Cancelled while starting a conversation'
   exit 130
 ensure
-  trap('INT', prev_boot_trap || 'DEFAULT')
+  trap('INT', prev_trap || 'DEFAULT')
 end
+
+agent, skill_extension = start_conversation(build_conversation, cancel_flag)
 
 begin
   # Capability + trifecta map, printed unconditionally. These are teaching
@@ -710,13 +718,15 @@ begin
     # read-only flag; Code::Extension emits a PlanModeChanged event on the
     # flip, which the Terminal listener renders (so no puts here), and
     # activate!/deactivate! are idempotent, so a repeat is a silent no-op.
-    # /clear empties the conversation but keeps the wiring: the task list,
-    # the read-before-edit marks and every fired paths: skill reset with it,
-    # while plan mode and the MCP servers already connected stay as they are.
+    # /clear starts a new conversation on a new agent (build_conversation);
+    # plan mode is the host's flag and stays as it is.
     case message.strip.downcase
     when '/plan'  then read_only.activate!;   next
     when '/impl'  then read_only.deactivate!; next
-    when '/clear' then agent.clear_conversation; next
+    when '/clear'
+      agent.close
+      agent, skill_extension = start_conversation(build_conversation, cancel_flag)
+      next
     end
 
     # Slash commands, resolved *after* the built-ins above: a cloned repo

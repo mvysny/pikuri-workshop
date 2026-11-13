@@ -1,12 +1,12 @@
 GIT
   remote: https://codeberg.org/mvysny/pikuri.git
-  revision: ac77ac94363b091cc176e805c1fdf741ff2d5006
-  ref: ac77ac94363b091cc176e805c1fdf741ff2d5006
+  revision: 8d764bdbd2b8670ba9f417331f60f18954b27987
+  ref: 8d764bdbd2b8670ba9f417331f60f18954b27987
   specs:
     pikuri-core (0.1.0)
       faraday (~> 2.9)
       rainbow (~> 3.1)
-      ruby_llm (~> 2.1)
+      ruby_llm (~> 2.2)
       zeitwerk (~> 2.7)
     pikuri-pdf (0.1.0)
       pdf-reader (~> 2.15)
@@ -26,6 +26,7 @@ GIT
       faraday (~> 2.9)
       nokogiri (~> 1.19)
       pikuri-core (= 0.1.0)
+      pikuri-workspace (= 0.1.0)
       reverse_markdown (~> 3.0)
       ruby-readability (~> 0.7)
     pikuri-workspace (0.1.0)
@@ -39,6 +40,12 @@ PATH
       pikuri-core (~> 0.1)
       pikuri-subagents (~> 0.1)
       pikuri-workspace (~> 0.1)
+
+PATH
+  remote: pikuri-conversations
+  specs:
+    pikuri-conversations (0.1.0)
+      pikuri-core (~> 0.1)
 
 PATH
   remote: pikuri-extractors
@@ -241,6 +248,7 @@ PLATFORMS
 DEPENDENCIES
   minitest (~> 6.0)
   pikuri-code!
+  pikuri-conversations!
   pikuri-core!
   pikuri-extractors!
   pikuri-lsp!
@@ -308,6 +316,7 @@ CHECKSUMS
   nokogiri (1.19.7-x86_64-linux-musl) sha256=464d1f3dfb0d53cf54c0c6a7e23e8e91cf68ec3cafc2b27dc4a7682f2d9bf546
   pdf-reader (2.16.0) sha256=bf1b5564c085264d8279bde3cf1467778b75841494d20c0fe7da3dad475f3732
   pikuri-code (0.1.0)
+  pikuri-conversations (0.1.0)
   pikuri-core (0.1.0)
   pikuri-extractors (0.1.0)
   pikuri-lsp (0.1.0)

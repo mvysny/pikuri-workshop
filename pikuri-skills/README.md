@@ -84,10 +84,9 @@ worth knowing before you write one:
 
 - **`paths: []` means *always advertised*, not "never"** — as does
   `paths: ["**"]`, and a bare `paths:` with nothing under it.
-- **Give the agent an `interloper:`** (`Pikuri::Agent::Control::Interloper.new`).
-  A promotion arrives as a mid-loop injection, so without one there is
-  nowhere for it to land — pikuri then leaves every skill advertised and
-  logs a warning, rather than hiding one it could never bring back.
+- **A promotion lasts the conversation.** It arrives as a mid-loop
+  injection on the agent's own interloper; a new conversation is a new
+  agent with a new extension, so every gated skill starts hidden again.
 
 ## Slash commands
 

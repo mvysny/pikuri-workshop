@@ -23,6 +23,9 @@ RSpec.describe Pikuri::Code::Extension do
     events = []
     ctx.define_singleton_method(:emit_event) { |e| events << e }
     ctx.define_singleton_method(:events) { events }
+    on_close = []
+    ctx.define_singleton_method(:on_close) { |&blk| on_close << blk }
+    ctx.define_singleton_method(:close!) { on_close.each(&:call) }
     ctx
   end
 
@@ -114,6 +117,19 @@ RSpec.describe Pikuri::Code::Extension do
 
       assert_equal [true, false], ctx.events.map(&:active)
       assert ctx.events.all? { |e| e.is_a?(Pikuri::Code::PlanModeChanged) }
+    end
+
+    # The flag outlives the agent: a "/clear" builds the next agent on it.
+    it 'goes quiet once its agent closes' do
+      ext = described_class.new(filesystem: filesystem, confirmer: confirmer, read_only: read_only)
+      ext.configure(build_configurator)
+      ctx = build_ctx
+      ext.bind(ctx)
+
+      ctx.close!
+      read_only.activate!
+
+      assert_empty ctx.events
     end
 
     it 'is a no-op when no read-only flag is wired' do

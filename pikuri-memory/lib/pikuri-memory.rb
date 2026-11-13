@@ -18,8 +18,8 @@ module Pikuri
   # == Three retrieval tiers (the layered shape)
   #
   # 1. **Resident persona** — a small always-in-prompt summary
-  #    ({Extension#system_prompt_snippets}), re-pulled on every
-  #    {Pikuri::Agent#clear_conversation}.
+  #    ({Extension#system_prompt_snippets}), taken once per agent, i.e. per
+  #    conversation.
   # 2. **Automatic prefetch** — {Extension#on_user_message} searches mem0
   #    with the latest user message and returns a high-precision slice as a
   #    +<memory-context>+ block, which

@@ -5,6 +5,12 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- New `pikuri-conversations`: `Pikuri::Conversations::HistoryFile` stores a conversation in the format pikuri's dropped `History#save` / `.load` wrote, and `Pikuri::Conversations::Store` keeps one folder per conversation as pikuri-webui and Puri did (`D_history_file`).
+- The workshop requires pikuri `8d764bd`, where an `Agent` is one conversation, owns its `Interloper` and takes `around_request:` in place of `ServerPermits`.
+- **Breaking:** `Pikuri::Skill::Extension#on_conversation_reset`, `Pikuri::Skill::Activation#reset` and `Pikuri::Skill::Activation::Open` are gone: a new conversation is a new agent with a new extension, and every agent has an interloper to carry a promotion.
+- **Breaking:** `Pikuri::Tasks::Extension#on_conversation_reset` and `Pikuri::Tasks::List#clear` are gone, since a new conversation's agent gets a new extension and an empty list.
+- `bin/pikuri-code`'s `/clear` closes the agent and builds a new one, so MCP and language servers restart and nothing a conversation touched crosses into the next.
+- `pikuri-memory`'s Qdrant image is `docker.io/qdrant/qdrant:v1.12.4`, fully qualified like pikuri-vectordb's, so podman finds it without a registry prompt.
 - `pikuri-code`, `pikuri-os`, `pikuri-lsp`, `pikuri-mcp`, `pikuri-skills`, `pikuri-tasks`, `pikuri-memory` and `pikuri-extractors` moved here from pikuri; a host that wires one now takes it from this repo, beside pikuri's own gems (`D_separate_repo`).
 - The workshop gems carry their own version (`Pikuri::Workshop::VERSION`) and pin pikuri's gems with `~>` instead of pikuri-core's exact version.
 - `pikuri-extractors` tags its converter image with a digest of its build context instead of pikuri-core's version, so an unchanged image is never rebuilt.
@@ -17,7 +23,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 - `pikuri-lsp` no longer answers the first call against a cold ruby-lsp from an index not yet built: the readiness gate's quiet window now starts when `initialized` is sent, not when the server is spawned.
 - `pikuri-lsp/bin/pikuri-lsp-check` reports a probe that got nothing to measure (an empty definition, index or hierarchy) as *no answer* instead of *ok*.
 - `bin/pikuri-code` counts a project's skills and commands as untrusted, without asking, when a bundle file matches no commit (untracked, ignored or changed since `HEAD`) or the project is not a git repository, via the new `Pikuri::Bundle::Unreviewed`; commit the bundles you reviewed to be asked again.
-- `bin/pikuri-code` gains a `/clear` built-in that empties the conversation and resets the task list, the read-before-edit marks and every fired `paths:` skill, keeping the wiring.
+- `bin/pikuri-code` gains a `/clear` built-in that starts a new conversation.
 - `Pikuri::Tasks::ListChanged#to_s` renders one line (`tasks: 1/3 done, now: …`), so a terminal no longer prints the raw event.
 - A batch `task_create` emits one `Pikuri::Tasks::ListChanged` instead of one per item, via the new `Pikuri::Tasks::List#add_all`; a listener that counted per-item events sees one per call.
 - `task_in_progress` returns any other in-progress task to `pending`, so the list holds at most one in-progress task instead of asking the model to keep it so.

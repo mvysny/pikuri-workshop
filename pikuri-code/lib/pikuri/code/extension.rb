@@ -137,12 +137,19 @@ module Pikuri
       # render the posture — both model-driven ({EnterPlanMode} / {ExitPlanMode})
       # and host-driven flips. No-op when plan mode isn't wired.
       #
+      # The flag outlives this agent — a host's "/clear" closes the agent and
+      # builds the next on the same flag — and +ReadOnly+ has no unsubscribe,
+      # so the bridge goes quiet on close rather than reporting the next
+      # conversation's flips through a closed agent's listeners.
+      #
       # @param ctx [Pikuri::Agent::ExtensionContext]
       # @return [void]
       def bind(ctx)
         return nil unless @read_only
 
-        @read_only.on_change { |active| ctx.emit_event(PlanModeChanged.new(active: active)) }
+        live = true
+        ctx.on_close { live = false }
+        @read_only.on_change { |active| ctx.emit_event(PlanModeChanged.new(active: active)) if live }
         nil
       end
 

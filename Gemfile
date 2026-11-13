@@ -11,6 +11,7 @@ gemspec path: 'pikuri-mcp'
 gemspec path: 'pikuri-lsp'
 gemspec path: 'pikuri-code'
 gemspec path: 'pikuri-os'
+gemspec path: 'pikuri-conversations'
 
 # pikuri itself, "just" a dependency, pinned to one commit of its repo, so
 # the Gemfile says which pikuri this was built against. Move it by editing
@@ -18,7 +19,7 @@ gemspec path: 'pikuri-os'
 # The gems a workshop gemspec doesn't name are the demo binaries' and the
 # specs' choices: web tools, the PDF extractor, Thunderbird for
 # pikuri-computer, and vectordb for the shared Qdrant image pin.
-PIKURI_REF = 'ac77ac94363b091cc176e805c1fdf741ff2d5006'
+PIKURI_REF = '8d764bdbd2b8670ba9f417331f60f18954b27987'
 git 'https://codeberg.org/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-pdf'

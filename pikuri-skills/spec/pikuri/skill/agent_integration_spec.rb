@@ -117,18 +117,16 @@ RSpec.describe 'Pikuri::Skill::Extension agent integration' do
   end
 
   it 'binds the real agent interloper so a host can schedule a skill load' do
-    interloper = Pikuri::Agent::Control::Interloper.new
     ext = Pikuri::Skill::Extension.new(catalog: non_empty_catalog, root: root)
-    Pikuri::Agent.new(transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-                      system_prompt: 'base',
-                      interloper: interloper) do |c|
+    agent = Pikuri::Agent.new(transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
+                              system_prompt: 'base') do |c|
       c.add_listeners(listeners)
       c.add_extension(ext)
     end
 
     ext.schedule_load_skill('sample')
 
-    pending = interloper.peek
+    pending = agent.interloper.peek
     assert_equal 1, pending.size
     assert_equal :system, pending.first.kind
     assert pending.first.content.include?('<skill name="sample"'), pending.first.content

@@ -14,7 +14,6 @@ module Pikuri
     #   activation.activate([rdoc])             # => [rdoc]  — announce these
     #   activation.activate([rdoc])             # => []      — already announced
     #   activation.get('writing-rdoc')          # => #<Skill name="writing-rdoc" …>
-    #   activation.reset                        # a cleared conversation re-hides it
     #
     # == Implementation details
     #
@@ -69,14 +68,6 @@ module Pikuri
       #   activated, in the given order
       def activate(skills)
         @mutex.synchronize { skills.select { |skill| @activated.add?(skill.name) } }
-      end
-
-      # Re-hide every gated skill.
-      #
-      # @return [void]
-      def reset
-        @mutex.synchronize { @activated.clear }
-        nil
       end
     end
   end

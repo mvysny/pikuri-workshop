@@ -38,9 +38,9 @@ which is the load-bearing piece of its memory design:
    too universally relevant to gate behind a query match. Present every
    turn, paid once, and frozen *for the duration of a conversation* so
    the prefix cache stays stable — re-fetched (refreshed from the store)
-   only on `clear_conversation`, where the cache resets anyway.
-   Implemented via the `system_prompt_snippets` extension hook, which the
-   agent re-pulls on each clear.
+   only by the next conversation's agent, where the cache resets anyway.
+   Implemented via the `system_prompt_snippets` extension hook, which an
+   agent pulls once, at construction.
 2. **Automatic prefetch (per-turn, query-driven).** Embed the latest
    user message, semantic-search the store, inject a small
    high-precision slice. The persona's long tail, surfaced only when

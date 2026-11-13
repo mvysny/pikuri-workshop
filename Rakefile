@@ -32,6 +32,7 @@ GEMS = %w[
   pikuri-lsp
   pikuri-code
   pikuri-os
+  pikuri-conversations
 ].freeze
 
 # Path to the single source of truth for the shared version constant.

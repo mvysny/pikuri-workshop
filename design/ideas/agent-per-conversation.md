@@ -17,21 +17,29 @@ kills them.
 
 ## Mechanical migration
 
-- `pikuri-tasks`, `pikuri-skills`: delete `on_conversation_reset`; the state is fresh because the
-  extension instance is (one instance per agent — a host must not reuse one).
-- `pikuri-memory`, `pikuri-os` (`MachineMemory`, `SystemInfo`): yardoc says "refreshed on
-  clear_conversation" — now "taken when the agent is built", which a /clear still triggers.
-- `pikuri-mcp` `Connect`: the activated set is already per instance; fine.
-- `Agent.new` takes no `interloper:` any more — every agent builds its own (`Agent#interloper`,
-  `c.interloper` inside the block). Drop the kwarg in `pikuri-code/bin/pikuri-code`, the three
-  `pikuri-tui` apps and `pikuri-webui-chat` (whose factory hands its own to `Agents::Runner` —
-  read `agent.interloper` instead). `pikuri-skills`: the interloper is never `nil` now, so the
-  "needs an interloper" raise and the no-interloper warning in `arm_gate` go. TUI
-  `deliver_pending_injections` moving leftovers to a rebuilt agent reads both agents' queues.
-- Hosts: `pikuri-tui` `AgentSession#clear_conversation` → build a new agent, close the old; the
-  `Event::Reset` handling (e.g. `skill_activation_listener.rb`) goes. `pikuri-webui`
-  `Runner#restore!` → pass `history:` to the factory's `Agent.new`; `HistoryLoaded` now fires
-  during construction, so the listener stack must be wired before (it already is).
+**Done in the workshop** (with `pikuri-conversations`): `pikuri-tasks` and `pikuri-skills`
+lost `on_conversation_reset` (and `List#clear`, `Activation#reset`, `Activation::Open`, the
+"needs an interloper" raise, the `arm_gate` warning); the `pikuri-memory` / `pikuri-os` yardoc
+says "taken when the agent is built"; `bin/pikuri-code` drops `interloper:` and its `/clear`
+closes the agent and calls a `build_conversation` lambda, the skill extension built inside it.
+`pikuri-mcp` `Connect` needed nothing.
+
+**Found on the way**: a host object that outlives the agent and offers only a subscribe —
+`Workspace::ReadOnly#on_change` — kept the closed agent's `Code::Extension` reporting plan-mode
+flips after a `/clear` (printed twice). Fixed by going quiet on `ctx.on_close`; an unsubscribe on
+`ReadOnly` would be the cleaner pikuri-side fix. Any other shared host object with a
+subscribe-only API has the same shape.
+
+**Still to do, in the hosts**:
+
+- `pikuri-tui` `AgentSession#clear_conversation` → build a new agent, close the old; the
+  `Event::Reset` handling (e.g. `skill_activation_listener.rb`) goes; drop `interloper:` in the
+  three apps. `deliver_pending_injections` moving leftovers to a rebuilt agent reads both
+  agents' queues.
+- `pikuri-webui` `Runner#restore!` → pass `history:` to the factory's `Agent.new`;
+  `HistoryLoaded` now fires during construction, so the listener stack must be wired before (it
+  already is). `pikuri-webui-chat`'s factory reads `agent.interloper` instead of handing one to
+  `Agents::Runner`. Its store moves to `Pikuri::Conversations::Store` (`conversations.md`).
 
 ## MCP: catalog + lazy connections
 

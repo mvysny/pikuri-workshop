@@ -180,20 +180,6 @@ module Pikuri
         removed
       end
 
-      # Drop every item and rewind the id counter to 1, then fire
-      # {#on_change} (always, even when already empty, so a UI listener
-      # sees the cleared state). Rewinding +@next_id+ is safe here — unlike
-      # after {#delete}, a clear wipes the model's context too, so no stale
-      # id survives to collide with a reused one.
-      #
-      # @return [void]
-      def clear
-        @items = []
-        @next_id = 1
-        @on_change&.call
-        nil
-      end
-
       # The canonical rendering every task tool returns as its
       # observation, so the LLM sees the full state (ids included) each
       # call without a separate read tool:

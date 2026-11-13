@@ -960,8 +960,8 @@ conditional activation actually works*).
   position rather than the most-trusted slot in the request. **Declined
   outright 2026-08-17**, because reading the two counts against pikuri's own
   code shrank the offer to one and a half. The prefix count is already
-  banked: `assemble_system_prompt` runs exactly twice — at construction and
-  on `clear_conversation` — and a promotion already rides the interloper, so
+  banked: `assemble_system_prompt` runs once per agent, at construction (a
+  "/clear" is a new agent), and a promotion already rides the interloper, so
   nothing mutates a prefix mid-session here either. What remains is the
   trust position, in a sharper form: a *gated* skill's description arrives
   as `role: :user` while an *ungated* skill's identical bytes arrive in the
@@ -1079,8 +1079,8 @@ conditional activation actually works*).
   read/edit targets, never a path a tool *walked* to (a repo-wide `grep`
   would otherwise activate half the catalog at once — the **Denylist seam**'s
   distinction, from the other direction); and a skill is announced at most
-  once per conversation, the set cleared by `Extension#on_conversation_reset`
-  so `clear_conversation` re-hides correctly. Both were then observed in
+  once per conversation, the set living on the extension instance, so a
+  "/clear" — a new agent with a new extension — re-hides correctly. Both were then observed in
   Claude Code before pikuri wrote a line of it — `design/research.md`
   finding 4.
   **Every place that enumerates the catalog is part of the change, not just
@@ -1161,12 +1161,10 @@ conditional activation actually works*).
   a repeated load. What the trim does *not* touch: `Filesystem#readable:`
   over `catalog.roots` is load-bearing for reading **sidecar files**, not
   merely a direct-`read` fallback for `SKILL.md`.
-- **An agent with no interloper gets no gate at all.** A promotion reaches the
-  model only through mid-loop injection, so hiding a skill there would hide
-  what nothing can bring back. `Skill::Activation::Open` leaves every skill
-  advertised and warns, naming the ones that stayed — `bin/pikuri-code` wires
-  an interloper for exactly this reason, though its REPL enqueues nothing
-  itself.
+- **A promotion needs the interloper**, since it reaches the model only
+  through mid-loop injection. Every agent owns one since pikuri dropped
+  `Agent.new(interloper:)`, so the gate is always on; an earlier `Skill::Activation::Open` turned it off for an agent built without
+  one, rather than hide what nothing could bring back.
 - **Reopen when** one of these trips: (1) the untrusted-description
   position becomes a real finding rather than a theoretical one, which
   argues for the placement move above; (2) activation counts per session
@@ -1505,3 +1503,157 @@ for anything on your network. `pasta` runs its command as root of a fresh user n
 sandbox passes `--uid`/`--gid` to keep `bash` under your ids. A host's own sandbox must answer
 `#host_loopback_ports`. A background server started in one `bash` call was already gone in the
 next (`--die-with-parent`), so per-command namespaces change nothing there.
+
+---
+
+## D_history_file — Why does the workshop own the stored form of a conversation, and why are its only doors validators?
+
+**Context.** pikuri hands a conversation out as `Agent::History`, an in-memory value it never
+writes to disk (`pikuri:D_history_value_type`): a file format means a version, validating
+untrusted bytes on the way back in, and attachment files confined to a folder, none of which a
+deployment that never resumes should carry. pikuri-webui and Puri do resume — after a restart,
+from a sidebar — and both stored conversations through the serializer pikuri used to ship
+(`#to_json` / `#save`, `.parse` / `.from_h` / `.load`, removed in pikuri `5c87269`).
+
+**Decision.** The serializer moved here, unchanged in format, as `Conversations::HistoryFile`
+in pikuri-conversations, the gem that keeps conversations; every folder webui and Puri wrote
+still loads. `parse`, `from_h` and `load` are the only doors in, and each raises `Error` rather
+than returning something half-built. There is deliberately no "accepts a String or a Hash or a
+History" convenience: one way in means one place validation could be skipped, i.e. none.
+
+**Versioning is additive-only, and `version` is expected to stay `1`.** Unknown *keys* are
+ignored so a file from a newer writer still loads; malformed *known* keys raise; a version above
+`VERSION` is refused outright rather than best-effort loaded. The survey is the evidence
+(`pikuri:R_persistence`): no system examined carries a per-record schema
+version it migrates on — opencode's 30 SQL migrations never once rewrite the stored JSON's
+shape, and grok-build reserves `deny_unknown_fields` for tool arguments and wire protocols while
+never applying it to a session type. "One migration function per version bump, kept forever"
+was over-engineering nobody in the field has needed.
+
+**Validation is asymmetric**, because `Agent.new(history:)` repairs a call left without a result
+(`pikuri:D_history_load_repairs`) — refusing it would make the crash case the one thing that
+cannot be loaded:
+
+| | | |
+|---|---|---|
+| result with no call | refuse | unrepairable — the call cannot be invented |
+| one call answered twice | refuse | a live race would dedup; in a *file* it is corruption |
+| call with no result | legal, repaired on resume | what a killed process leaves behind |
+
+**Alternatives rejected.**
+
+- **Keeping it in pikuri.** pikuri's reasons above: a format is a feature a deployment that
+  never resumes pays for, and pikuri grows by explaining better.
+- **Each host keeping its own.** webui and Puri already share one folder format; two copies of
+  a validator is two places to forget the symlink check.
+- **Building on `RubyLLM::Message#to_h`.** ruby_llm's format for its Rails persistence, and it
+  moves when ruby_llm does — 2.0 renamed `model_id` to `model` and every token key. A file
+  written today must load after ruby_llm moves, and pikuri's own per-message fields (`id`,
+  `kind`, the display strings) have no slot in it.
+- **`Marshal` or any binary form.** Unreadable, unhand-editable, and version-fragile across Ruby
+  releases — for artifacts that outlive the process.
+- **A top-level array of messages.** Can never grow a sibling key; an envelope can.
+
+---
+
+## D_history_container — Why is a saved conversation one JSON object rather than JSONL?
+
+**Context.** A chat client writes often and reads rarely, so appending rather than rewriting
+looks like the obvious shape — three of the five harnesses surveyed use an append-only JSONL log.
+The question was whether to write JSONL from the start so a later version could simply append.
+
+Measured first, on a whole-file rewrite (`JSON.generate` + temp file + atomic rename, mean of
+ten):
+
+| conversation | file | per turn |
+|---|---|---|
+| 200 messages @ 1.8 KB | 0.39 MB | 1.9 ms |
+| 2000 messages @ 1.8 KB | 3.86 MB | 15.7 ms |
+
+Against a turn that spends seconds on the model, that is 0.05–0.5%. The write-often instinct is
+right about the access pattern and wrong about the constant — and 2000 messages is already past
+where context management forces a compaction.
+
+**Decision.** One JSON object per conversation, rewritten wholesale. What earns it is not the
+measurement but the **1:1 property**: `HistoryFile.to_json` and `.parse` are literal inverses,
+and there is no writer/reader layer that can be wrong on its own. Header-plus-records makes the
+file an *encoding* of the value instead of the value.
+
+Deferring is safe because adopting JSONL later is **not a version bump and not a migration** —
+it is a sniff: *if the whole file parses as a single JSON object it is the v1 container,
+otherwise read it as JSONL.* Three lines, nothing on disk rewritten, every file ever written
+still readable. That is what makes this reversible rather than a bet.
+
+Whole-file rewrite is also *safer* than append: with temp-file-and-rename the file on disk is
+always a complete valid history, so there is no torn state to detect. Append trades that
+guarantee for O(1) writes.
+
+**Alternatives rejected.**
+
+- **Storing the history as one long line, "so it is trivially JSONL too".** It is valid JSONL,
+  but its record type is *an entire history*. The first append leaves line 1 an envelope holding
+  every message and lines 2..N bare messages — permanently bimodal, two record types for every
+  reader forever. It also costs diffability: a single-line blob is one wholly-changed line in
+  `git diff`.
+- **Numbered `1.json` / `2.json` segments rolled at a size threshold.** Each segment is a JSON
+  *array*, so appending means either rewriting it (defeating the purpose) or omitting the closing
+  `]` and repairing on read — JSONL reinvented, plus a rotation threshold, a naming scheme, an
+  ordering rule and a which-segment-is-current question JSONL does not have.
+
+**Consequences.** If append ever becomes real it is JSONL, and the reader must tolerate a torn
+last line (crash mid-append: drop it, keep the rest) — PI's pattern, and the reason it needs
+one. The append-only log the instinct reaches for already exists one layer up: grok-build treats
+its event log as ground truth with the model-facing transcript as a rebuildable cache. A
+`History` is the derived snapshot, and a derived snapshot wants wholesale rewrite.
+
+---
+
+## D_history_attachments — Why two attachment encodings in one folder, and why are the files allowed to rot?
+
+**Context.** `Workspace::Read` hands the model images as bytes read from a **workspace path**
+that may later change or vanish, and a user attaches images to a message. A stored conversation
+therefore has to decide what an attachment *is* on disk.
+
+**Decision.** Two encodings of one in-memory value: `HistoryFile.to_json` inlines attachments as
+base64 for a single self-contained artifact; `HistoryFile.save(history, dir)` writes
+`history.json` plus content-addressed files under `attachments/`, named by
+`HistoryFile.stored_name` (a SHA-256 prefix plus the sanitized filename). Both load back to the
+same value — pinned by `load(dir) == parse(json)`, which is what stops them drifting into two
+formats.
+
+**Attachments live in the history's own folder or the history does not load.** No sanitizing a
+bad path into a good one, no escape hatch for a big file. A reference is a bare basename, and the
+check compares the **resolved** path — a file sitting in `attachments/` may itself be a symlink
+to `~/.ssh/id_ed25519`, which every textual check passes. The digest prefix in the name is
+re-checked on load, so a file swapped underneath is refused. `parse` refuses a file-backed
+history outright (a String has no folder to resolve against) and names `load` instead of
+guessing.
+
+**`save` never deletes, and never enumerates the folder.** An attachment the history no longer
+references — after a compaction, say — simply rots there. `HistoryFile` writes into that folder
+but does not own everything in it (`Store#stash` writes there too, ahead of a turn), and
+removing a file a human put there is a worse failure than an orphan. Its only read is a `stat`
+per *referenced* attachment (skip if already present, the name being content-addressed), so a
+folder holding a thousand stale files costs nothing per save.
+
+**Alternatives rejected.**
+
+- **A path reference to the original file.** Smallest on disk, and the failure is invisible: the
+  bytes are re-read at load, so a resumed conversation can show the model a *different* image
+  than the transcript says it saw, or `ENOENT`. opencode does this for `@file` text mentions
+  while inlining everything else — which reads as drift rather than design.
+- **Degrading to the metadata note**, dropping the attachment. Cheap, honest, and breaks the
+  round-trip property: a resumed vision conversation is missing the picture it is discussing.
+- **Lazy attachment handles** in a history loaded from a folder. Saves memory, reintroduces
+  exactly the path-reference failure (the folder can change or vanish underneath), and breaks
+  `==` and therefore the convergence property above.
+- **Sweeping unreferenced attachments**, or reporting them so a host can. The report was dropped
+  because nothing consumes it, and it was the only reason `save` would scan the directory at all.
+- **A format-own attachment type** beside the `Pikuri::Attachment` pikuri carries. A
+  field-for-field copy with a conversion to maintain, and no safer: a field added to one and not
+  the other is dropped on save just as silently. One type, and a spec pinning
+  `Pikuri::Attachment.members` instead.
+
+**Consequences.** Orphans accumulate silently and nothing will mention them — bounded by what one
+conversation produced, content-addressed so they can never collide. If it ever matters the answer
+is `rm`, not a feature.

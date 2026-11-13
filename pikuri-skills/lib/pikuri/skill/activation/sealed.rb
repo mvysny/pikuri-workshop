@@ -56,9 +56,6 @@ module Pikuri
           raise "a sealed Activation cannot promote #{skills.map(&:name).join(', ')} — " \
                 'nothing should path-activate a skill inside a sub-agent'
         end
-
-        # @return [void] no-op: there is never anything to clear
-        def reset = nil
       end
     end
   end

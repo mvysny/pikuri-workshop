@@ -34,12 +34,10 @@ module Pikuri
     # inherit extensions.
     #
     # It also owns this conversation's {Activation} — which +paths:+-gated
-    # skills have fired — and clears it when the host clears the conversation.
+    # skills have fired. An instance serves one agent, which is one
+    # conversation, so a new conversation starts with every gated skill hidden.
     class Extension
       include Pikuri::Agent::Extension
-
-      LOGGER = Pikuri.logger_for('Skills')
-      private_constant :LOGGER
 
       # @param catalog [Pikuri::Skill::Catalog] the catalog of
       #   skills the agent may load. Required.
@@ -56,6 +54,7 @@ module Pikuri
         @catalog = catalog
         @root = root
         @activation = Pikuri::Skill::Activation.new(catalog: catalog)
+        # Nothing gated ⇒ no listener worth running on every tool call.
         @gate_armed = catalog.list.any?(&:gated?)
       end
 
@@ -65,14 +64,12 @@ module Pikuri
       # @return [Pathname]
       attr_reader :root
 
-      # @return [Pikuri::Skill::Activation, Pikuri::Skill::Activation::Open]
-      #   which gated skills this conversation has in play. {#configure}
-      #   downgrades it to an {Activation::Open} — no gate at all — when the
-      #   agent has no interloper to carry a promotion.
+      # @return [Pikuri::Skill::Activation] which gated skills this
+      #   conversation has in play
       attr_reader :activation
 
-      # Register the +skill+ tool, and — when the agent can receive a promotion
-      # — the listener that fires one. No-op when the catalog is empty (the
+      # Register the +skill+ tool, and — when the catalog gates anything — the
+      # listener that fires a promotion. No-op when the catalog is empty (the
       # +<available_skills>+ snippet is contributed by
       # {#system_prompt_snippets}).
       #
@@ -86,7 +83,6 @@ module Pikuri
                 'when adding Pikuri::Skill::Extension — the extension auto-registers it from the catalog.'
         end
 
-        arm_gate(c.interloper)
         c.add_tool(Pikuri::Skill::SkillTool.new(activation: @activation))
         c.add_listener(path_activation_listener) if gate_armed?
         nil
@@ -124,7 +120,7 @@ module Pikuri
       # and *enqueues* it on the interloper as a reference block.
       #
       #   ext   = Pikuri::Skill::Extension.new(catalog: catalog, root: project_root)
-      #   agent = Pikuri::Agent.new(..., interloper: interloper) { |c| c.add_extension ext }
+      #   agent = Pikuri::Agent.new(...) { |c| c.add_extension ext }
       #   ext.schedule_load_skill('pdf-tools')    # enqueue only — nothing runs yet
       #   agent.run_loop(user_message: nil)        # bare turn: the agent reacts to the skill
       #
@@ -149,28 +145,13 @@ module Pikuri
       #   *not* in play and is refused exactly as an unknown name is — the gate
       #   is the default at every surface, the host's included.
       # @raise [KeyError] if +name+ is not in play
-      # @raise [RuntimeError] if the agent was built without an +interloper:+
-      #   (nowhere to enqueue)
       # @return [Pikuri::Skill::Catalog::Skill] the scheduled skill
       def schedule_load_skill(name)
         skill = @activation.get(name)
         raise KeyError, "no skill named #{name.inspect} in the catalog" if skill.nil?
 
-        raise 'schedule_load_skill needs an interloper — construct the Agent with `interloper:`' \
-          if @interloper.nil?
-
         @interloper.inject_system_message(Pikuri::Skill::Renderer.format_skill(skill))
         skill
-      end
-
-      # Re-hide the gated skills. The clear dropped their promotions from the
-      # log, so the next matching touch has to announce them again.
-      #
-      # @param ctx [Pikuri::Agent::ExtensionContext] unused; protocol signature.
-      # @return [void]
-      def on_conversation_reset(_ctx)
-        @activation.reset
-        nil
       end
 
       # The +<available_skills>+ catalog block, carrying every *ungated* skill
@@ -179,11 +160,8 @@ module Pikuri
       # the Agent joins sections with +\n\n+, so +lstrip+ avoids doubling them.
       #
       # Deliberately reads the catalog rather than the {Activation}: a
-      # promotion belongs in the log, not the prompt, and
-      # {Pikuri::Agent#clear_conversation} re-assembles the prompt *before* it
-      # calls {#on_conversation_reset} — a snippet built from the activation
-      # set would rebuild carrying activations that are about to be cleared,
-      # advertising skills the +skill+ tool would then refuse.
+      # promotion belongs in the log, where it lands in order, not in a prompt
+      # assembled once before anything fired.
       #
       # @return [Array<String>]
       def system_prompt_snippets
@@ -194,20 +172,6 @@ module Pikuri
       end
 
       private
-
-      # Nothing gated ⇒ nothing to arm, and no listener worth running on every
-      # tool call. Gated but no interloper ⇒ a promotion would have nowhere to
-      # land, so the gate comes off entirely rather than hiding a skill nothing
-      # can bring back.
-      def arm_gate(interloper)
-        gated = @catalog.list.select(&:gated?)
-        @gate_armed = !gated.empty? && !interloper.nil?
-        return if gated.empty? || @gate_armed
-
-        LOGGER.warn('agent has no interloper, so a promotion would have nowhere to land — ' \
-                    "paths:-gated skills stay advertised (#{gated.map(&:name).join(', ')})")
-        @activation = Pikuri::Skill::Activation::Open.new(catalog: @catalog)
-      end
 
       def gate_armed? = @gate_armed
 

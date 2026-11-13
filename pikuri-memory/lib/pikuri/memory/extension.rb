@@ -19,8 +19,8 @@ module Pikuri
     #
     # * **configure** registers the +recall+ tool ({Recall}).
     # * **system_prompt_snippets** contributes the always-in-prompt
-    #   persona summary (tier 1) when +resident_persona:+ is on — re-pulled
-    #   (refreshed from the store) on every {Pikuri::Agent#clear_conversation}.
+    #   persona summary (tier 1) when +resident_persona:+ is on — taken once
+    #   per agent, so each new conversation gets it fresh from the store.
     # * **on_user_message** does tier 2 (automatic prefetch) *and* the
     #   asynchronous capture: enqueue the turn for off-path extraction,
     #   then return a +<memory-context>+ slice the Agent injects as a
@@ -125,10 +125,9 @@ module Pikuri
       end
 
       # The resident-persona summary, freshly fetched from the store.
-      # Because the Agent re-pulls this on every clear, the persona
-      # **refreshes** across a "/clear" — facts captured during the
-      # cleared conversation show up, instead of staying frozen at
-      # construction. Returns +[]+ when the resident persona is off, the
+      # The Agent takes this once, at construction, and a "/clear" builds a
+      # new agent — so facts captured during the previous conversation show
+      # up in the next, while one conversation's prefix stays fixed. Returns +[]+ when the resident persona is off, the
       # store is empty, or (via {#resident_persona_snippet}'s own rescue)
       # the store is unreachable this pass.
       #

@@ -21,9 +21,9 @@ module Pikuri
     #
     # A read-once-at-boot snapshot (the date is "at startup"). The host
     # doesn't change distro mid-session, and {#prompt_section} is
-    # **memoized** so the +inxi+ subprocess runs once no matter how often
-    # the prompt is re-assembled. Unlike {MachineMemory}, this deliberately
-    # does *not* refresh on {Pikuri::Agent#clear_conversation}.
+    # **memoized** so the +inxi+ subprocess runs once no matter how many
+    # agents assemble a prompt from it. Unlike {MachineMemory}, this
+    # deliberately does *not* refresh for a new conversation.
     class SystemInfo
       # @return [Integer] cap on the appended +inxi -b+ block, so a chatty
       #   inxi can't bloat the prompt.

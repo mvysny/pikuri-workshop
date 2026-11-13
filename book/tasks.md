@@ -232,9 +232,8 @@ The list is an `Array<Item>` inside one `Pikuri::Tasks::List`, held by the
   a race, since agent A would read and complete agent B's tasks.
 - **In memory.** Nothing is written to disk. Quit and the list is gone; re-running the binary
   starts fresh, by design.
-- **Gone on `/clear`.** `/clear` empties the conversation, and a plan is meaningless without
-  the conversation that produced it, so the extension empties the list too (and ids start
-  again at 1, safe since no old id survives in the context).
+- **Gone on `/clear`.** `/clear` closes the agent and builds a new one, with a new extension
+  and an empty list: a plan is meaningless without the conversation that produced it.
 - **Not inherited by sub-agents.** This follows the rule from
   [pikuri's sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md):
   sub-agents don't inherit extensions. A `file_miner` or `researcher` that `pikuri-code`

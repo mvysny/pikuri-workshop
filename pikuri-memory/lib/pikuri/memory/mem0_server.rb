@@ -134,7 +134,7 @@ module Pikuri
       #   image on disk for a host running both stacks). A convention,
       #   not a shared constant (the gems don't depend on each other);
       #   bump both together.
-      DEFAULT_QDRANT_IMAGE = 'qdrant/qdrant:v1.12.4'
+      DEFAULT_QDRANT_IMAGE = 'docker.io/qdrant/qdrant:v1.12.4'
 
       # @return [Integer] seconds to wait for the REST API to answer after
       #   +compose up+ returns. Covers container-start readiness only —

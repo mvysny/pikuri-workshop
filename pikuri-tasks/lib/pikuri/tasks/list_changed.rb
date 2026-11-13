@@ -18,7 +18,7 @@ module Pikuri
     # A terminal that renders unknown events through +to_s+ prints:
     #
     #   · tasks: 1/3 done, now: write the spec
-    #   · tasks: none                              (after a /clear)
+    #   · tasks: none                              (every item deleted)
     ListChanged = Data.define(:items) do
       # @return [String] the done count and the task in progress, one line
       def to_s

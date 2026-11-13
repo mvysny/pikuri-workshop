@@ -21,7 +21,7 @@ to be honest about the one wall that closes what the others can't.
 The `Agent.new` block in `bin/pikuri-code`, stripped of comments:
 
 ```ruby
-agent = Pikuri::Agent.new(transport: ..., system_prompt: ..., cancellable: ..., interloper: ...) do |c|
+agent = Pikuri::Agent.new(transport: ..., system_prompt: ..., cancellable: ...) do |c|
   c.add_listener Pikuri::Agent::Listener::Terminal.new
   c.add_listener Pikuri::Agent::Listener::TokenLog.new
 
@@ -172,8 +172,6 @@ And what none of them touch:
 - **The injection chain itself.** A file the agent reads can carry instructions it follows.
   Every row above shrinks what following them can do; none stops the following.
 - **No audit log.** What ran is in your scrollback and nowhere else.
-- **`/clear` forgets, the wiring doesn't.** It empties the conversation and the task list, but
-  MCP servers the model connected stay connected, their tools still in the list.
 
 ## The gate runs out on `bundle exec rspec`
 
