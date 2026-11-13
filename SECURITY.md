@@ -68,6 +68,13 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   container — most are Node / Python and containerize trivially — and narrow one that holds a
   token to its one host with `pikuri-mcp/containers/mcp-egress-proxy.Containerfile`
   (`book/mcp-revisited.md`).
+- **MCP server state — one process per conversation, for stdio.** A browser logged in during one
+  conversation must not be logged in for the next, so no stdio MCP process serves two agents;
+  each agent starts its own on first use (`D_mcp_catalog_and_connections`). An `HttpEntry` gets
+  only a new MCP *session* per agent, and the server decides what a session isolates: Playwright's
+  HTTP mode gives each its own browser context unless started with `--shared-browser-context`,
+  while a filesystem or database server shares its state with every session. Isolation there is
+  the server's promise, not pikuri's.
 - **Skills — text, not code, until they ship scripts.** Skills are Markdown + YAML frontmatter
   the user dropped under `.pikuri/skills/` / `.claude/skills/` / `.agents/skills/`. They
   don't execute; they're prompts, and a script a skill ships runs only through `bash`. Treat a

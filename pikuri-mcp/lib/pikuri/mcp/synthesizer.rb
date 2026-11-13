@@ -4,7 +4,7 @@ module Pikuri
   module Mcp
     # One-shot LLM synthesis of a short "what does this MCP server do"
     # description for the +<available_mcps>+ block, paired with the on-disk
-    # {Cache}. {Servers} just calls {#call} and treats +nil+ as "fall back".
+    # {Cache}. {Catalog} calls {#call} and treats +nil+ as "fall back".
     # Follows the boot-pass cancel/degrade policy: +Cancellable::Cancelled+ from
     # the {Thinker} pre-call check propagates (not caught by the +StandardError+
     # rescue) to abort startup; any other +StandardError+ (flaky LLM, cache
@@ -27,17 +27,22 @@ module Pikuri
       #   (with +cancellable:+); the passes run against this model.
       # @param cancellable [Pikuri::Agent::Control::Cancellable, nil] forwarded
       #   to the {Thinker} so a boot-time Ctrl+C aborts. Transport path only.
+      # @param around_request [#call, nil] the host's request throttle, forwarded
+      #   to the {Thinker}'s one-shot agents. Transport path only.
       # @param thinker [#call, nil] +thinker.call(prompt)+, replacing the
       #   built-in {Thinker}.
       # @param cache [Cache, Cache::NULL, nil] +nil+ builds the on-disk {Cache}
       #   on the +transport:+ path, {Cache::NULL} on the +thinker:+ path.
       # @raise [ArgumentError] when neither or both of +transport:+/+thinker:+
-      #   are given, or +cancellable:+ is combined with +thinker:+.
-      def initialize(transport: nil, cancellable: nil, thinker: nil, cache: nil)
+      #   are given, or +cancellable:+ / +around_request:+ is combined with
+      #   +thinker:+.
+      def initialize(transport: nil, cancellable: nil, around_request: nil, thinker: nil, cache: nil)
         raise ArgumentError, 'pass exactly one of transport: or thinker:' if transport.nil? == thinker.nil?
         raise ArgumentError, 'cancellable: only applies to the transport: path' if thinker && cancellable
+        raise ArgumentError, 'around_request: only applies to the transport: path' if thinker && around_request
 
-        @thinker = thinker || Thinker.new(transport: transport, cancellable: cancellable)
+        @thinker = thinker || Thinker.new(transport: transport, cancellable: cancellable,
+                                          around_request: around_request)
         @cache = cache ||
                  (transport ? Cache.new(model_id: transport.model, prompt_version: PROMPT_VERSION) : Cache::NULL)
       end
@@ -45,7 +50,7 @@ module Pikuri
       # Produce the description for one server. Returns the cleaned
       # description String, or +nil+ when the thinker raised
       # +StandardError+, returned blank, or otherwise failed to
-      # produce anything usable. {Servers#resolve_description}
+      # produce anything usable. {Catalog}
       # treats +nil+ as "fall back to +serverInfo.name+."
       #
       # @param entry [Registry::StdioEntry, Registry::HttpEntry]

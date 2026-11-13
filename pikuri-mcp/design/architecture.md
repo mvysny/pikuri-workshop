@@ -15,22 +15,43 @@ homed elsewhere, and is deliberately **not** repeated here:
 - **The invariants** — the `Subprocess.spawn` stdio carve-out, why MCP
   tools bypass `Pikuri::Tool`, and the `env` credential channel — are
   this gem's [`AGENTS.md`](../AGENTS.md) seams whose authoritative text lives in the
-  {Pikuri::Mcp::Servers} / {Pikuri::Mcp::ClientWrapper} /
+  {Pikuri::Mcp::Connections} / {Pikuri::Mcp::ClientWrapper} /
   {Pikuri::Mcp::Registry} YARD.
 
-What this file owns is the one cross-cutting thread none of those cover:
-the **boot-time LLM-introspection subsystem** and the cancel/degrade
-policy it runs under — a rule currently instantiated across several
-classes, stated here once as the authority.
+What this file owns are the two cross-cutting threads none of those cover:
+**which object lives how long**, and the **boot-time LLM-introspection
+subsystem** with the cancel/degrade policy it runs under.
+
+## Lifetimes: a catalog per process, connections per agent
+
+```
+Registry ──Catalog.build──▶ Catalog ──────────────▶ Extension (one per agent)
+ config     spawn, verify,   verified tools,          ├─ Connect      mcp_connect
+            describe, close  descriptions;            └─ Connections  this agent's processes,
+                             shared, immutable                        spawned on first tool call
+```
+
+- **{Pikuri::Mcp::Catalog}** — built once by the host, holds no process. The
+  only MCP object shared between agents.
+- **{Pikuri::Mcp::Extension}** — one per agent (a second `configure` raises).
+  Its `bind` registers {Pikuri::Mcp::Connect} and, for a resumed
+  conversation, re-registers every server an `mcp_connect` in the history named.
+- **{Pikuri::Mcp::Connections}** — the agent's processes, one
+  {Pikuri::Mcp::ClientWrapper} per server it actually called, closed by the
+  agent's `on_close`.
+- **{Pikuri::Mcp::ClientWrapper}** — one process, respawned after a crash;
+  every spawn must list the catalog's tools (`SurfaceChanged` otherwise).
+
+Why the split is drawn there: `D_mcp_catalog_and_connections`.
 
 ## Boot-time introspection: one Thinker shape, two consumers, one Cache shape
 
-At boot, {Pikuri::Mcp::Extension}`#configure` builds a
+At boot, {Pikuri::Mcp::Catalog}`.build` builds a
 {Pikuri::Mcp::Synthesizer} (the `<available_mcps>` description writer) and
-a {Pikuri::Mcp::Verifier} (the injection pre-flight) from the
-Configurator's *own* transport + cancellable — so both passes run against
-the agent's own model and honor the same boot-time Ctrl+C flag. Each is
-built from the same two collaborators:
+a {Pikuri::Mcp::Verifier} (the injection pre-flight) from the host's
+transport, cancellable and `around_request` — so both passes run against
+the host's model, honor its boot-time Ctrl+C flag and go through its
+request throttle. Each is built from the same two collaborators:
 
 - a **{Pikuri::Mcp::Thinker}** — a fresh, tools-free, listener-less
   {Pikuri::Agent} per call. Fresh-per-call so per-server prompts can't
@@ -56,13 +77,12 @@ to abort the *whole* startup (a boot-time Ctrl+C); any other
 per-consumer dispositions that implement it:
 
 - **Synthesizer** — a flaky LLM or a cache-write failure is WARN-logged
-  and returns `nil`, so {Pikuri::Mcp::Servers}`#resolve_description` falls
-  through to `serverInfo.name`. A transient blip never drops a server from
+  and returns `nil`, so {Pikuri::Mcp::Catalog} falls through to
+  `serverInfo.name`. A transient blip never drops a server from
   the `<available_mcps>` listing.
 - **Verifier** — `InjectionDetected` (and any provider error) bubbles out
-  of `Servers#start_one`, so a flagged server never enters
-  `Servers#live_ids`.
-- **`Servers#start_one`** — the boundary that enforces the split: it
+  of the verifier, so a flagged server never enters the catalog.
+- **`Catalog.probe`**, per server — the boundary that enforces the split: it
   re-raises `Cancelled` and `InjectionDetected` (the user must see the
   reason, not a generic "Failed to start" warning) and WARN-logs-and-drops
   every other `StandardError` — including the "verifier passed but

@@ -144,9 +144,9 @@ request raises, is cancelled, or streams for 20 s. On the agent rather than the 
 model switch can't drop it and a fresh lambda can't break `ChatTransport#==`; `api_base` is
 handed per call because a switch may change server. The throttle is one object per list, not per
 server: it looks up its permits by `api_base`. Not inherited by itself: `SubAgentTool` passes
-`parent.around_request`. **To do**: the MCP `Thinker` builds its one-shot agent without it, so
-its boot-time calls run unthrottled — thread `c.around_request` (a `Configurator` reader) through
-`Extension` → `Synthesizer`/`Verifier` → `Thinker`, as a host's titler must too.
+`parent.around_request`. The MCP boot passes take it from the host:
+`Mcp::Catalog.build(registry, transport:, around_request:)` hands it to each `Thinker`'s one-shot
+agent (`D_mcp_catalog_and_connections`); a host's titler must do the same.
 
 **Recovering the old throttle**: `ServerPermits` and `RequestThrottle` are deleted from pikuri;
 `git show 5c87269:pikuri-core/lib/pikuri/agent/server_permits.rb` (likewise
@@ -281,7 +281,8 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
   second turn ever queues, so per-key serialization only duplicates the `running` flag — and
   once anything queues behind a turn, a reset at post time wipes the running turn's cancel.
 - **No idle eviction**: an agent lives until `close`. Closing and rebuilding from `History` loses
-  state outside it (Tasks' list, Skill activations, MCP `mcp_connect`s), and webui rejected
+  state outside it (Tasks' list, Skill activations, what an MCP server held — its tools come
+  back, its logged-in browser does not), and webui rejected
   reaping already.
 - **`Agent` stays thread-unsafe**; the two `Control`s remain the only doors in from another thread.
 - **Naming**: the gem `pikuri-conversations`; `Conversations` / `Conversation`, not

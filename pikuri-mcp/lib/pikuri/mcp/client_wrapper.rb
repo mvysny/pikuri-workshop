@@ -23,7 +23,30 @@ module Pikuri
     # Lifecycle: if the handshake fails, {#initialize} closes its own half-opened
     # transport before re-raising — a caller who saw +ClientWrapper.new+ raise
     # need not close anything (fully-initialized object, or no object at all).
+    #
+    # == The rug-pull check
+    #
+    # Given +expected_tools:+, every spawn — the first and each restart — lists
+    # the new process's tools and raises {SurfaceChanged} unless they match,
+    # closing the process first. The surface was verified once, in a different
+    # process ({Catalog}); a fresh process may answer differently, and
+    # re-verifying would put the verifier's LLM call back on every connection.
+    # A restart is checked too: it is just as much a new process.
     class ClientWrapper
+      # A spawned server lists tools other than the ones it was verified with.
+      # The message names the server and what differs.
+      class SurfaceChanged < StandardError; end
+
+      # The comparable shape of a tool list: what reaches the model (name,
+      # description, input schema), sorted by name so listing order is no
+      # difference.
+      #
+      # @param tools [Array<MCP::Client::Tool>]
+      # @return [Array<Array>]
+      def self.surface(tools)
+        tools.map { |t| [t.name, t.description, t.input_schema] }.sort_by { |name, _, _| name.to_s }
+      end
+
       LOGGER = Pikuri.logger_for('Mcp::ClientWrapper')
       private_constant :LOGGER
 
@@ -51,17 +74,24 @@ module Pikuri
       # @return [MCP::Client] the *current* live client. Replaced on
       #   each restart, so callers must not cache this across
       #   {#call_tool} invocations. Exposed for one-shot boot-time
-      #   reads of +server_info+ / +tools+ by {Servers}, {Verifier},
+      #   reads of +server_info+ / +tools+ by {Catalog}, {Verifier},
       #   {Synthesizer}, and {Cache}.
       attr_reader :client
 
       # @param entry [Registry::StdioEntry, Registry::HttpEntry] the
       #   configured server.
+      # @param expected_tools [Array<MCP::Client::Tool>, nil] the verified
+      #   surface every spawn must match (see "The rug-pull check"); +nil+
+      #   trusts whatever the process lists — the {Catalog}'s probe, which is
+      #   what verifies it.
+      # @raise [SurfaceChanged] when the spawned process's tools differ from
+      #   +expected_tools+.
       # @raise [StandardError] anything raised by the underlying
       #   transport's spawn / +connect+ handshake. The half-opened
       #   transport is closed before the exception propagates.
-      def initialize(entry)
+      def initialize(entry, expected_tools: nil)
         @entry = entry
+        @expected_surface = expected_tools && self.class.surface(expected_tools)
         @closed = false
         spawn_fresh!
       end
@@ -140,10 +170,11 @@ module Pikuri
         begin
           @client = MCP::Client.new(transport: @transport)
           @client.connect
+          check_surface!
         rescue StandardError
-          # Handshake (or the stdio spawn it triggers) failed — close the
-          # half-opened state so a subprocess that popen3'd but failed handshake
-          # doesn't leak.
+          # Handshake (or the stdio spawn it triggers, or the rug-pull check)
+          # failed — close the half-opened state so a subprocess that popen3'd
+          # but failed doesn't leak.
           begin
             @transport.close
           rescue StandardError
@@ -151,6 +182,24 @@ module Pikuri
           end
           raise
         end
+      end
+
+      def check_surface!
+        return if @expected_surface.nil?
+
+        actual = self.class.surface(@client.tools)
+        return if actual == @expected_surface
+
+        expected_names = @expected_surface.map(&:first)
+        actual_names = actual.map(&:first)
+        detail = if expected_names == actual_names
+                   'a description or input schema changed'
+                 else
+                   "added #{(actual_names - expected_names).inspect}, " \
+                     "removed #{(expected_names - actual_names).inspect}"
+                 end
+        raise SurfaceChanged, "MCP server #{@entry.id.inspect} lists different tools than when it " \
+                              "was verified (#{detail}); refusing it until pikuri restarts"
       end
 
       def restart!

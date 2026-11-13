@@ -11,9 +11,8 @@ This file is what the workshop (and the downstream hosts) must do about it.
 MCP tools registered by `mcp_connect` outlived a clear and leaked across a load. Worse, an MCP
 server's *state* did: Playwright logged into a bank in conversation A is still logged in for
 conversation B. pikuri can't know what a foreign server holds, so it assumes every one is
-stateful — an MCP connection never crosses a conversation boundary. Re-creating the agent gives
-that for free, because `Mcp::Extension#configure` already starts the servers and `on_close`
-kills them.
+stateful — an MCP connection never crosses a conversation boundary
+(`D_mcp_catalog_and_connections`).
 
 ## Mechanical migration
 
@@ -41,25 +40,14 @@ subscribe-only API has the same shape.
   already is). `pikuri-webui-chat`'s factory reads `agent.interloper` instead of handing one to
   `Agents::Runner`. Its store moves to `Pikuri::Conversations::Store` (`conversations.md`).
 
-## MCP: catalog + lazy connections
+## MCP: catalog + lazy connections — done
 
-Re-creating the agent re-runs MCP startup per conversation: spawn + handshake per server, the
-verifier's LLM call (not cached), the synthesizer's (cached by `Mcp::Cache`). Split it:
-
-- **Catalog, once per process** — spawn each server, verify, describe, record its tool schemas,
-  close. `<available_mcps>` renders from it.
-- **Connections, per agent, lazy** — `mcp_connect` registers tools from the catalog; the process
-  starts at the first real tool call. Building an agent spawns nothing; most conversations never
-  connect, so the webui's N open conversations don't mean N × M children.
-- **Restore** — `Mcp::Extension#bind` scans the restored history for `mcp_connect` calls and
-  re-registers those ids still in the catalog. No process, no side effect; the server starts
-  when the conversation actually calls a tool (and finds a blank Playwright page —
-  `pikuri:D_history_load_repairs`). Re-registering an id whose old connect failed costs only
-  extra tools, so no result parsing.
-- **Rug-pull check** — the lazily spawned process is a new process. Compare its handshake's tool
-  list to the catalog's and refuse on a difference; re-verifying would put the LLM call back
-  per conversation.
-- `Servers` stays `P_one_agent` — no locking, since nothing is shared across conversations.
+Built: `Mcp::Catalog` once per process, `Mcp::Connections` per agent and lazy, the rug-pull
+check, restore from the history's `mcp_connect` calls; why is `D_mcp_catalog_and_connections`.
+**Breaking for the hosts**: `Mcp::Extension.new(registry:, synthesize_descriptions:,
+verify_mcp_servers:)` is now `Mcp::Extension.new(catalog:)`, one per agent, the catalog built
+once with `Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)` — pikuri-tui
+and pikuri-webui must move their MCP wiring out of the per-agent factory.
 
 ## Open questions
 
@@ -67,9 +55,10 @@ verifier's LLM call (not cached), the synthesizer's (cached by `Mcp::Cache`). Sp
   slow. An LSP server holds the project, not a secret a conversation produced, so it could be
   host-owned and passed in. Does anything a conversation does leave state in it that another
   must not see (unsaved buffers via `didOpen`/`didChange`)?
-- `Q_subagent_mcp_view` — within one conversation, a sub-agent reaches the parent's servers via
-  `Mcp::Servers::View`, so a persona reading untrusted pages would drive the parent's logged-in
-  browser. Separate from the conversation boundary, but the same leak shape.
+- `Q_subagent_mcp_view` — sub-agents get no MCP today (extensions aren't inherited). If a
+  persona ever does, it needs its own `Connections`, never the parent's: a persona reading
+  untrusted pages would otherwise drive the parent's logged-in browser.
 - `Q_extension_reuse_guard` — reusing an extension instance across two agents silently shares
-  per-conversation state. Worth a loud guard (core's `Configurator#add_extension`), or is the
-  protocol yardoc enough?
+  per-conversation state. `Mcp::Extension` now raises on a second `configure`; worth the same
+  guard for every extension in core's `Configurator#add_extension`, or is the protocol yardoc
+  enough?

@@ -111,18 +111,6 @@ mcp_registry = Pikuri::Mcp::Registry.new(entries: [
   )
 ])
 
-# Boot-time LLM work — synthesize_descriptions: + verify_mcp_servers:
-# each run a one-shot thinker agent once on a cold cache (the Open Library server
-# ships no useful `instructions`, so the synthesizer fires; the verifier
-# fires on every server). Both honor cancel_flag, so trap SIGINT around
-# Agent.new and a Ctrl+C unwinds startup on the next thinker pre-call check.
-# Cached entries skip both passes entirely.
-mcp_ext = Pikuri::Mcp::Extension.new(
-  registry: mcp_registry,
-  synthesize_descriptions: true,
-  verify_mcp_servers: true
-)
-
 # Run one agent turn, trapping SIGINT only for the duration of the turn.
 # Ctrl+C during a turn flips the agent's Cancellable flag — the next
 # tool-call boundary raises Cancelled, which we rescue below to return to
@@ -142,35 +130,25 @@ ensure
   trap('INT', prev_trap || 'DEFAULT')
 end
 
+transport = Pikuri::Agent::ChatTransport.from_openai_server(
+  server: server,
+  model: model,
+  api_key: examples_config.fetch('llm_api_key', 'not-needed')
+)
+
+# Boot-time LLM work: the verifier and the synthesizer each run a one-shot
+# thinker agent per server on a cold cache (the Open Library server ships no
+# useful `instructions`, so the synthesizer fires). Both honor cancel_flag, so
+# a Ctrl+C unwinds the build. The catalog spawns the server, learns its tools
+# and closes it again; the agent starts its own on the first tool call.
 prev_boot_trap = trap('INT') { cancel_flag.cancel! }
 begin
-  agent = Pikuri::Agent.new(
-    # Connection rides the transport's own RubyLLM::Context (not a global
-    # RubyLLM.configure); from_openai_server normalizes a trailing /v1.
-    transport: Pikuri::Agent::ChatTransport.from_openai_server(
-      server: server,
-      model: model,
-      api_key: examples_config.fetch('llm_api_key', 'not-needed')
-    ),
-    system_prompt: system_prompt,
-    cancellable: cancel_flag,
-    streaming: streaming
-  ) do |c|
-    c.add_listener Pikuri::Agent::Listener::Terminal.new(streaming: streaming)
-    c.add_listener Pikuri::Agent::Listener::TokenLog.new
-    # Calculator is the only bundled tool. No web tools, no files, no
-    # memory — the private-data leg of the trifecta stays amputated
-    # (see the header comment).
-    c.add_tool Pikuri::Tool::CALCULATOR
-    c.add_extension mcp_ext
-  end
+  mcp_catalog = Pikuri::Mcp::Catalog.build(mcp_registry, transport: transport, cancellable: cancel_flag)
 rescue Pikuri::Agent::Control::Cancellable::Cancelled
   warn 'Cancelled during startup'
   exit 130
 rescue Pikuri::Mcp::Verifier::InjectionDetected => e
-  # A flagged server aborts the whole boot, not just that server: the
-  # Configurator has already run, and an agent missing the one server it
-  # exists for has nothing to do. Show what the model flagged.
+  # The demo exists for this one server; without it there is nothing to do.
   warn 'The prompt-injection verifier rejected the Open Library MCP server:'
   warn e.message
   exit 1
@@ -178,12 +156,10 @@ ensure
   trap('INT', prev_boot_trap || 'DEFAULT')
 end
 
-# A spawn failure (missing image, no container engine) is logged as a
-# warning by Mcp::Servers and the server is skipped — the agent would
-# boot with no MCP tools at all, which defeats the whole demo. Fail
-# loud with the build hint instead.
-unless mcp_ext.servers.live_ids.include?('openlibrary')
-  agent.close
+# A spawn failure (missing image, no container engine) is logged as a warning
+# and the server is left out of the catalog — the agent would boot with no MCP
+# tools at all, which defeats the whole demo. Fail loud with the build hint.
+unless mcp_catalog.include?('openlibrary')
   containerfile = File.expand_path('../containers/mcp-open-library.Containerfile', __dir__)
   warn 'The Open Library MCP server failed to start (see the warning above).'
   warn "Did you build the #{image} image? One-time setup:"
@@ -191,6 +167,21 @@ unless mcp_ext.servers.live_ids.include?('openlibrary')
   warn "  cd mcp-open-library && #{engine} build -f #{containerfile} -t #{image} ."
   warn 'book/mcp.md is the full walkthrough.'
   exit 1
+end
+
+agent = Pikuri::Agent.new(
+  transport: transport,
+  system_prompt: system_prompt,
+  cancellable: cancel_flag,
+  streaming: streaming
+) do |c|
+  c.add_listener Pikuri::Agent::Listener::Terminal.new(streaming: streaming)
+  c.add_listener Pikuri::Agent::Listener::TokenLog.new
+  # Calculator is the only bundled tool. No web tools, no files, no
+  # memory — the private-data leg of the trifecta stays amputated
+  # (see the header comment).
+  c.add_tool Pikuri::Tool::CALCULATOR
+  c.add_extension Pikuri::Mcp::Extension.new(catalog: mcp_catalog)
 end
 
 begin
@@ -218,7 +209,7 @@ rescue Interrupt
   # Ctrl+C — fall through to clean exit
 ensure
   # Fires the extension's on_close, which tears the MCP subprocess (and
-  # with it the --rm container) down.
+  # with it the --rm container) down, if a tool call ever started one.
   agent.close
 end
 

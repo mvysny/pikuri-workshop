@@ -66,4 +66,14 @@ module TestServer
     assignments = ENV.to_h.select { |k, _| RESOLUTION_VARS.call(k) }.merge(extra_env)
     ['env', *assignments.map { |k, v| "#{k}=#{v}" }, 'bundle', 'exec', 'ruby', FIXTURE]
   end
+
+  # A {Pikuri::Mcp::Catalog} of the fixture under id +test+, probed once per
+  # run: probing spawns a process, and a catalog holds none, so specs share it.
+  #
+  # @return [Pikuri::Mcp::Catalog]
+  def self.catalog
+    @catalog ||= Pikuri::Mcp::Catalog.probe(
+      Pikuri::Mcp::Registry.new(entries: [Pikuri::Mcp::Registry::StdioEntry.new(id: 'test', command: command)])
+    )
+  end
 end

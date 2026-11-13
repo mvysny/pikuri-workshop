@@ -148,9 +148,10 @@ mcp_registry = Pikuri::Mcp::Registry.new(entries: [
 ])
 ```
 
-pikuri spawns that argv, talks JSON-RPC over its stdin and stdout, and tears the container down
-when the agent closes. pikuri doesn't know or care that there's a container in the argv; from
-its side it's just a subprocess that speaks MCP.
+pikuri spawns that argv, talks JSON-RPC over its stdin and stdout, and closes it again. It does
+so twice: once at boot, to read and check the server's tool list, and again the first time the
+agent calls one of those tools, keeping that one until the agent closes. pikuri doesn't know or
+care that there's a container in the argv; from its side it's just a subprocess that speaks MCP.
 
 The toolset is the other half of the design. No web tools, no files, no memory: the missing
 trifecta leg is missing *structurally*, baked into the binary, not held open by your restraint.
@@ -237,21 +238,30 @@ source you read and whose dependency pile is the only stranger, that wall is fin
 you *can't* read, or one you let run unattended, the wall is a virtual machine around the whole
 process: the same answer the shell chapter gave for `--yolo`.
 
-## The Registry / Servers split
+## Registry, catalog, connections
 
-The configurator/runtime split you saw in `Pikuri::Agent` shows up here too:
+Three objects, each living as long as what it knows stays true:
 
 - **`Pikuri::Mcp::Registry`** is pure configuration: a frozen list of `StdioEntry` /
   `HttpEntry` value objects, each with an `id`. No I/O, no subprocess. Constructing one doesn't
   touch the network or spawn anything.
-- **`Pikuri::Mcp::Servers`** is the runtime. The extension builds it from a registry at boot;
-  it starts every configured server (spawning subprocesses for `StdioEntry`, opening HTTP
-  sessions for `HttpEntry`), runs the verifier and synthesizer, holds one live client per
-  server, and owns `#close`.
+- **`Pikuri::Mcp::Catalog`** is what the servers offer, learned once per process.
+  `Catalog.build` starts each configured server, runs the verifier and synthesizer, records its
+  tool list and description, and closes it again. It holds no process, so every agent the
+  process builds can share it.
+- **`Pikuri::Mcp::Connections`** is one agent's own processes. A server starts the first time
+  *this* agent calls one of its tools, and dies when this agent closes.
+
+```ruby
+catalog = Pikuri::Mcp::Catalog.build(mcp_registry, transport: transport, cancellable: cancel_flag)
+agent = Pikuri::Agent.new(transport: transport, system_prompt: system_prompt) do |c|
+  c.add_extension Pikuri::Mcp::Extension.new(catalog: catalog)   # a new extension per agent
+end
+```
 
 The registry is the layer `bin/pikuri-openlibrary` hardcodes, and the one a host builds from
-its own config. The split is why the gem's config side is unit-tested without opening a real
-transport (`Registry` doesn't load the `mcp` gem at all).
+its own config. `Registry` doesn't load the `mcp` gem at all, so the config side is unit-tested
+without opening a real transport.
 
 The two entry types map to the two MCP transports:
 
@@ -289,13 +299,15 @@ it through pikuri's chokepoint would mean forking the gem. pikuri still owns the
 `Pikuri::Mcp::Extension` has the same `configure(c)` + `bind(ctx)` shape as the
 `Os::Extension` and `Memory::Extension` you've already wired:
 
-- `configure(c)` runs once on the parent's Configurator. It builds the shared `Mcp::Servers`
-  runtime, fires the verifier and synthesizer against each entry, adds the `<available_mcps>`
-  block to the system prompt, and registers an `on_close` handler that tears the subprocesses
-  down on agent shutdown.
-- `bind(ctx)` runs once on the parent agent. It installs the per-agent `mcp_connect` tool with
-  its own activation set, so re-connecting an already-active server comes back as an
-  LLM-actionable `"Error: server '...' is already connected; ..."`.
+- `configure(c)` runs once on the parent's Configurator. It gives the agent its own
+  `Connections` and registers an `on_close` handler that tears its servers down on agent
+  shutdown. The `<available_mcps>` block comes from the catalog. A second `configure` on the
+  same extension raises: one extension per agent, or two agents would share processes.
+- `bind(ctx)` runs once on the parent agent. It installs the per-agent `mcp_connect` tool, so
+  re-connecting an already-active server comes back as an LLM-actionable
+  `"Error: server '...' is already connected; ..."`. When the agent resumes a saved
+  conversation (`Agent.new(history:)`), `bind` also finds every `mcp_connect` in it and puts
+  that server's tools back, so the model can call what it was told it has.
 
 Sub-agents do **not** inherit the extension or the `mcp_connect` tool; pikuri's sub-agents
 chapter's lesson about extension non-inheritance applies. `pikuri-openlibrary` spawns no
@@ -390,8 +402,24 @@ non-trivial schema, to every turn's prompt, most of which the model won't use in
 conversation. Gated behind `mcp_connect`, only the schemas the model decided it needs enter the
 context. The id and one-line description are cheap; the full surface is paid for on demand.
 
-The activation set is per agent. (Sub-agents don't get `mcp_connect` at all, so they couldn't
-activate even if they wanted to.)
+Connecting spawns nothing either: the tools join the toolset, and the server starts on the
+first call to one of them. Most conversations never start one.
+
+**One conversation, one process.** The activation set is per agent, and so is every server
+process. A server can hold state you never see in its tool list: a Playwright browser logged
+into your bank in one conversation would still be logged in for the next one, if the two
+shared the process. pikuri can't tell which servers hold state, so it assumes they all do.
+Measured with the Playwright MCP image: two agents on one catalog, agent A navigates to a page,
+agent B takes a snapshot. B gets `about:blank` and A still sees its page; two containers ran,
+and none was left once both agents closed. A resumed conversation gets its tools back but a
+fresh process, so its browser starts blank as well.
+
+The price is a second check. The catalog verified the tools one process listed at boot; the
+agent's process is a different one, and could list something else. So each new process must
+list exactly the catalog's tools, or pikuri refuses it, and that agent's calls to it answer
+with an error until pikuri restarts and verifies the server again.
+
+(Sub-agents don't get `mcp_connect` at all, so they couldn't activate even if they wanted to.)
 
 ## What this chapter deliberately didn't cover
 

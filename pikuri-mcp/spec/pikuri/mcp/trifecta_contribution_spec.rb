@@ -32,12 +32,12 @@ RSpec.describe 'Mcp trifecta contribution' do
 
   describe 'Extension#trifecta_contribution' do
     def contribution_for(*entries)
-      Pikuri::Mcp::Extension.new(registry: Pikuri::Mcp::Registry.new(entries: entries))
+      Pikuri::Mcp::Extension.new(catalog: Pikuri::Mcp::Catalog.new(registry: Pikuri::Mcp::Registry.new(entries: entries)))
                             .trifecta_contribution([])
     end
 
     it 'contributes nothing when no servers are registered' do
-      assert_nil Pikuri::Mcp::Extension.new(registry: Pikuri::Mcp::Registry::EMPTY).trifecta_contribution([])
+      assert_nil Pikuri::Mcp::Extension.new(catalog: Pikuri::Mcp::Catalog.new(registry: Pikuri::Mcp::Registry::EMPTY)).trifecta_contribution([])
     end
 
     it 'carries hard untrusted and autonomous egress unconditionally' do
@@ -65,7 +65,7 @@ RSpec.describe 'Mcp trifecta contribution' do
   describe 'the wiring the book uses' do
     it 'stays silent for a calculator plus an open-data server — two legs, no private pool' do
       contribution = Pikuri::Mcp::Extension.new(
-        registry: Pikuri::Mcp::Registry.new(entries: [stdio('openlibrary')])
+        catalog: Pikuri::Mcp::Catalog.new(registry: Pikuri::Mcp::Registry.new(entries: [stdio('openlibrary')]))
       ).trifecta_contribution([])
 
       node = Pikuri::Trifecta::Node.new(label: 'pikuri-openlibrary',
@@ -75,7 +75,7 @@ RSpec.describe 'Mcp trifecta contribution' do
 
     it 'goes loud the moment the same surface sits next to a private server' do
       contribution = Pikuri::Mcp::Extension.new(
-        registry: Pikuri::Mcp::Registry.new(entries: [stdio('openlibrary'), stdio('mail', private: true)])
+        catalog: Pikuri::Mcp::Catalog.new(registry: Pikuri::Mcp::Registry.new(entries: [stdio('openlibrary'), stdio('mail', private: true)]))
       ).trifecta_contribution([])
 
       node = Pikuri::Trifecta::Node.new(label: 'assistant', tool_legs: { 'mcp' => contribution.legs })

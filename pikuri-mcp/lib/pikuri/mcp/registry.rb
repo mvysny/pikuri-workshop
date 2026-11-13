@@ -3,16 +3,13 @@
 module Pikuri
   module Mcp
   # Pure configuration for MCP servers — id → transport descriptor pairs, no
-  # I/O, no live state. Split from {Servers} so the +mcp+ gem and
-  # subprocess/network lifecycle stay on the runtime side (registry-value tests
-  # never load the gem). Two sibling value classes, picked per server:
-  # {StdioEntry} (local subprocess) and {HttpEntry} (remote endpoint);
-  # {Servers#start_one} dispatches on type.
+  # I/O, no live state; {Catalog.build} turns it into verified servers. Two
+  # sibling value classes, picked per server: {StdioEntry} (local subprocess)
+  # and {HttpEntry} (remote endpoint); {ClientWrapper} dispatches on type.
   #
-  # The {EMPTY} singleton is the {Agent#initialize} +mcp_registry:+ default; on
-  # an empty registry {Agent} short-circuits (no {Servers}, no +mcp_connect+, no
-  # +<available_mcps>+), so +pikuri-chat+ can omit the kwarg. Same shape as
-  # {Pikuri::Skill::Catalog::EMPTY}.
+  # {EMPTY} builds an empty {Catalog} without spawning anything, and an
+  # {Extension} on an empty catalog adds no +mcp_connect+ and no
+  # +<available_mcps>+. Same shape as {Pikuri::Skill::Catalog::EMPTY}.
   class Registry
     # One local-subprocess MCP server's config: a unique id (the LLM's
     # +mcp_connect+ handle) and the argv to spawn it. +command+ is an argv array

@@ -34,12 +34,16 @@ module Pikuri
       # @param cancellable [Pikuri::Agent::Control::Cancellable, nil]
       #   when set, checked before each {#call} so a boot-time
       #   Ctrl+C aborts startup on the next pass.
+      # @param around_request [#call, nil] passed to each one-shot agent's
+      #   +Agent.new(around_request:)+, so a host's request throttle covers the
+      #   boot passes too, not only its conversations.
       # @raise [ArgumentError] when +transport+ is +nil+
-      def initialize(transport:, cancellable: nil)
+      def initialize(transport:, cancellable: nil, around_request: nil)
         raise ArgumentError, 'transport must not be nil' if transport.nil?
 
         @transport = transport
         @cancellable = cancellable
+        @around_request = around_request
       end
 
       # Run one prompt through a fresh tools-free agent.
@@ -53,7 +57,8 @@ module Pikuri
       #   check
       def call(prompt)
         @cancellable&.check!
-        agent = Pikuri::Agent.new(transport: @transport, system_prompt: SYSTEM_PROMPT)
+        agent = Pikuri::Agent.new(transport: @transport, system_prompt: SYSTEM_PROMPT,
+                                  around_request: @around_request)
         begin
           agent.run_loop(user_message: prompt)
           agent.last_assistant_content.to_s

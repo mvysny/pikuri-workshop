@@ -530,22 +530,24 @@ ensure
   trap('INT', prev_trap || 'DEFAULT')
 end
 
+# Connection rides the transport's own RubyLLM::Context (not a global
+# RubyLLM.configure); from_openai_server normalizes a trailing /v1.
+transport = Pikuri::Agent::ChatTransport.from_openai_server(
+  server: server,
+  model: model,
+  api_key: examples_config.fetch('llm_api_key', 'not-needed')
+)
+
 # One agent is one conversation (pikuri:D_agent_is_one_conversation): /clear
 # closes it and calls this again, so the task list, the read-before-edit marks,
 # the fired paths: skills and the MCP connections all start fresh. What outlives
 # a conversation — plan mode's flag, the catalogs, the registries — is built
-# above and handed in. Answers the skill extension beside the agent: the REPL
+# once, outside, and handed in. Answers the skill extension beside the agent: the REPL
 # calls #schedule_load_skill on it to serve a typed /name.
-build_conversation = lambda do
+build_conversation = lambda do |mcp_catalog|
   skill_extension = Pikuri::Skill::Extension.new(catalog: skill_catalog, root: project_root)
   agent = Pikuri::Agent.new(
-    # Connection rides the transport's own RubyLLM::Context (not a global
-    # RubyLLM.configure); from_openai_server normalizes a trailing /v1.
-    transport: Pikuri::Agent::ChatTransport.from_openai_server(
-      server: server,
-      model: model,
-      api_key: examples_config.fetch('llm_api_key', 'not-needed')
-    ),
+    transport: transport,
     system_prompt: system_prompt,
     cancellable: cancel_flag
   ) do |c|
@@ -598,11 +600,9 @@ build_conversation = lambda do
     # tasks. List is per-Agent, in-memory, dropped on close;
     # sub-agents don't inherit it. See book/tasks.md.
     c.add_extension Pikuri::Tasks::Extension.new
-    c.add_extension Pikuri::Mcp::Extension.new(
-      registry: mcp_registry,
-      synthesize_descriptions: true,
-      verify_mcp_servers: true
-    )
+    # The catalog is the process's; the extension, and the MCP processes it
+    # spawns on first use, are this conversation's.
+    c.add_extension Pikuri::Mcp::Extension.new(catalog: mcp_catalog)
     # Language intelligence, when this machine has a server for the
     # project's languages: which binaries you have installed is machine
     # state, so the entries live in the same YAML the LLM connection does
@@ -633,22 +633,27 @@ build_conversation = lambda do
   [agent, skill_extension]
 end
 
-# Boot-time LLM work — synthesize_descriptions: + verify_mcp_servers:
-# each run a one-shot thinker agent once per configured MCP server on a cold
-# cache. Trap SIGINT around the build so a Ctrl+C unwinds it; the reset first,
-# since a cancelled last turn leaves the flag set and the build would stop on it.
-def start_conversation(build, cancel_flag)
+# Trap SIGINT around the work so a Ctrl+C unwinds it; the reset first, since a
+# cancelled last turn leaves the flag set and the work would stop on it.
+def cancellable_startup(cancel_flag)
   cancel_flag.reset!
   prev_trap = trap('INT') { cancel_flag.cancel! }
-  build.call
+  yield
 rescue Pikuri::Agent::Control::Cancellable::Cancelled
-  warn 'Cancelled while starting a conversation'
+  warn 'Cancelled during startup'
   exit 130
 ensure
   trap('INT', prev_trap || 'DEFAULT')
 end
 
-agent, skill_extension = start_conversation(build_conversation, cancel_flag)
+# Boot-time LLM work, once per process: the verifier and the synthesizer each
+# run a one-shot thinker agent per configured MCP server on a cold cache. A
+# flagged server aborts the boot with the verifier's reason.
+mcp_catalog = cancellable_startup(cancel_flag) do
+  Pikuri::Mcp::Catalog.build(mcp_registry, transport: transport, cancellable: cancel_flag)
+end
+
+agent, skill_extension = cancellable_startup(cancel_flag) { build_conversation.call(mcp_catalog) }
 
 begin
   # Capability + trifecta map, printed unconditionally. These are teaching
@@ -725,7 +730,7 @@ begin
     when '/impl'  then read_only.deactivate!; next
     when '/clear'
       agent.close
-      agent, skill_extension = start_conversation(build_conversation, cancel_flag)
+      agent, skill_extension = cancellable_startup(cancel_flag) { build_conversation.call(mcp_catalog) }
       next
     end
 

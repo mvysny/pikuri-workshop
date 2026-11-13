@@ -1657,3 +1657,53 @@ folder holding a thousand stale files costs nothing per save.
 **Consequences.** Orphans accumulate silently and nothing will mention them — bounded by what one
 conversation produced, content-addressed so they can never collide. If it ever matters the answer
 is `rm`, not a feature.
+
+---
+
+## D_mcp_catalog_and_connections — Why does a process build the MCP catalog once, yet every agent spawn its own servers?
+
+**Context.** An agent is one conversation (`pikuri:D_agent_is_one_conversation`): a webui holds N
+of them at once, and `pikuri-code`'s `/clear` builds a new one. `Mcp::Extension#configure` used to
+start every configured server per agent — spawn, handshake, the verifier's and synthesizer's LLM
+passes — and hold one process per server for the agent's life. A per-process pool of live
+servers would have saved that, but a server's *state* would then cross conversations: Playwright
+logged into a bank in conversation A is still logged in for conversation B. pikuri cannot know
+what a foreign server holds, so it assumes every one is stateful.
+
+**Decision.** Two halves, split by what is safe to share.
+
+- **`Mcp::Catalog`, once per process, built by the host.** It spawns each server, verifies it,
+  writes its description, records its tool list, and closes it again. Immutable, so every agent
+  shares it without a lock. The host builds it (with its transport, cancellable and
+  `around_request`) because it outlives every agent it serves.
+- **`Mcp::Connections`, per agent, lazy.** `mcp_connect` registers tools from the catalog and
+  spawns nothing; a server starts on this agent's first call to one of its tools, and dies with
+  the agent. Most conversations never start one.
+- **Every spawn must list the catalog's tools**, or `ClientWrapper` refuses it
+  (`SurfaceChanged`), and the agent stops trying. The surface was verified in another process;
+  a new process — a connection's, or a restart after a crash — may answer differently, and
+  re-verifying would put the LLM call back on every connection.
+- **A resumed conversation gets its tools back from its `mcp_connect` calls**, read from the
+  restored history in `bind`. Scanning the connects, not the `<id>__<tool>` calls: a server
+  connected but not yet used was promised its tools ("Added 25 tools"), a re-connect must answer
+  "already connected", and an id may itself contain `__`. Nothing is replayed; the server starts
+  blank on the next call (`pikuri:D_history_load_repairs`).
+
+Measured with the Playwright MCP image: building the catalog left no container running;
+connecting spawned none; agent A's first call started one, agent B's another, and B's snapshot
+showed `about:blank` while A's showed A's page; closing both left none.
+
+**Alternatives rejected.**
+
+- **A shared pool of live servers behind a lock.** Cheapest, and exactly the leak above.
+- **Eager connections, one process per server per agent at `Agent.new`.** Isolated, but N open
+  conversations cost N × M processes, mostly for conversations that never call a tool, and
+  building an agent waits on every spawn.
+- **Re-verifying each new process.** Puts the verifier's LLM call on every connection.
+- **Restoring from the `<id>__<tool>` calls.** Loses a connected-but-unused server, and cannot
+  split an id containing `__` from its tool name.
+
+**Consequences.** A one-agent bin spawns each server twice: once for the catalog, once on the
+first call. A server that changes its tools while pikuri runs is refused until pikuri restarts
+and re-verifies it. Isolation is per *process*: an `HttpEntry` connection is a new MCP session,
+which isolates only what that server isolates per session — see `SECURITY.md`.

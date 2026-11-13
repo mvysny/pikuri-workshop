@@ -5,6 +5,12 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- **Breaking:** `Pikuri::Mcp::Extension.new(registry:, synthesize_descriptions:, verify_mcp_servers:)` is now `Pikuri::Mcp::Extension.new(catalog:)`, one per agent: build the catalog once per process with `Pikuri::Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)` and hand it to every agent (`D_mcp_catalog_and_connections`).
+- **Breaking:** `Pikuri::Mcp::Servers` is gone, split into `Pikuri::Mcp::Catalog` (verified once, shared, holds no process) and `Pikuri::Mcp::Connections` (one agent's own servers, started on its first tool call); `Pikuri::Mcp::Servers::Connect` is now `Pikuri::Mcp::Connect`.
+- An MCP server process now serves one agent only and starts on that agent's first call to its tools, so a browser logged in during one conversation is never logged in for another, and building an agent spawns nothing.
+- A resumed conversation (`Agent.new(history:)`) gets back the tools of every MCP server it connected, without calling `mcp_connect` again.
+- A spawned MCP server that lists different tools than the ones verified at boot is refused with `Pikuri::Mcp::ClientWrapper::SurfaceChanged`, including after a crash restart.
+- The MCP verifier's and synthesizer's one-shot agents take the host's `around_request:`, so a request throttle covers them too.
 - New `pikuri-conversations`: `Pikuri::Conversations::HistoryFile` stores a conversation in the format pikuri's dropped `History#save` / `.load` wrote, and `Pikuri::Conversations::Store` keeps one folder per conversation as pikuri-webui and Puri did (`D_history_file`).
 - The workshop requires pikuri `8d764bd`, where an `Agent` is one conversation, owns its `Interloper` and takes `around_request:` in place of `ServerPermits`.
 - **Breaking:** `Pikuri::Skill::Extension#on_conversation_reset`, `Pikuri::Skill::Activation#reset` and `Pikuri::Skill::Activation::Open` are gone: a new conversation is a new agent with a new extension, and every agent has an interloper to carry a promotion.

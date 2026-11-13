@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Minimal in-tree MCP server used as the fixture for
-# +spec/pikuri/mcp_servers_spec.rb+. Spawned over stdio by the
+# Minimal in-tree MCP server used as the fixture for the pikuri-mcp
+# integration specs. Spawned over stdio by the
 # +mcp+ gem's client so the integration specs exercise the real
 # JSON-RPC framing, +tools/list+ / +tools/call+ round-trips, and
 # subprocess lifecycle (close stdin → server exits on EOF).
@@ -25,6 +25,9 @@
 #                   requires +PIKURI_TEST_FLAKY_MARKER+ to be set to the
 #                   marker path (cross-process state, since each crash
 #                   discards the previous subprocess's memory).
+# * +counter+     — returns how many times it was called in *this process*:
+#                   the stand-in for a server holding state (a logged-in
+#                   browser), so specs can tell whether two agents shared one.
 
 ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../../Gemfile', __dir__)
 
@@ -127,14 +130,29 @@ class FlakyCrashTool < MCP::Tool
   end
 end
 
+class CounterTool < MCP::Tool
+  tool_name 'counter'
+  description 'Returns how many times this server process has been called through this tool.'
+  input_schema
+
+  @calls = 0
+  class << self
+    attr_accessor :calls
+  end
+
+  def self.call(server_context:)
+    self.calls += 1
+    MCP::Tool::Response.new([{ type: 'text', text: calls.to_s }])
+  end
+end
+
 # +PIKURI_TEST_SKIP_INSTRUCTIONS=1+ omits the +instructions:+ field so
-# specs can exercise the Mcp::Servers description-synthesis fallback
-# (instructions-less servers are the common case in the wild — see
-# +Mcp::Servers#resolve_description+).
+# specs can exercise the Mcp::Catalog description-synthesis fallback
+# (instructions-less servers are the common case in the wild).
 server_kwargs = {
   name: 'pikuri-test-mcp',
   version: '0.0.1',
-  tools: [EchoTool, DivideTool, SlowTool, CrashTool, FlakyCrashTool]
+  tools: [EchoTool, DivideTool, SlowTool, CrashTool, FlakyCrashTool, CounterTool]
 }
 unless ENV['PIKURI_TEST_SKIP_INSTRUCTIONS']
   server_kwargs[:instructions] = 'In-tree fixture used by pikuri specs to exercise the MCP integration end-to-end.'

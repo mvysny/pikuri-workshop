@@ -5,8 +5,8 @@ module Pikuri
     # Pre-flight check for an MCP server's textual surface — prompt-injection /
     # exfiltration / tool-chain-hijacking patterns a malicious server could embed
     # in its handshake, tool descriptions, or parameter schemas. Wired into
-    # {Servers#start_one} before {Servers#resolve_description}, so a flagged
-    # server never enters {Servers#live_ids}.
+    # {Catalog.probe} before the description is resolved, so a flagged server
+    # never enters the {Catalog}.
     #
     # Two passes: (1) a **mechanical Unicode pre-pass** raising {InjectionDetected}
     # on any {SUSPICIOUS_UNICODE} code point (zero-width, bidi overrides, tag
@@ -54,9 +54,8 @@ module Pikuri
       #   PUA" channel made famous by recent prompt-injection PoCs).
       SUSPICIOUS_UNICODE = /[\u{200B}-\u{200F}\u{202A}-\u{202E}\u{2060}-\u{2064}\u{2066}-\u{2069}\u{FEFF}\u{FFF9}-\u{FFFB}\u{E0000}-\u{E007F}]/.freeze
 
-      # Raised by {#call} on rejection; {Servers#start_one} rescues it
-      # specifically so the server never enters {Servers#live_ids}. The message
-      # describes WHAT was found and WHERE.
+      # Raised by {#call} on rejection; it aborts {Catalog.probe}, so the user
+      # sees why. The message describes WHAT was found and WHERE.
       class InjectionDetected < StandardError; end
 
       # The easy path is +Verifier.new(transport: ...)+ — the {Thinker} and the
@@ -68,18 +67,23 @@ module Pikuri
       #   (with +cancellable:+); the passes run against this model.
       # @param cancellable [Pikuri::Agent::Control::Cancellable, nil] forwarded
       #   to the {Thinker} so a boot-time Ctrl+C aborts. Transport path only.
+      # @param around_request [#call, nil] the host's request throttle, forwarded
+      #   to the {Thinker}'s one-shot agents. Transport path only.
       # @param thinker [#call, nil] +thinker.call(prompt)+, replacing the
       #   built-in {Thinker}.
       # @param cache [Cache, Cache::NULL, nil] LLM-pass cache; +nil+ builds the
       #   on-disk {Cache} on the +transport:+ path, {Cache::NULL} on the
       #   +thinker:+ path (the test default).
       # @raise [ArgumentError] when neither or both of +transport:+/+thinker:+
-      #   are given, or +cancellable:+ is combined with +thinker:+.
-      def initialize(transport: nil, cancellable: nil, thinker: nil, cache: nil)
+      #   are given, or +cancellable:+ / +around_request:+ is combined with
+      #   +thinker:+.
+      def initialize(transport: nil, cancellable: nil, around_request: nil, thinker: nil, cache: nil)
         raise ArgumentError, 'pass exactly one of transport: or thinker:' if transport.nil? == thinker.nil?
         raise ArgumentError, 'cancellable: only applies to the transport: path' if thinker && cancellable
+        raise ArgumentError, 'around_request: only applies to the transport: path' if thinker && around_request
 
-        @thinker = thinker || Thinker.new(transport: transport, cancellable: cancellable)
+        @thinker = thinker || Thinker.new(transport: transport, cancellable: cancellable,
+                                          around_request: around_request)
         @cache = cache ||
                  if transport
                    Cache.new(model_id: transport.model, prompt_version: PROMPT_VERSION, dir: CACHE_DIR)
