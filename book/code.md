@@ -226,7 +226,7 @@ stops.
 
 After that, [MCPs revisited](mcp-revisited.md)
 picks the MCP thread back up at the harder end of the spectrum —
-the official GitHub MCP in Docker, npx / pip packages of unknown
+the official GitHub MCP in a container narrowed to one host, npx / pip packages of unknown
 provenance, Playwright with its open-web surface. The vocabulary
 you built up so far (`Pikuri::Agent`, `Tool`, listeners, the
 Extension protocol, configure/bind, sub-agent privilege separation,

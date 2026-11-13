@@ -1,9 +1,8 @@
 # Book 2's shape: ending on a simple coding agent
 
-Status: **running order agreed; chapter-by-chapter rewrite at four of ten chapters (shell,
-OS assistant, memories, first MCP server). Next: "MCPs revisited", audited and every finding
-decided; its PAT fix is committed (`c78a538`), the rest is to do** (see "Carried forward"
-below). Carried over from pikuri's
+Status: **running order agreed; chapter-by-chapter rewrite at five of ten chapters (shell,
+OS assistant, memories, first MCP server, MCPs revisited). Next: Skills, still a stub** (see
+"Carried forward" below). Carried over from pikuri's
 `pikuri-workshop.md` idea, which deferred it until this repo existed. `book/README.md` now
 lists the chapters in the order below; the ones not yet revisited moved here as they were, so
 their "What's next" links still follow pikuri's old order.
@@ -105,7 +104,7 @@ Habits that paid off on the first three chapters:
 | 2 | The OS assistant | `os-assistant.md` | done, `d660655` |
 | 3 | Memories | `memories.md` | done, `7932dc7`; end-to-end recall untested |
 | 4 | Your first MCP server | `mcp.md` | done; verifier rejection path untested |
-| 5 | MCPs revisited | `mcp-revisited.md` | — |
+| 5 | MCPs revisited | `mcp-revisited.md` | done; headed Playwright vs. a desktop, dummy iface, docker untested |
 | 6 | Skills | `skills.md` | — |
 | 7 | The wire | `wire.md` | — |
 | 8 | Language intelligence | `lsp.md` | — |
@@ -132,6 +131,19 @@ What the done chapters changed beyond their text:
   `Sandbox::EnvWall` withholds all but the baseline, build-tool options, path-valued variables
   and `sandbox_env:` names; `git_clone` too; the tool description and the banner name what is
   withheld. `shell.md` gained "The environment, walled too".
+- **MCPs revisited:** tokens from the config file (`c78a538`). New
+  `pikuri-mcp/containers/mcp-egress-proxy.Containerfile` (tinyproxy, allowlist baked via
+  `--build-arg ALLOW`) and a section "Narrowing the box to one host": `--internal` network +
+  proxy on a DNS-enabled `mcp-egress` network, verified end to end through `bin/pikuri-code`.
+  GitHub pinned `v2.1.0` with its own `stdio --read-only` (46 → 27 tools); Playwright via the
+  vendor image with Chromium's sandbox back on (`--cap-add=SYS_CHROOT` + `--sandbox`, checked
+  at `chrome://sandbox`). The bin's MCP examples and `pikuri-mcp/README.md` lost bare `npx`.
+
+Habits added by this chapter: a host's AppArmor profile attaches by path inside a rootless
+container (Ubuntu's tinyproxy profile blocked the config and every signal, so `podman rm -f`
+hung; `journalctl -k | grep apparmor` found it). Under pasta the host's LAN IP is the
+container's own; reach the host as `host.containers.internal`. Podman's `--read-only` already
+mounts tmpfs on `/tmp`; `--tmpfs /tmp` stays for docker.
 
 ### Carried forward
 
@@ -141,56 +153,11 @@ What the done chapters changed beyond their text:
 - **First MCP server, the rejection path.** `bin/pikuri-openlibrary`'s new
   `InjectionDetected` rescue never fired in a run (the real server passes). A spec-support
   server with a poisoned description would exercise it.
-- **MCPs revisited (next), audited.** PAT leak: **decided and applied, uncommitted**. Tokens
-  live in the config file, never the environment (`github_token:` in
-  `~/.pikuri-examples-config.yaml`, not `gh auth token`: simpler to teach); `env:` on the entry,
-  `-e GITHUB_PERSONAL_ACCESS_TOKEN` by name, `private: true`. Done in the chapter's recipe,
-  `bin/pikuri-code`'s commented examples (GitHub added, HubSpot off `ENV`) and
-  `pikuri-mcp/README.md`; no code change was needed. The chapter's GitHub block still says
-  `docker` (the podman pass below). **All findings decided (2026-11-13), in work:**
-  1. Opening/prereqs/§1 point back at `mcp.md`, `shell.md`, pikuri's security chapter; no
-     ordinals, no "four-extension stack".
-  2. Pin the GitHub image to a release tag (recipe + bin comment); digest how-to in the bullet.
-  3. DinD caveat → two sentences: lifting the cage = the VM, podman inside it unchanged; outer
-     container the weaker option (no socket, no `--privileged`). Threat model gains "shared
-     kernel → VM". Keep `#wrapping-pikuri-in-docker` link; rename in the climax (pikuri too).
-  4. npx: no `~/.npm` mount (npx runs from that cache: poisoning); reasons to bake = speed
-     (`--rm` loses the cache) and an unlocked dep tree resolved per spawn.
-  5. Fully qualified image names (podman short-name resolution); current Node LTS / Python,
-     looked up not typed; "pinning freezes security fixes too, rebuild on EOL".
-  6. Playwright: vendor image `mcr.microsoft.com/playwright/mcp` (verify) for headless; headed
-     = baked Containerfile matching `@playwright/mcp`'s Playwright; `--init` (verify).
-  7. Networking from `mcp.md`'s measured "What the box can reach" (pasta): loopback closed,
-     non-loopback open; dummy iface / LAN IP stay; `--network=host` under rootless podman
-     opens loopback (verify); rootless Docker a one-line note. Dummy iface needs sudo.
-  8. Egress: do it for GitHub: `--internal` network, tinyproxy (Debian package, shipped
-     Containerfile) allowing CONNECT `api.github.com:443`, `HTTPS_PROXY` on the server. Also
-     closes the LAN `mcp.md` names. `--network=none` for bind-mount-only; fetch = open web;
-     maven = `NODE_USE_ENV_PROXY=1`, mentioned not built.
-  9. Podman in every recipe (+ "docker takes the same args"), the three cheap flags,
-     `--tmpfs /tmp`; Playwright's `/dev/shm` + Chromium sandbox decided by the run.
-  10. "What's next" → Skills (trigger vs. always-announced); "Docker as the MCP boundary" →
-     "a container". `skills.md` is still a stub.
-
-  The owner okayed the run (image pulls/builds: github-mcp-server, node/python bases, the
-  Playwright MCP image, `debian:stable-slim` for tinyproxy). Readiness, checked 2026-11-13:
-  `github_token:` not yet in `~/.pikuri-examples-config.yaml` (the owner adds it; never ask
-  for it in chat); that file was mode `664`, owner told to `chmod 600` it; no local podman
-  images; podman 5.7, netavark + pasta; the LLM is at `llm_server` in that file
-  (`192.168.122.1:9081`), up-ness unchecked. Order of work: run first (verify the "(verify)"
-  items above), then rewrite, then one commit for the chapter.
-  Old finding list, for reference: the npx recipe's
-  phantom `~/.npm` mount, Playwright's per-spawn `npx`, unpinned GitHub image, `node:20` past
-  EOL, the Playwright networking section written for slirp4netns, the Docker-in-Docker caveat
-  vs. the VM promise, "What's next" → Skills. Egress: text plus `--network=none` for the
-  bind-mount-only case. Running it needs a PAT and the image pulls (owner's go-ahead pending).
-  Also: opens with ordinals ("[8](code.md) and [9](security-revisited.md)"),
-  which the book bans, and calls the coding-agent chapters prerequisites; it wires the GitHub
-  MCP into `pikuri-code`, which the bare-first plan allows. Every `docker run`/`build` there
-  becomes podman-first, with the cheap flags `mcp.md` introduced. It now owns the promised
-  egress question: `mcp.md` defers narrowing a server to its one host (an egress proxy) to it,
-  so either do it or say why not. Its "Wrapping pikuri in Docker" caveat links the anchor
-  pikuri holds (see the climax note).
+- **MCPs revisited, the untested corners.** Headed Playwright against a real desktop's X
+  socket (the run used an in-container Xvfb; `$XAUTHORITY` may be needed); the dummy-interface
+  dev-server recipe (needs sudo); every recipe under docker (run on podman 5.7 only). The
+  chapter says so in place. Its "Wrapping pikuri in Docker" link keeps the anchor pikuri holds
+  (see the climax note).
 - **pikuri's "Environment is not a secret store"** still holds (pikuri filters nothing), but
   its one line could point at `pikuri-workshop:D_sandbox_env_wall` for where clearing does
   happen. A pikuri-side edit.

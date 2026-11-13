@@ -228,7 +228,8 @@ Why this is acceptable *here*: nothing in the box is yours, so a rogue dependenc
 to send out, and the open internet is the job. Your LAN is the real exposure: a router admin
 page, a printer, an unauthenticated service on a home server. Narrowing the box to the one host
 it needs takes an egress proxy, a heavier build than a first server deserves;
-[MCPs revisited](mcp-revisited.md) is where servers start to hold things worth that work.
+[MCPs revisited](mcp-revisited.md#narrowing-the-box-to-one-host) builds one for the first
+server that holds something worth that work.
 
 **Where it stops.** A container shares your kernel. Every flag above is a rule that kernel
 enforces, so a kernel bug the server can reach turns into your account. For this server, whose

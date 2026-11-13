@@ -20,7 +20,7 @@ on its secretary.
 - [The OS assistant: your machine](os-assistant.md) — the opposite cut: the whole disk, no network.
 - [Memories](memories.md) — automatic capture with mem0, on the agents that can afford it.
 - [Your first MCP server](mcp.md) — a stranger's code as a tool.
-- [MCPs revisited: containerised servers](mcp-revisited.md) — putting that code in a box.
+- [MCPs revisited: containerised servers](mcp-revisited.md) — putting that code in a box, and narrowing the box to one host.
 - [Agent Skills](skills.md) — instructions and scripts loaded on demand, and slash commands.
 - [The messages array is not the prompt](wire.md) — what reaches the model, and what it drops.
 - [Language intelligence](lsp.md) — the questions grep cannot answer.

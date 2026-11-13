@@ -1,532 +1,491 @@
 # MCPs revisited: containerised servers
 
-[The MCP chapter](mcp.md) wired one low-stakes MCP and pointed
-forward; [the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) gave the framing; chapters
-[8](code.md) and [9](security-revisited.md) applied the kit
-to the coding-agent shape. This chapter picks the MCP thread
-back up at the harder end of the spectrum — the cases where the
-verifier alone isn't enough, where you can't read the server's
-*code* the way you skimmed the book-catalogue reader in the MCP chapter,
-where the server holds a credential whose blast radius bites,
-and where the cleanest answer is *a container as the boundary
-between pikuri and the server*.
+[Your first MCP server](mcp.md) ran one server you could read, with nothing of yours wired in,
+and left two questions open: what about a server you *can't* read, and what about one that
+holds a credential? This chapter takes both, at the harder end of the spectrum. The verifier
+alone isn't enough there, a token's reach bites, and the cleanest answer is a container as the
+boundary between pikuri and the server, narrowed further than the MCP chapter dared.
 
-The worked example here is the **official GitHub MCP server**,
-running in Docker. Two community shapes (npx-based, pip-based)
-follow, plus the largest untrusted-content surface in common use
-(Playwright). The chapter closes with the full threat-model
-section for `pikuri-mcp` — what wiring an MCP server in does and
-doesn't protect, mapped against the kit from the security chapter.
+The worked example is the **official GitHub MCP server**, an image you pull rather than build,
+wired into `pikuri-code` and holding your token. This time the box's network gets narrowed to
+the one host the server needs. Two community shapes follow (an npm package and a PyPI one),
+then the largest untrusted-content surface in common use, a browser. The chapter closes on the
+threat model for `pikuri-mcp`: what wiring an MCP server in does and doesn't protect.
 
 ## Prerequisites
 
-The [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md), [sub-agents](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md),
-[MCP](mcp.md), [security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) and
-[coding-agent](code.md) chapters. `llama-server` running;
-`bundle install` done. Plus:
+pikuri's [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md),
+[sub-agents](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md) and
+[security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) chapters, and
+this book's [shell](shell.md) and [MCP](mcp.md) chapters. `llama-server` running; `bundle
+install` done. Plus:
 
-- **Docker** — set up (rootless) back in
-  [the prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md) and first used as an MCP
-  boundary in [the MCP chapter](mcp.md) with the book-catalogue
-  server. Same tool, different image: the official GitHub MCP
-  server is distributed as `ghcr.io/github/github-mcp-server` (a
-  ready-made image you *pull* rather than build from source —
-  itself part of this chapter's point). If you skipped those, the
-  one-time setup is in the prerequisites chapter. The stance the MCP chapter introduced
-  gently and this
-  chapter makes the rule: **every MCP server you don't write
-  yourself runs in a container** — see the threat-model section
-  for why.
-- **A GitHub Personal Access Token (PAT)** — the genuinely new
-  piece here, and the first credential you've handed an MCP
-  server in this guide. Create one at
-  <https://github.com/settings/tokens>. Use a **fine-grained**
-  token scoped to the repositories you want the agent to see,
-  with read-only access to issues, pull requests, and contents.
-  Anything broader hands the agent permissions the chapter's
-  isolation can't claw back. Put it in
-  `~/.pikuri-examples-config.yaml` (`chmod 600`) as
-  `github_token: github_pat_…`, **not** in your shell's
-  environment: an exported token reaches every process pikuri
-  starts, and [the environment wall](shell.md#the-environment-walled-too)
-  stands only around sandboxed `bash`. A PAT is required even for read-only access to
-  public repos: the server refuses to start without one (no
-  anonymous code path, same as the `gh` CLI), and GitHub's
-  unauthenticated REST limit of 60 requests/hour per IP would be
-  exhausted in a couple of turns anyway — an authenticated PAT
-  gets 5000/hour.
+- **Podman**, or rootless Docker, as set up in
+  [the MCP chapter](mcp.md#podman-or-rootless-docker). Every command here is podman; docker
+  takes the same arguments, but this chapter was run on podman 5.7 only. Image names are fully
+  qualified (`docker.io/library/node:26-slim`, not `node:26-slim`): podman resolves a short name
+  through a list of registries, and the first one that answers wins. The rule the MCP chapter
+  introduced gently, this chapter makes firm: **every MCP server you didn't write runs in a
+  container**.
+- **A GitHub Personal Access Token (PAT)**, the first credential you've handed an MCP server in
+  this book. Create a **fine-grained** one at
+  <https://github.com/settings/personal-access-tokens/new>: a short expiry, and either
+  "Public repositories" (read-only, no permissions to pick) or only the repositories you want the
+  agent to see, with *Contents*, *Issues* and *Pull requests* set to read-only. A fine-grained
+  token starts with `github_pat_`; a `ghp_` one is the classic kind, with scopes far broader
+  than this needs. Put it in `~/.pikuri-examples-config.yaml` (`chmod 600`) as
+  `github_token: github_pat_…`, **not** in your shell's environment: an exported token reaches
+  every process pikuri starts, and [the environment wall](shell.md#the-environment-walled-too)
+  stands only around sandboxed `bash`. The server refuses to start without a token, even for
+  public repositories, and GitHub's anonymous limit of 60 requests an hour would run out in a
+  couple of turns anyway.
 
-(If you don't have a PAT and just want to read the chapter
-through, that's fine — the conceptual material doesn't depend on
-having a live server.)
+(Without a PAT you can still read the chapter through: the ideas don't depend on a live
+server.)
 
-## 1. Wire the GitHub MCP into `pikuri-code`
+## Wire the GitHub MCP into `pikuri-code`
 
-`pikuri-code` already wires `Mcp::Extension` into its `Agent.new`
-block — you saw that as a four-extension stack in the coding-agent chapter's
-wiring example. It also has an empty hand-edit slot for the
-registry near the top of `bin/pikuri-code`. Configuring an MCP
-server is just filling that slot in; everything else is already
-plumbed.
-
-Open `pikuri-code/bin/pikuri-code` and find the
-`mcp_registry = Pikuri::Mcp::Registry.new(entries: [...])` block.
-By default it's empty. Add the GitHub entry:
+`pikuri-code` already wires `Mcp::Extension` into its agent, with an empty registry near the
+middle of `bin/pikuri-code`. Configuring a server is filling that registry in. The commented
+examples above it hold the entry this chapter builds; the bare version first:
 
 ```ruby
 mcp_registry = Pikuri::Mcp::Registry.new(entries: [
   Pikuri::Mcp::Registry::StdioEntry.new(
     id:      'github',
-    command: [
-      'docker', 'run', '-i', '--rm',
-      '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
-      'ghcr.io/github/github-mcp-server'
-    ],
+    command: ['podman', 'run', '-i', '--rm',
+              '--cap-drop=all', '--security-opt=no-new-privileges', '--read-only', '--tmpfs', '/tmp',
+              '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
+              'ghcr.io/github/github-mcp-server:v2.1.0', 'stdio', '--read-only'],
     env:     { 'GITHUB_PERSONAL_ACCESS_TOKEN' => examples_config.fetch('github_token') },
     private: true
   )
 ])
 ```
 
-The token takes the narrowest path to the one process that needs
-it. It is read from the config file, and `env:` hands it to this
-one child alone: not to pikuri's own environment, not to your
-language servers, not to the other MCP servers. `-e` passes the
-variable by *name*, so docker copies the value from its own
-environment, and the token never shows up in argv, where `ps` and
-pikuri's INFO log line for each server would print it. (The
-github-mcp-server reads its token only from its environment, so an
-environment is where it has to end up; the point is that it ends up in
-just this one.) `private: true` tells the trifecta report what
-the PAT can read: private repos are private data.
+The token takes the narrowest path to the one process that needs it. It is read from the config
+file, and `env:` hands it to this one child alone: not to pikuri's own environment, not to your
+language servers, not to the other MCP servers. `-e` passes the variable by *name*, so podman
+copies the value from its own environment, and the token never shows up in argv, where `ps` and
+pikuri's INFO log line for each server would print it. (The server reads its token only from its
+environment, so an environment is where it has to end up; the point is that it ends up in just
+this one.) `private: true` tells the trifecta report what the PAT can read: private repositories
+are private data.
 
-`cd` into a repo you have access to and run it:
+The flags before the image are the three cheap ones from
+[the MCP chapter](mcp.md#what-the-box-can-reach), plus a writable `/tmp` in memory. The two
+words after it are the server's own: `stdio` is how it talks, and `--read-only` (the *server's*
+flag, not podman's) drops every tool that writes. Of its 46 tools, 27 remain, all reads: no
+`merge_pull_request`, no `push_files`, nothing in the model's context that a read-only token
+would refuse anyway.
+
+`cd` into a repository and run it:
 
 ```sh
 cd /path/to/some-repo
-/path/to/pikuri/pikuri-code/bin/pikuri-code
+/path/to/pikuri-workshop/pikuri-code/bin/pikuri-code
 ```
 
-On a cold cache, the same two passes from the MCP chapter fire:
-
-1. **The verifier** against the GitHub server's handshake + tool
-   list.
-2. **The synthesizer** if the server didn't ship a useful
-   `instructions` field (GitHub's does, so this step gets
-   skipped here).
-
-When both pass, the standard `pikuri-code` banner appears. Try a
+On a cold cache, the verifier from the MCP chapter reads the server's handshake and tool list
+first; on the test box that took about a minute against a local model. The synthesizer stays
+idle, because GitHub's server ships its own `instructions`. Then the usual banner, and a
 question that exercises the new surface:
 
 ```
-> List the three most recently updated open issues in <your-org/your-repo>.
+> List the two most recently updated open issues in github/github-mcp-server: number and title only.
+→ McpConnect(github)
+= Connected, 27 tools
+→ Github::ListIssues(repo=github-mcp-server owner=github state=OPEN fields=nu…)
+= Returned 390 bytes
 ```
 
-The same `mcp_connect` → `list_issues` → reply dance you saw in
-the MCP chapter plays out. What's new is the *stakes*: this server
-holds a credential whose blast radius is the next section.
+The same `mcp_connect` → tool → reply dance as the MCP chapter. What's new is the stakes: this
+server holds a credential, and the rest of the chapter is about what it can do with it.
 
-## Why Docker?
+## Why a container?
 
-[`SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md) §"Code trust" and the security chapter's
-code-trust section both settle the general posture in one bullet:
-MCP server processes are untrusted code you didn't write, so run
-them in a container. This chapter adopts that across the board.
-Three MCP-specific consequences are worth being explicit about:
+[pikuri's `SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md)
+§"Code trust" settles the general posture in one bullet: an MCP server is untrusted code you
+didn't write, so it runs in a container. Three consequences specific to MCP:
 
-- **Image distribution shape varies.** The GitHub server above
-  ships as a vendor image — easy. Most community MCPs are
-  `npx -y …` (Node) or `pip install …` / `uvx …` (Python)
-  packages with no official image, which means *you* build the
-  container. The next two sections work through one example
-  of each shape.
-- **Pin the image.** `ghcr.io/.../foo:latest` is a registry tag
-  an attacker who compromised the upstream can repoint. For
-  anything load-bearing, pin to a known version (`foo:1.4.2`)
-  and ideally a digest (`foo@sha256:…`). Pinning trades
-  automatic security updates for reproducibility; for an MCP
-  holding your GitHub PAT, reproducibility is the right side
-  of that trade.
-- **The token is the real blast radius.** Container isolation
-  protects your laptop from the server's *code*. It doesn't
-  protect your GitHub account from the server's *actions* —
-  the token's permissions are the agent's permissions. Use a
-  fine-grained PAT scoped to specific repos and operations
-  (issues:read, contents:read), never a classic full-access
-  token. Restated in the threat-model section below.
+- **How a server ships varies.** GitHub's ships as a vendor image: easy. Most community servers
+  are `npx -y …` (Node) or `pip install …` / `uvx …` (Python) packages with no image, which
+  means *you* build the container. The next sections work through one of each.
+- **Pin the image.** `:latest` is a tag, and whoever controls the upstream (or compromised it)
+  can repoint a tag. Pin a release (`:v2.1.0`), and for anything that holds a token, the digest
+  as well: `podman image inspect --format '{{.Digest}}' <image>` prints the one you pulled, and
+  `ghcr.io/github/github-mcp-server@sha256:…` runs exactly that. Pinning freezes security fixes
+  along with everything else, so a pin is a promise to come back: rebuild or re-pull when the
+  upstream ships a fix, and before the base image's runtime reaches end of life.
+- **The token is the real blast radius.** The container protects your machine from the server's
+  *code*. It doesn't protect your GitHub account from the server's *actions*: the token's
+  permissions are the agent's permissions. The server's `--read-only` keeps write tools out of
+  the conversation; the read-only token is what makes a write impossible.
 
-Bubblewrap ([the shell chapter](shell.md)) is `pikuri-code`'s inner-process isolation
-for `bash`; Docker is the outer-process isolation this chapter
-uses for MCP. Different tools, different problems — bubblewrap
-is lightweight and bind-mount-based, Docker is heavier and
-image-based. MCPs ship as images-with-deps, so image-based fits.
+Bubblewrap ([the shell chapter](shell.md)) is `pikuri-code`'s cage for `bash`; a container is
+the cage for each MCP server. Different tools for different problems: Bubblewrap bind-mounts
+your own tools into a narrowed view of your machine, while a server ships its own dependencies,
+so an image fits it better.
 
-One caveat for a harness shape this chapter doesn't otherwise
-assume: if you're running `pikuri-code` *itself* inside a
-container, don't also wrap MCPs in nested containers —
-Docker-in-Docker needs either the host docker socket bind-mounted
-in or a `--privileged` outer container, and either gives the
-agent root access to your host OS. In that shape, MCPs run
-alongside pikuri inside the same container, not in nested ones.
-[The security-revisited chapter's "Wrapping pikuri in Docker"](security-revisited.md#wrapping-pikuri-in-docker)
-covers this end-to-end.
+If you run `pikuri-code` inside a container instead of a VM, don't also run MCP servers in
+containers nested inside it: that takes the host's podman socket or a `--privileged` outer
+container, and either hands the agent your host. Lifting the cage is what a VM is for, and
+inside one, podman runs these recipes unchanged; see
+[the security-revisited chapter's "Wrapping pikuri in Docker"](security-revisited.md#wrapping-pikuri-in-docker).
+
+## Narrowing the box to one host
+
+[The MCP chapter](mcp.md#what-the-box-can-reach) measured what a container on podman's default
+network reaches: the whole internet, your host's services that listen beyond loopback, and your
+LAN. It called that acceptable for a server that holds nothing of yours. This one holds a token
+and reads private repositories: all three trifecta legs in one process. An injection in an issue
+body is content an attacker controls; the token reads your private code; the open internet is
+the way out. GitHub's server needs exactly one host, `api.github.com`, so give it exactly one.
+
+The shape is two networks and a proxy between them:
+
+- **An internal network** (`podman network create --internal`) has no route out at all. The
+  server sits on it alone with the proxy.
+- **An egress proxy** sits on that network and on an ordinary one. It is
+  [tinyproxy](https://tinyproxy.github.io/), Debian's package, built from
+  `pikuri-mcp/containers/mcp-egress-proxy.Containerfile`. It answers `CONNECT` only on port 443,
+  and only for the hosts baked into the image at build time.
+- **`HTTPS_PROXY`** on the server tells its HTTP client where the one way out is.
+
+Built once, from the workshop's checkout:
+
+```sh
+podman build -f pikuri-mcp/containers/mcp-egress-proxy.Containerfile \
+             --build-arg ALLOW=api.github.com -t mcp-egress-proxy:github pikuri-mcp/containers
+podman network create --internal mcp-github
+podman network create mcp-egress
+podman run -d --name mcp-github-proxy --network mcp-github --network mcp-egress \
+           --cap-drop=all --security-opt=no-new-privileges --read-only mcp-egress-proxy:github
+```
+
+After a reboot, `podman start mcp-github-proxy`; until then the server starts and every call
+fails. The entry gains two arguments, the network and the proxy:
+
+```ruby
+command: ['podman', 'run', '-i', '--rm',
+          '--cap-drop=all', '--security-opt=no-new-privileges', '--read-only', '--tmpfs', '/tmp',
+          '--network=mcp-github', '-e', 'HTTPS_PROXY=http://mcp-github-proxy:8888',
+          '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
+          'ghcr.io/github/github-mcp-server:v2.1.0', 'stdio', '--read-only'],
+```
+
+Probed from a container on `mcp-github`, on the test box:
+
+- Every direct connection fails with *network unreachable*: `1.1.1.1`, GitHub's own address, the
+  LAN's `llama-server`, the host. There is no route to fail through.
+- Through the proxy, `api.github.com:443` connects. `github.com`, `raw.githubusercontent.com` and
+  `example.com` get `403 Filtered`; `api.github.com:22` and the LAN address get `403 Access
+  violation`.
+- The real server worked behind it for every call tried (search, `get_file_contents`,
+  `list_issues`), and `podman logs mcp-github-proxy` showed it asking for nothing but
+  `api.github.com:443`. The log is also how you find the host a new server needs: run it behind
+  a proxy that allows nothing, and read the refusals.
+
+Two things the build had to work around, both in the Containerfile's header. The proxy's outside
+network is a network you create, not podman's default one, because the default has no DNS and
+the proxy has to resolve `api.github.com`. And Ubuntu's AppArmor profile for
+`/usr/bin/tinyproxy` attaches by path even inside a rootless container: it refused the proxy's
+config, and every signal from the container runtime, so `podman rm -f` hung. The image moves the
+binary off that path.
+
+**Where it stops.** The proxy narrows the way out to GitHub, and GitHub is still a way out:
+anything the token can write is a channel. A read-only token closes that one. The trifecta
+report can't see the proxy and still counts the server's egress leg, which is the honest count:
+the narrowing lives in a command line pikuri doesn't read.
+
+The same pattern fits any server that talks to a few fixed hosts. For one that only reads files
+you mount, skip the proxy: `--network=none` takes the network away entirely. For one whose job
+is the open web, there is nothing to narrow.
 
 ## Running an npx-based MCP
 
-Most community MCPs ship as npm packages and assume you'll invoke
-them with `npx`. [`mcp-maven-deps`](https://github.com/Bigsy/maven-mcp-server)
-is a good worked example — small, useful (it queries Maven
-Central for current versions of Java artifacts), and entirely
-unofficial. Exactly the case where "untrusted, containerise it"
-applies. The GitHub repo slug (`maven-mcp-server`) and the
-published npm package name (`mcp-maven-deps`) differ — a common
-trap. Always check what `package.json` actually declares as
-`"name"` before typing it into a command.
+Most community servers ship as npm packages and assume you'll run them with `npx`.
+[`mcp-maven-deps`](https://github.com/Bigsy/maven-mcp-server) is a good worked example: small,
+useful (it asks Maven Central for the current versions of Java libraries), and entirely
+unofficial, which is exactly the case for a container. The repository's name
+(`maven-mcp-server`) and the package's (`mcp-maven-deps`) differ, a common trap: check the
+`"name"` in `package.json` before typing it into a command.
 
-A side benefit of the container-per-MCP posture is that you don't
-need `node` installed on the host *for anything* — including the
-"what version should I pin?" lookup. The same image you'll run
-the server in answers that question:
+A side benefit of a container per server: you don't need `node` on your host at all, not even
+to look up a version. The image the server will run in answers that:
 
 ```sh
-docker run --rm node:20-slim npm view mcp-maven-deps version
+podman run --rm docker.io/library/node:26-slim npm view mcp-maven-deps version
 # → 0.2.0
 ```
 
-(Or `npm view mcp-maven-deps versions --json` for the full list.)
-Substitute the result for `<pin-version>` below.
+Node 26 is the current LTS as of this writing; look the current one up at
+<https://nodejs.org/en/about/previous-releases> rather than copying it from here.
 
-The naive recipe — wrap `npx` in a bare `node` container per
-spawn:
+You could wrap the README's `npx -y mcp-maven-deps` in `podman run … node:26-slim`, and every
+spawn would pay for it twice. With `--rm`, the container's npm cache dies with it, so each
+start downloads and installs the package again. And `npx` resolves the package's dependency
+tree on every spawn, unlocked, so the code you run can change between Monday and Tuesday
+without a version number moving. Mounting your `~/.npm` to keep the cache is no fix: `npx` runs
+code *from* that cache, so a container that can write to it can plant code your own `npx` will
+run on the host later.
 
-```ruby
-Pikuri::Mcp::Registry::StdioEntry.new(
-  id:      'maven',
-  command: [
-    'docker', 'run', '-i', '--rm',
-    'node:20-slim',
-    'npx', '-y', 'mcp-maven-deps@<pin-version>'
-  ]
-)
-```
-
-This works, but the first boot pays a full `npm install`
-(~15 seconds for a small server, longer for big ones). The bind
-mount on `~/.npm` persists the cache so subsequent boots are
-fast — at the cost of sharing your host npm cache with a
-container running untrusted code. Not the worst thing (npm
-caches are inert artifacts), not airtight either.
-
-The cleaner recipe is to bake an image once:
+Bake an image once instead:
 
 ```dockerfile
-# Dockerfile-maven-mcp
-FROM node:20-slim
-RUN npm install -g mcp-maven-deps@<pin-version>
+# maven-mcp.Containerfile
+FROM docker.io/library/node:26-slim
+RUN npm install -g --ignore-scripts mcp-maven-deps@0.2.0 && npm cache clean --force
+USER node
 ENTRYPOINT ["mcp-maven-deps"]
 ```
 
 ```sh
-docker build -f Dockerfile-maven-mcp -t maven-mcp:<pin-version> .
+podman build -f maven-mcp.Containerfile -t maven-mcp:0.2.0 .
 ```
 
 ```ruby
 Pikuri::Mcp::Registry::StdioEntry.new(
   id:      'maven',
-  command: ['docker', 'run', '-i', '--rm', "maven-mcp:<pin-version>"]
+  command: ['podman', 'run', '-i', '--rm', '--cap-drop=all', '--security-opt=no-new-privileges',
+            '--read-only', '--tmpfs', '/tmp', 'maven-mcp:0.2.0']
 )
 ```
 
-Every spawn is now fast, the npm cache stays on the host, and
-the package version is pinned in the Dockerfile — an upstream
-compromise can't ship you a new version without you rebuilding.
-The same pattern generalises to any npx-published MCP: replace
-the package name and pin, rebuild to upgrade.
+The dependency tree is now resolved once, at build time, and frozen in the image; each spawn
+starts in about a second. `--ignore-scripts` keeps every package's install script from running
+during the build: this one needs none, and a package that does needs reading first. Rebuild to
+upgrade, and when Node 26 reaches end of life (April 2029).
+
+This server talks to one host, `repo1.maven.org`, so it fits the egress proxy too: an image
+built with `--build-arg ALLOW=repo1.maven.org`, its own internal network, `HTTPS_PROXY`. Whether
+a server honours `HTTPS_PROXY` depends on its HTTP client. This one does on its own; Node's
+built-in `fetch` needs `NODE_USE_ENV_PROXY=1` as well. Either way, on an internal network a
+server that ignores the proxy fails closed, and the proxy's log names the host it wanted.
 
 ## Running a Python-based MCP
 
-Python MCPs follow the same shape — `pip install <package>` or
-`uvx <package>` plays the role of `npx -y <package>`.
-[`mcp-server-fetch`](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch)
-is the canonical worked example: it's one of Anthropic's
-reference servers, published on PyPI, and does roughly what
-pikuri's built-in `fetch` tool does — only inside a container.
+Python servers follow the same shape: `pip install <package>` or `uvx <package>` plays the role
+of `npx -y <package>`.
+[`mcp-server-fetch`](https://github.com/modelcontextprotocol/servers/tree/main/src/fetch) is the
+canonical example: one of the protocol's reference servers, published on PyPI, doing roughly
+what pikuri's built-in `fetch` tool does, only inside a container.
 
-(Why containerise `fetch` when pikuri ships one? Defence in
-depth: the bundled `fetch` parses HTML inside `pikuri-code`'s
-own process, so a Nokogiri / Faraday parsing bug could in
-principle land in the agent itself. The MCP version moves the
-parser somewhere it can't reach your filesystem. Not strictly
-necessary; an extra notch of isolation if you want it.)
-
-Bake an image once:
+(Why containerise `fetch` when pikuri ships one? Defence in depth: the bundled `fetch` parses
+HTML inside `pikuri-code`'s own process, so a parser bug could land in the agent itself. The
+server moves the parser somewhere it can't reach your files. Not necessary; one more notch if
+you want it.)
 
 ```dockerfile
-# Dockerfile-fetch-mcp
-FROM python:3.12-slim
-RUN pip install --no-cache-dir mcp-server-fetch==<pin-version>
+# fetch-mcp.Containerfile
+FROM docker.io/library/python:3.14-slim
+RUN pip install --no-cache-dir mcp-server-fetch==2026.11.11
+USER nobody
 ENTRYPOINT ["python", "-m", "mcp_server_fetch"]
 ```
 
 ```sh
-docker build -f Dockerfile-fetch-mcp -t fetch-mcp:<pin-version> .
+podman build -f fetch-mcp.Containerfile -t fetch-mcp:2026.11.11 .
 ```
 
 ```ruby
 Pikuri::Mcp::Registry::StdioEntry.new(
   id:      'fetch',
-  command: ['docker', 'run', '-i', '--rm', "fetch-mcp:<pin-version>"]
+  command: ['podman', 'run', '-i', '--rm', '--cap-drop=all', '--security-opt=no-new-privileges',
+            '--read-only', '--tmpfs', '/tmp', 'fetch-mcp:2026.11.11']
 )
 ```
 
-Same trade-off as the npx case: pinned versions, fast spawns,
-no host install state shared with the container.
+Same trade as the npm case: a version you chose, a dependency tree resolved once, fast spawns.
+Python 3.14 rather than the newer 3.15, because a package's compiled dependencies tend to reach
+a new Python release months after it ships. This server's job is the open web, so it gets no
+proxy; its egress is the point.
 
-For Python servers that need filesystem access (a SQLite DB,
-a project directory), bind-mount a single host path into the
-container with `-v`. Keep the mount narrow — `-v ~/projects/foo:/work:ro`
-gives the server a read-only window onto one project, not your
-home directory. The "narrow bind mount per concern" pattern is
-the Python-MCP analogue of the fine-grained-PAT pattern for the
-GitHub server: minimise the surface the server can act on.
+For a server that needs files (a SQLite database, a project directory), mount one host path
+with `-v`, and keep it narrow: `-v ~/projects/foo:/work:ro` is a read-only window onto one
+project, not your home directory. Such a server rarely needs the network, so add
+`--network=none` too. A narrow mount is the file-shaped version of a fine-grained token: the
+less the server can touch, the less a bad day costs.
 
 ## Browser MCPs are a special case
 
-[Playwright MCP](https://github.com/microsoft/playwright-mcp) is
-where the chapter's threat model bites hardest. It hands the
-agent a real browser pointed at URLs the agent picks — every
-page loaded is an opportunity for attacker-chosen JavaScript to
-land in the browser process. Every other MCP in this chapter
-sees only text the model fed it; Playwright sees the open web.
-It's the MCP with the largest untrusted-content surface in
-common use, which is exactly why you most want it containerised.
+[Playwright MCP](https://github.com/microsoft/playwright-mcp) is where the threat model bites
+hardest. It hands the agent a real browser pointed at URLs the agent picks, and every page it
+loads is a chance for an attacker's JavaScript to run in that browser. Every other server in
+this chapter sees text the model sent it; this one sees the open web.
 
-The good news: Microsoft publishes `mcr.microsoft.com/playwright`
-with the browsers pre-installed, so the "bake an image" step is
-already done. The complication: Playwright is useful precisely
-when the agent needs to *do something* visible — visit your local
-dev server, take screenshots you review, drive a UI on
-`localhost:3000`. Three usability questions stack on top of the
-isolation question. (Everything below is Linux-specific; macOS
-needs XQuartz for headed mode and Docker Desktop handles
-`host.docker.internal` automatically; Windows is unsupported.)
-
-### Headed vs. headless
-
-Playwright supports both. Headless is the safer default — no UI,
-no X11 socket exposure, the browser renders to memory and
-exposes snapshots through the MCP protocol. The chapter
-recommends headless for routine work.
-
-Headed mode is genuinely useful when you want to *watch* what
-the agent is doing: clicks land on visible buttons; you can
-intervene. To do that from a container, bind-mount the host X11
-socket:
+Microsoft publishes a ready image, `mcr.microsoft.com/playwright/mcp`, tagged to match the npm
+package (`v0.0.85` here). It already runs `tini` as its first process, so podman's `--init` adds
+nothing. It does start Chromium with **`--no-sandbox`**: Chromium's own sandbox, the wall between
+a page's JavaScript and the rest of the browser, is off by default, and the container is the
+only cage left. It can come back:
 
 ```ruby
 Pikuri::Mcp::Registry::StdioEntry.new(
   id:      'playwright',
-  command: [
-    'docker', 'run', '-i', '--rm',
-    '-e', "DISPLAY=#{ENV.fetch('DISPLAY')}",
-    '-v', '/tmp/.X11-unix:/tmp/.X11-unix',
-    'mcr.microsoft.com/playwright:<pin-version>',
-    'npx', '-y', '@playwright/mcp@<pin-version>', '--no-headless'
-  ]
+  command: ['podman', 'run', '-i', '--rm',
+            '--cap-drop=all', '--cap-add=SYS_CHROOT', '--security-opt=no-new-privileges',
+            '--read-only', '--tmpfs', '/tmp', '-e', 'HOME=/tmp',
+            'mcr.microsoft.com/playwright/mcp:v0.0.85', '--isolated', '--sandbox']
 )
 ```
 
-Bind-mounting `/tmp/.X11-unix` is a meaningful loosening of
-isolation — anything that can talk to that socket can drive your
-desktop. That's the price of headed mode; only turn it on when
-you actively want to watch the browser, not as a default.
+- **`--sandbox`** after the image overrides the image's `--no-sandbox`. Chromium's sandbox builds
+  its own namespaces and needs one capability for it, `SYS_CHROOT`; with all of them dropped, it
+  fails to start. With the one added back, `chrome://sandbox` inside the container says "You are
+  adequately sandboxed"; without, "You are NOT adequately sandboxed".
+- **`-e HOME=/tmp`**: Chromium's crash handler wants a writable home, and `--read-only` took
+  `/home/node` away, so the home moves to the in-memory `/tmp`.
+- **`--isolated`** keeps the browser profile in memory, so no cookie or login outlives the run.
+
+Headless, as here, is the safer default: no window, no display socket, the browser renders to
+memory and reports snapshots through the protocol. Everything below is Linux-specific.
+
+### Headed, when you want to watch
+
+Headed mode lets you watch the clicks land and step in. The vendor image carries everything
+Chromium needs for it; only the `--headless` its entrypoint passes has to go, and your display
+has to come in:
+
+```ruby
+command: ['podman', 'run', '-i', '--rm',
+          '--cap-drop=all', '--cap-add=SYS_CHROOT', '--security-opt=no-new-privileges',
+          '--read-only', '--tmpfs', '/tmp', '-e', 'HOME=/tmp',
+          '-e', "DISPLAY=#{ENV.fetch('DISPLAY')}", '-v', '/tmp/.X11-unix:/tmp/.X11-unix',
+          '--entrypoint', '["/usr/bin/tini","-s","--","node","/app/cli.js","--browser","chromium"]',
+          'mcr.microsoft.com/playwright/mcp:v0.0.85', '--isolated', '--sandbox']
+```
+
+The test box had no display, so this is the one recipe in the chapter not run as written: the
+same entrypoint drove a headed Chromium against a virtual display inside the container, but not
+against a desktop. Your X server may also want its authority cookie (`$XAUTHORITY`) mounted in.
+Mounting `/tmp/.X11-unix` is a real loosening: anything that can talk to that socket can read
+your keystrokes and drive your desktop. Turn it on when you want to watch, not as a default.
 
 ### Reaching your local dev server
 
-If you want the browser to visit `localhost:3000`, the
-container's `localhost` isn't your host's `localhost` — and with
-[the prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md)'s rootless Docker, your host's
-`127.0.0.1` is flatly unreachable from containers. That's the
-same deliberate seal [the memories chapter](memories.md) met, and here
-it's working *for* you: this is the chapter's
-largest-untrusted-content surface, and attacker-chosen JavaScript
-probing `127.0.0.1` for your loopback services is a classic move.
-The advice you'll find online — `--network host`, or
-`--add-host host.docker.internal:host-gateway` — quietly assumes
-a root daemon; under rootless both dead-end inside the daemon's
-own network namespace, nowhere near your host. (And don't reach
-for `DOCKERD_ROOTLESS_ROOTLESSKIT_DISABLE_HOST_LOOPBACK=false` —
-the memories chapter explains how that daemon-wide knob un-builds this
-chapter's whole boundary.)
+You want the browser on `localhost:3000`, but the container's `localhost` is its own. Measured
+on the test box, under rootless podman's default network (pasta):
 
-What works — on rootless and rootful alike — is giving the dev
-server an address the container can route to, scoped as tightly
-as you like:
+- **Your host's loopback is closed.** A dev server on `127.0.0.1` is out of reach. That seal
+  works *for* you here: attacker JavaScript probing `127.0.0.1` for your local services is a
+  classic move, and this is the chapter's largest untrusted surface.
+- **`host.containers.internal`** reaches a host service bound to your LAN address or to
+  `0.0.0.0`. Bind the dev server to your LAN address and point the browser at
+  `http://host.containers.internal:3000`. The cost: the dev server is now on your network too.
+- **Your LAN address itself does not work** from inside the container. pasta gives the container
+  your host's own address, so a connection to it lands back in the container.
+- **`--network=host` opens your host's loopback**, every service on it. The advice you'll find
+  online reaches for it first. Don't.
 
-- **A host-only dummy interface** (tightest): an address that
-  exists only on your host — containers can reach it, your LAN
-  never sees it.
+The tightest option is an address that exists only on your host, on a dummy interface:
 
-  ```sh
-  sudo ip link add devsrv0 type dummy
-  sudo ip addr add 192.168.255.1/32 dev devsrv0
-  sudo ip link set devsrv0 up
-  ```
+```sh
+sudo ip link add devsrv0 type dummy
+sudo ip addr add 192.168.255.1/32 dev devsrv0
+sudo ip link set devsrv0 up
+```
 
-  Bind the dev server to it (`--host 192.168.255.1`, or your
-  framework's equivalent) and have the browser navigate to
-  `http://192.168.255.1:3000`. The interface vanishes on reboot;
-  persist it with a small systemd-networkd or netplan snippet
-  once the setup sticks. Pick another subnet if your LAN already
-  uses `192.168.255.x`.
-- **Your LAN IP** (simplest): bind the dev server to it and
-  navigate there. The cost is that the dev server is now on your
-  network — fine on a trusted home LAN behind a router, worth a
-  thought anywhere else.
+Bind the dev server to `192.168.255.1` and have the browser navigate to
+`http://192.168.255.1:3000`; your LAN never sees it. Not run on the test box, since it needs
+sudo; the interface is gone after a reboot. Under rootless Docker the host answers at its LAN
+address instead, as [the MCP chapter](mcp.md#what-the-box-can-reach) measured, and its
+daemon-wide loopback switch is one [the memories chapter](memories.md) says to leave alone.
 
-(The memories chapter solved the same container-to-host problem with a
-supervised socat relay over a unix socket — the engineered
-version of this. Here the container is a hand-wired registry
-entry and the Playwright image carries no relay half, so the
-interface trick is the lighter lift.)
-
-Bubblewrap doesn't enter into this — it sandboxes filesystem
-access for `bash`, not network. A dev server `bash` started
-listens on whatever address it binds; whether the Playwright
-container can reach it is decided by the routing above. The two
-sandboxes are independent; they don't fight.
+Bubblewrap doesn't enter into this: it cages `bash`, and a dev server `bash` started listens
+wherever it binds. Whether the browser's container can reach it is decided by the list above.
 
 ### Seeing the screenshots
 
-Playwright's MCP returns screenshots inline as image content in
-the tool response, which the *agent* can see but `pikuri-code`'s
-terminal renderer can't display. To view them yourself, configure
-the server to write artifacts to a host-mounted directory:
+The server returns screenshots inline, which the agent sees and `pikuri-code`'s terminal
+doesn't. To look yourself, have it write them to a host folder:
 
+```ruby
+'--userns=keep-id:uid=1000,gid=1000', '-v', "#{Dir.home}/.cache/pikuri/playwright:/artifacts",
+# … the image, then:
+'--isolated', '--sandbox', '--output-dir', '/artifacts'
 ```
-'-v', "#{ENV['HOME']}/.cache/pikuri/playwright:/artifacts",
-```
 
-…then pass the server's output-directory flag pointing at
-`/artifacts`. Screenshots land on your host at
-`~/.cache/pikuri/playwright/`, viewable in any image viewer.
+Create the folder first. `--userns=keep-id` makes the container's `node` user you, so it can
+write there and the files come out owned by you; without it, rootless podman maps `node` to a
+stranger's ID and nothing gets written.
 
-Putting all three pieces together gives a reasonable headed,
-host-network, screenshot-readable Playwright invocation — but
-each `-v` and `--network` flag is a notch of isolation traded
-away. Default headless with no host network; turn knobs on only
-when you need them, and turn them off again when you're done.
+Each `-v`, `--network` and display flag is a notch of isolation traded away. Start headless,
+with no host network and no mounts; turn a knob on when you need it, and off again after.
 
 ## A note on apt-shipped MCPs
 
-The whole chapter assumes MCP servers are untrusted because
-that's what `npx -y <package>` and `pip install <pkg>` *are* —
-unreviewed code from a public registry. A different distribution
-shape would change the calculus: a server packaged in Debian's
-or Ubuntu's archives has been through maintainer review, is
-built reproducibly from a pinned upstream, and signed by the
-distribution. That's a real code-trust signal, the same one
-that justifies `apt install ripgrep` without further
-sandboxing.
+The chapter treats MCP servers as untrusted because that's what `npx -y <package>` and `pip
+install <package>` *are*: unreviewed code from a public registry. A server packaged in Debian's
+or Ubuntu's archive would change that: maintainer review, a reproducible build from a pinned
+upstream, a distribution signature. That's the same signal that lets you `apt install ripgrep`
+without a sandbox, and the egress proxy above leans on it for tinyproxy.
 
-As of 2026, no popular MCP server ships this way. The ecosystem
-is ~18 months old; Debian's release cadence is slower than that.
-So this section is forward-looking: *if* an MCP you want lands
-in `apt`, the Docker wrapper becomes optional — `apt install` is
-the code-trust story, and you can spawn the server directly.
+As of 2026 no popular MCP server ships that way; the ecosystem is younger than Debian's release
+cycle. *If* one you want lands in `apt`, the container becomes optional for the code-trust
+question. Two caveats even then: the server can still carry prompt injection in its tool
+descriptions or be steered by what it reads, so the verifier still runs; and a token it holds
+still needs scoping, since what the token can do doesn't depend on who wrote the code.
 
-Two caveats even then. First, apt-trust only addresses the
-code-trust axis. The server can still ship prompt injection in
-its tool descriptions or be tricked by attacker-controlled
-inputs at runtime; the verifier still runs and is still useful.
-Second, you still want to scope any tokens the server uses the
-same way you would for the GitHub container — the action blast
-radius is independent of code trust.
+## Threat model: what `pikuri-mcp` actually protects against
 
-Until then, the realistic shapes are vendor-image (the GitHub
-example), npx-Dockerised, Python-Dockerised, and Playwright.
-The chapter covers all four.
-
-## Threat model — what `pikuri-mcp` actually protects against
-
-This page's view, in the same spirit as the security-revisited chapter's threat-model
-section for the coding agent — what wiring an MCP server in does
-and doesn't cover. The security chapter is the synthesis behind it (the
-trifecta, the kit, the worked attacks); this section maps that
-synthesis onto the MCP-specific surface.
+The same exercise the security-revisited chapter does for the coding agent, mapped onto the MCP
+surface. [pikuri's security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+is the synthesis behind it: the trifecta, the kit, the worked attacks.
 
 What the default configuration *does* protect:
 
-- **Pre-flight injection detection.** The verifier (the MCP chapter)
-  runs before any tool from the server is callable: hidden
-  Unicode payloads are rejected mechanically, LLM-judged
-  injection attempts are rejected with reasoning, and the server
-  never enters `live_ids`. A flagged server is one you see and
+- **Pre-flight injection detection.** The verifier runs before any tool from the server is
+  callable: hidden Unicode payloads are rejected mechanically, LLM-judged injection attempts are
+  rejected with reasoning, and the server never goes live. A flagged server is one you see and
   investigate, not one you discover after the fact.
-- **No tools in context until you ask.** `mcp_connect` gates the
-  schema surface — tools that slipped the verifier still aren't
-  in context unless the model explicitly activates them.
-- **Per-agent activation.** Sub-agents can't reach the MCP
-  surface at all: the privilege separation from the sub-agents chapter
-  carries through, so a `FILE_MINER` reading a malicious file
-  can't `mcp_connect` to anything.
-- **Container isolation (when you wrap in Docker).** A malicious
-  server can't read your `~/.ssh` or write to your home
-  directory.
+- **No tools in context until asked.** `mcp_connect` gates the schemas: a tool that slipped the
+  verifier still isn't in context unless the model activates its server.
+- **Per-agent activation.** Sub-agents can't reach MCP at all. The privilege separation from
+  pikuri's sub-agents chapter carries through, so a `FILE_MINER` reading a malicious file can't
+  `mcp_connect` to anything.
+- **The container, once you add one.** A malicious server can't read your `~/.ssh` or write to
+  your home directory; with the egress proxy, it can't reach anything but its one host.
 
 What it *doesn't* protect:
 
-- **Execution of the server itself.** The verifier reads text,
-  not executable code. A server that emits *clean* descriptions
-  but does something hostile when its tools run still activates
-  if the LLM calls `mcp_connect`. The container is your real
-  defence here, not the verifier.
-- **The LLM judge is an LLM.** The verifier's second pass uses
-  the same model class your agent talks to; a crafted injection
-  might fool it the same way it fools the agent. The Unicode
-  pre-pass is deterministic and catches one whole class
-  outright; the LLM pass is best-effort and catches *most* of
-  the rest, not all.
-- **Token blast radius.** A GitHub MCP given a classic
-  full-access PAT can do anything that token can — open issues,
-  comment, push to repos with `contents:write`. Scope the PAT
-  tightly; treat it as the real boundary on what the agent can
-  do on GitHub.
-- **HTTP MCP servers and TLS.** `HttpEntry` accepts any URL.
-  Wire in an `http://` endpoint instead of `https://` and you're
-  trusting the network path; the gem doesn't refuse plain HTTP —
-  that's your call.
-- **Cached "OK" results.** A server whose surface hasn't changed
-  doesn't re-run the verifier. The cache key is the full surface
-  fingerprint, so any change re-triggers verification; to clear
-  a long-running cache, delete
+- **What the server does when it runs.** The verifier reads text, not code. A server with clean
+  descriptions that does something hostile when its tools run still goes live. The container is
+  your defence there, not the verifier.
+- **The LLM judge is an LLM.** The verifier's second pass uses the same kind of model your agent
+  talks to; a crafted injection may fool it the same way. The Unicode pass is deterministic and
+  catches one whole class; the LLM pass catches *most* of the rest, not all.
+- **The token's reach.** A GitHub server given a classic full-access PAT can do anything that
+  token can: open issues, comment, push. The token, not the server, is the boundary on what the
+  agent can do on GitHub; scope it.
+- **HTTP servers and TLS.** `HttpEntry` accepts any URL. Wire in `http://` instead of `https://`
+  and you're trusting the network path; the gem doesn't refuse plain HTTP.
+- **Cached "OK" results.** A server whose surface hasn't changed doesn't re-run the verifier.
+  The cache key is the whole surface, so any change re-triggers it; to clear the cache, delete
   `~/.cache/pikuri/mcp_verifications/`.
-- **Poisoned tool *responses* at runtime.** This is the structural
-  gap the security chapter named: the verifier checks the server's surface
-  at registration, but tool *outputs* during a conversation flow
-  into the parent's context unchecked. MCP tools mount on the
-  parent agent, so there's no sub-agent boundary between the
-  model and a poisoned response. The security chapter's attack 4 walks this
-  through end-to-end.
+- **Poisoned tool *responses*.** The structural gap pikuri's security chapter named: the
+  verifier checks the surface at registration, but tool *outputs* during a conversation flow
+  into the parent's context unchecked. MCP tools mount on the parent agent, so no sub-agent
+  boundary stands between the model and a poisoned response. That chapter's attack 4 walks it
+  through.
+- **The shared kernel.** Every container flag in this chapter is a rule your kernel enforces,
+  so a kernel bug the server can reach turns into your account. For a server you can't read,
+  or one you let run unattended, the wall is a virtual machine around the whole process.
 
-In short: **assume MCP servers can take any action their token
-allows, scope the token accordingly, and wrap the server in a
-container.** The verifier is a useful belt, not the whole
-belt-and-suspenders story — and a server clean at handshake can
-still ship a poisoned response on a later call.
+In short: **assume an MCP server can take any action its token allows, scope the token to
+match, put the server in a container, and narrow its network to the hosts it needs.** The
+verifier is a useful belt, not the whole outfit, and a server clean at the handshake can still
+ship a poisoned response on a later call.
 
 ## What's next
 
-[Language intelligence](lsp.md) closes the code track by giving the
-agent the one thing grep cannot supply: a parser with a project-wide
-index, borrowed from the language server your editor already runs. It is
-also the sharpest study in the book of a foreign process answering an
-agent's question with a well-formed lie — and of keeping "I cannot
-answer" from rendering as "there is nothing there".
+[Agent Skills](skills.md) are the other way to hand an agent new abilities: a folder of
+instructions, and sometimes scripts, that the model loads when it needs them. An MCP server's
+tools are announced every session and get used off a one-line description; a skill is a body
+of text the model has to decide to read, which is why
+[a skill needs a trigger and an MCP server doesn't](skills.md#why-a-skill-needs-a-trigger-and-an-mcp-server-doesnt).
 
-The vocabulary you have now (`Pikuri::Agent`, `Tool`, listeners,
-the Extension protocol with its worked examples, configure/bind,
-sub-agent privilege separation, MCP's verifier + synthesizer +
-per-agent `mcp_connect`, Docker as the MCP boundary) is enough
-to read the [`pikuri-mcp`](../pikuri-mcp/README.md) sources
-directly.
+The vocabulary you have now (`Pikuri::Agent`, `Tool`, listeners, the Extension protocol,
+configure/bind, sub-agent privilege separation, MCP's verifier, synthesizer and per-agent
+`mcp_connect`, a container as the MCP boundary) is enough to read the
+[`pikuri-mcp`](../pikuri-mcp/README.md) sources directly.

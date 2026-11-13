@@ -435,22 +435,35 @@ read_only = Pikuri::Workspace::ReadOnly.new(
 # +ENV+, which every child inherits. +private: true+ marks a server that
 # reaches private data, for the trifecta report.
 #
+# Every server you didn't write runs in a container. book/mcp-revisited.md
+# builds these: GitHub's behind an egress proxy that lets it reach only
+# api.github.com (create the networks and start mcp-github-proxy first), a
+# baked image for an npm package, and the Playwright vendor image with
+# Chromium's own sandbox back on.
+#
 # == Examples
 #
 #   Pikuri::Mcp::Registry::StdioEntry.new(
 #     id:      'github',
-#     command: ['podman', 'run', '-i', '--rm', '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
-#               'ghcr.io/github/github-mcp-server'],
+#     command: ['podman', 'run', '-i', '--rm',
+#               '--cap-drop=all', '--security-opt=no-new-privileges', '--read-only', '--tmpfs', '/tmp',
+#               '--network=mcp-github', '-e', 'HTTPS_PROXY=http://mcp-github-proxy:8888',
+#               '-e', 'GITHUB_PERSONAL_ACCESS_TOKEN',
+#               'ghcr.io/github/github-mcp-server:v2.1.0', 'stdio', '--read-only'],
 #     env:     { 'GITHUB_PERSONAL_ACCESS_TOKEN' => examples_config.fetch('github_token') },
 #     private: true
 #   ),
 #   Pikuri::Mcp::Registry::StdioEntry.new(
 #     id:      'maven-tools',
-#     command: ['npx', 'mcp-maven-deps']
+#     command: ['podman', 'run', '-i', '--rm', '--cap-drop=all', '--security-opt=no-new-privileges',
+#               '--read-only', '--tmpfs', '/tmp', 'maven-mcp:0.2.0']
 #   ),
 #   Pikuri::Mcp::Registry::StdioEntry.new(
-#     id:      'gmail',
-#     command: ['npx', '@gongrzhe/server-gmail-autoauth-mcp']
+#     id:      'playwright',
+#     command: ['podman', 'run', '-i', '--rm',
+#               '--cap-drop=all', '--cap-add=SYS_CHROOT', '--security-opt=no-new-privileges',
+#               '--read-only', '--tmpfs', '/tmp', '-e', 'HOME=/tmp',
+#               'mcr.microsoft.com/playwright/mcp:v0.0.85', '--isolated', '--sandbox']
 #   ),
 #   Pikuri::Mcp::Registry::HttpEntry.new(
 #     id:      'hubspot',

@@ -22,7 +22,7 @@ Adds:
   only, not a gem executable): a minimal agent hardcoded to one MCP
   server, the community [Open Library
   catalogue reader](https://github.com/8enSmith/mcp-open-library)
-  running in a locally-built Docker container, plus `calculator`.
+  running in a locally-built container, plus `calculator`.
   The worked example of the guide's MCP chapter.
 
 ## Install
@@ -44,7 +44,10 @@ require 'pikuri-mcp'
 config = YAML.safe_load_file(File.expand_path('~/.config/my-agent.yaml'))
 
 registry = Pikuri::Mcp::Registry.new(entries: [
-  Pikuri::Mcp::Registry::StdioEntry.new(id: 'gmail', command: %w[npx @gongrzhe/server-gmail-autoauth-mcp]),
+  # A server you didn't write runs in a container (book/mcp-revisited.md).
+  Pikuri::Mcp::Registry::StdioEntry.new(id: 'maven-tools',
+                                        command: %w[podman run -i --rm --cap-drop=all --security-opt=no-new-privileges
+                                                    --read-only --tmpfs /tmp maven-mcp:0.2.0]),
   Pikuri::Mcp::Registry::HttpEntry.new(id: 'hubspot', url: 'https://mcp.example.com/v1',
                                        headers: { 'Authorization' => "Bearer #{config.fetch('hubspot_token')}" },
                                        private: true)
@@ -72,8 +75,10 @@ don't inherit extensions, so they get neither the servers nor
   verifier and synthesizer in depth.
   [The MCP-revisited chapter](../book/mcp-revisited.md) picks
   the thread back up at the harder end: the official GitHub MCP
-  in Docker, npx- and pip-based community servers, Playwright,
-  and the full threat model.
+  in a container narrowed to one host by an egress proxy
+  (`containers/mcp-egress-proxy.Containerfile`), npx- and pip-based
+  community servers, Playwright with Chromium's sandbox back on, and
+  the full threat model.
 - **API reference:** browse the YARD docs at
   <https://rubydoc.info/gems/pikuri-mcp> (once published), or run
   `bundle exec yard` in this directory for a local copy.

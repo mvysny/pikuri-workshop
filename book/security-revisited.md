@@ -248,7 +248,7 @@ verdict in the repo, and the two declarations that move it.
 
 Then [MCPs revisited](mcp-revisited.md) picks the MCP
 thread back up at the harder end of the spectrum: the official
-GitHub MCP server in Docker, npx and pip packages of unknown
+GitHub MCP server in a container narrowed to one host, npx and pip packages of unknown
 provenance, Playwright with its open-web surface, and the full
 threat-model section for `pikuri-mcp` — what the verifier
 catches, what it doesn't, and where containerisation is doing
