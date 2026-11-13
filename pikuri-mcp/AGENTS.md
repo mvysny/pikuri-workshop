@@ -11,4 +11,4 @@ synthesize its tools as raw ruby_llm tools rather than `Pikuri::Tool`s.
 - **Subprocess-seam exception.** The stdio child is spawned *inside the third-party `mcp` gem*, one of the two sanctioned bypasses of `Pikuri::Subprocess.spawn` (root Subprocess seam); pikuri owns the teardown via `#close`. The `rake tripwires` check for that seam cannot see this one. See {Pikuri::Mcp::ClientWrapper}.
 - **`StdioEntry#env` is the per-child credential channel**, merged over the de-bundlerized `Pikuri::BundlerEnv` base (root **Environment is not a secret store** seam). See {Pikuri::Mcp::Registry::StdioEntry}.
 
-Maintenance: the root `AGENTS.md`'s rules; cap 10 KB.
+Maintenance: the root `AGENTS.md`'s rules.

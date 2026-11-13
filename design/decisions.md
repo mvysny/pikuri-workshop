@@ -6,11 +6,44 @@ more. **A reversal is a rewrite**, never a second entry and never an amendment n
 arguments become the replacement's why-not clauses, and a reversal to *nothing* is a standalone
 why-not question. An entry is earned by what happened, not by having had an alternative — either
 it **shaped what the workshop is**, or it **cost research the next person would otherwise redo**
-(cited as its `R_`). Neither → a comment at the site of the choice. Nothing about `design/`
-itself is an entry, and nothing not yet decided — that lives in `design/ideas/`. Cite by slug,
-`D_<slug>`; a decision of pikuri's is `pikuri:D_<slug>` and lives in pikuri's
-`design/decisions.md`. `grep '^## D_' design/decisions.md` is the index. **The ruler is the
-founding entry, at the bottom — `D_separate_repo`**: later entries trim to its length.
+(cited as its `R_`). Not an entry: windows → panels "because that's the trend", this red over
+that red, `get_foo` over `is_foo?`, the testing library, the CI host, a version bump — a comment
+at the site of the choice, or nothing. Nothing about `design/` itself is an entry, and nothing not
+yet decided — that lives in `design/ideas/`. Cite by slug, `D_<slug>`, never by position; a
+decision of pikuri's is `pikuri:D_<slug>` and lives in pikuri's `design/decisions.md`.
+`grep '^## D_' design/decisions.md` is the index. The founding entry, `D_separate_repo`, comes
+first. An entry is as long as its question needs: every road not taken keeps all of its losing
+reasons. When you have written an entry, re-read it against the one above for consistency, and
+open the doc comments it touches and delete what they already say.
+
+---
+
+## D_separate_repo — Why is the workshop a repo of its own, pinned to a pikuri commit, rather than more gems in pikuri?
+
+**Context.** Until 2026-11 these eight gems lived in pikuri's monorepo. Every integration added
+a gem, a release target, a book chapter and a share of a capped `AGENTS.md`, and pulled pikuri
+two ways: stay simple enough to teach in an evening, and grow complete enough for bash's
+tokenizer, a sandbox, MCP's container model and a language server's build evaluation.
+
+**Decision.** pikuri keeps the gems you would run on your host with your real data, and whose
+future is "explain it better". A gem that needs a cage, or whose future is more features, lives
+here. The workshop is "just" an app built on pikuri: its `Gemfile` pins one pushed pikuri
+commit by sha, its gemspecs pin the pikuri release they were built against, it releases on its
+own cycle, and its tooling (`rake check`, `rake release`, both tripwires) is a copy that evolves
+on its own. Dependencies point from here to pikuri, never back.
+
+**Alternatives rejected.**
+
+- **One repo, two books.** Every gem would still answer to "readable in an evening" and to the
+  trifecta promise, which a coding agent holding all three legs can't keep.
+- **pikuri's `master` branch, with a Bundler local override to `../pikuri`.** The pin lived only
+  in `Gemfile.lock`, and the override moved it silently: on the first day it pointed the lock at
+  a pikuri commit not yet pushed, which CI could never fetch. A sha in the `Gemfile` is visible,
+  and moves only when someone edits it.
+- **A shared version and release.** A rename in pikuri breaks the workshop until it catches up
+  either way; a shared number only hides that, and spends a release on gems that didn't change.
+- **Renaming the gems `pikuri-workshop-*`.** A name is tied to its namespace and entry file, so
+  it churns every constant, and the placement rule can move a gem back to pikuri.
 
 ---
 
@@ -1427,32 +1460,3 @@ in `sandbox_env:`. A token inside the project (`.env`) is still readable; the
 workspace is reachable by design. The banner's list of withheld names
 doubles as the review the first wall asks for: a secret there should leave
 your shell, not just the sandbox.
-
----
-
-## D_separate_repo — Why is the workshop a repo of its own, pinned to a pikuri commit, rather than more gems in pikuri?
-
-**Context.** Until 2026-11 these eight gems lived in pikuri's monorepo. Every integration added
-a gem, a release target, a book chapter and a share of a capped `AGENTS.md`, and pulled pikuri
-two ways: stay simple enough to teach in an evening, and grow complete enough for bash's
-tokenizer, a sandbox, MCP's container model and a language server's build evaluation.
-
-**Decision.** pikuri keeps the gems you would run on your host with your real data, and whose
-future is "explain it better". A gem that needs a cage, or whose future is more features, lives
-here. The workshop is "just" an app built on pikuri: its `Gemfile` pins one pushed pikuri
-commit by sha, its gemspecs pin the pikuri release they were built against, it releases on its
-own cycle, and its tooling (`rake check`, `rake release`, both tripwires) is a copy that evolves
-on its own. Dependencies point from here to pikuri, never back.
-
-**Alternatives rejected.**
-
-- **One repo, two books.** Every gem would still answer to "readable in an evening" and to the
-  trifecta promise, which a coding agent holding all three legs can't keep.
-- **pikuri's `master` branch, with a Bundler local override to `../pikuri`.** The pin lived only
-  in `Gemfile.lock`, and the override moved it silently: on the first day it pointed the lock at
-  a pikuri commit not yet pushed, which CI could never fetch. A sha in the `Gemfile` is visible,
-  and moves only when someone edits it.
-- **A shared version and release.** A rename in pikuri breaks the workshop until it catches up
-  either way; a shared number only hides that, and spends a release on gems that didn't change.
-- **Renaming the gems `pikuri-workshop-*`.** A name is tied to its namespace and entry file, so
-  it churns every constant, and the placement rule can move a gem back to pikuri.

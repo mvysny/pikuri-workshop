@@ -11,4 +11,4 @@ contract is `pikuri-core`'s.
 - **Subprocess-seam exception.** `Lsp::ClientWrapper`'s own `Open3.popen3` is one of the two sanctioned bypasses of `Pikuri::Subprocess.spawn` (root Subprocess seam): a long-lived stdio child that owns its teardown (`#close`, `pgroup: true` + SIGTERM to the group). See {Pikuri::Lsp::ClientWrapper}.
 - **Consumed seams.** `Lsp::Sources` / `Lsp::Renderer` are on the **Denylist seam** roster in `../pikuri-workspace/AGENTS.md`, which owns the rule.
 
-Maintenance: the root `AGENTS.md`'s rules; cap 10 KB.
+Maintenance: the root `AGENTS.md`'s rules.

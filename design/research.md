@@ -6,8 +6,9 @@ per claim — **[docs]**, **[src]**, **[verified &lt;date&gt;, &lt;version&gt;]*
 (a hypothesis; a design built on it says so). Every **[src]** resolves through pikuri's
 `pikuri:R_sources`, which names the tree and the revision each entry was read against; these
 entries were read alongside pikuri's and moved here with their gems. Cite by slug, `R_<slug>`; an
-entry of pikuri's is `pikuri:R_<slug>`. The first entry is the ruler: later ones trim to its
-length. The **pikuri** column of a comparison table and a closing **Takeaway** carry no marker:
+entry of pikuri's is `pikuri:R_<slug>`. When you have written an entry, re-read it against the
+one above for consistency; a marker already says where a claim came from, so the prose doesn't
+repeat it. The **pikuri** column of a comparison table and a closing **Takeaway** carry no marker:
 they are what the survey was for.
 
 ---

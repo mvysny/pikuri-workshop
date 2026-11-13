@@ -11,4 +11,4 @@ registry; how a loaded body reaches the model is the root's Interloper injection
 - **Sub-agents get no skills.** `SkillTool#for_sub_agent` hands a child a sealed `Skill::Activation`, and no bundled persona names `skill`; the rule is the **Sub-agent propagation** seam in `../pikuri-subagents/AGENTS.md`. See {Pikuri::Skill::Activation::Sealed}, `design/decisions.md` `D_no_skills_in_sub_agents`.
 - **Host-driven skill loading** is the enqueue-only, main-agent-only `Skill::Extension#schedule_load_skill`, riding the interloper's `:system` kind (root Interloper injection seam).
 
-Maintenance: the root `AGENTS.md`'s rules; cap 10 KB.
+Maintenance: the root `AGENTS.md`'s rules.
