@@ -100,12 +100,13 @@ module Pikuri
       # Block until the server is ready, yielding progress as it arrives.
       #
       # Returns immediately when the gate is already open, so a warm server
-      # costs one predicate. Otherwise it yields every {ServerProgress} the
-      # server sends — coalesced, so a three-minute wait yields *current* state
-      # rather than replaying the backlog — and finally a +done: true+ for every
-      # task still in flight, however the wait ended and whether or not this wait
-      # was the one that announced it: a host that drew a bar must be told to
-      # take it down even when the server never sent the +end+.
+      # costs one predicate. Otherwise it yields each task twice — a
+      # {ServerProgress} when it is first seen, and a +done: true+ one when it
+      # ends — and drops the reports between: a host shows them as log lines,
+      # and a cold jdtls import reports for minutes. Every task still in flight
+      # gets its +done: true+ however the wait ended, and whether or not this
+      # wait was the one that announced it, so no host shows a task running
+      # after the server died or the user cancelled.
       #
       # @param cancellable [Pikuri::Agent::Control::Cancellable, nil] polled
       #   every {TICK}; this is what makes an unbounded wait acceptable.
@@ -116,7 +117,7 @@ module Pikuri
       #   went false first. Cancellation raises instead.
       # @raise [Pikuri::Agent::Control::Cancellable::Cancelled] on cancellation.
       def wait(cancellable: nil, alive: -> { true })
-        # Tracked by title, not token: the host draws its bars off what it was
+        # Tracked by title, not token: the host knows a task by what it was
         # shown, and a ServerProgress carries no token for it to key on.
         shown = []
         @mailbox.drain(tick: TICK) do |progress|
@@ -127,7 +128,13 @@ module Pikuri
           break true if ready?
           next unless progress
 
-          progress.done ? shown.delete(progress.title) : shown |= [progress.title]
+          if progress.done
+            shown.delete(progress.title)
+          else
+            next if shown.include?(progress.title)
+
+            shown << progress.title
+          end
           yield progress
         end
       ensure

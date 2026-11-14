@@ -98,7 +98,7 @@ describe Pikuri::Lsp::Readiness do
       assert_equal 'Initialize Workspace', seen.last.title, 'titled by its begin, not by the token'
     end
 
-    it 'yields current state, not the burst of reports that piled up' do
+    it 'yields a task when it begins and when it ends, none of its reports' do
       readiness = gate.call
       readiness.observe('$/progress', progress.call('begin'))
       100.times do |i|
@@ -114,9 +114,8 @@ describe Pikuri::Lsp::Readiness do
 
       _result, seen = waiting.call(readiness)
 
-      refute_includes seen.map(&:message), '0/100 projects', 'a replayed backlog races stale percentages'
-      assert_includes seen.map(&:message), '99/100 projects'
-      assert_operator seen.size, :<, 5, "#{seen.size} events for 101 notifications"
+      assert_equal [false, true], seen.map(&:done), 'a log line per report would flood the terminal'
+      assert_equal ['Initialize Workspace'], seen.map(&:title).uniq
     end
 
     it 'always takes the bar down, even when the server never sent an end' do
