@@ -16,8 +16,8 @@ module Pikuri
     # nothing.
     #
     # **Not reusable: each agent gets its own instance.** Build it inside the
-    # per-agent block, as above, never once outside and passed to every agent: a
-    # second +configure+ raises. A shared instance would hand two agents one
+    # per-agent block, as above, never once outside and passed to every agent:
+    # +add_extension+ refuses a reused one. A shared instance would hand two agents one
     # {Servers}, whose children speak to one client each (+D_lsp_per_agent+),
     # and the first agent's close would kill the second's servers. Build a new
     # one per agent from the same {Registry}, which is immutable.
@@ -40,7 +40,6 @@ module Pikuri
         @filesystem = filesystem
         @servers = nil
         @tool = nil
-        @configured = false
       end
 
       # @return [Servers, nil] the runtime built in +configure+, or +nil+ when the
@@ -52,11 +51,7 @@ module Pikuri
       #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
-      # @raise [RuntimeError] when this instance already configured an agent.
       def configure(c)
-        raise 'Lsp::Extension already configured an agent; build one per agent' if @configured
-
-        @configured = true
         return if @registry.empty?
 
         servers = Servers.new(registry: @registry, root: @filesystem.project_root,

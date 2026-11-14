@@ -72,13 +72,6 @@ RSpec.describe Pikuri::Mcp::Extension do
       configurator.on_close_handlers.each(&:call)
       assert closed
     end
-
-    it 'refuses a second agent: a shared extension would share its processes' do
-      ext = described_class.new(catalog: catalog)
-      ext.configure(configurator)
-      error = assert_raises(RuntimeError) { ext.configure(configurator) }
-      assert_match(/one per agent/, error.message)
-    end
   end
 
   it "puts the catalog's <available_mcps> block in the system prompt" do

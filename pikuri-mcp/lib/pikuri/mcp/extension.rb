@@ -20,8 +20,8 @@ module Pikuri
     # +<id>__<tool>+ calls, since a server connected but not yet used was
     # promised its tools too.
     #
-    # One extension per agent: a second +configure+ raises, because a shared
-    # instance would share its {Connections} — the very leak this design
+    # One extension per agent, and +add_extension+ refuses a reused one: a
+    # shared instance would share its {Connections}, the very leak this design
     # prevents. Sub-agents don't inherit extensions, so they get no MCP.
     class Extension
       include Pikuri::Agent::Extension
@@ -44,9 +44,7 @@ module Pikuri
       #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
-      # @raise [RuntimeError] when this instance already configured an agent.
       def configure(c)
-        raise 'Mcp::Extension already configured an agent; build one per agent' if @connections
         return if @catalog.empty?
 
         connections = Connections.new(@catalog)
