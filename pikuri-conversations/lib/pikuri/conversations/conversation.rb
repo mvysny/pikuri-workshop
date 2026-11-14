@@ -244,11 +244,13 @@ module Pikuri
       end
 
       # @return [Status] state, pending count and models, read in one critical
-      #   section
+      #   section; each model carries the cap and modalities {Probe} has learnt
+      #   so far, so it may not +==+ the transport you passed in
       def status
         locked do
           pending = @agent ? @agent.interloper.size : @waiting.size
-          Status.new(state: @state, pending:, model: @transport, next_model: @next_transport || @transport)
+          Status.new(state: @state, pending:, model: Probe.facts(@transport),
+                     next_model: Probe.facts(@next_transport || @transport))
         end
       end
 
@@ -371,7 +373,7 @@ module Pikuri
       end
 
       def refuse_attachments!(attachments)
-        transport = @next_transport || @transport
+        transport = Probe.facts(@next_transport || @transport)
         return unless transport.modalities
 
         attachments.each do |a|
@@ -413,6 +415,9 @@ module Pikuri
           [@transport, @history]
         end
         begin
+          # The lookup that loads no model, so #status and #submit know the
+          # model's inputs before the first turn.
+          Probe.modalities(transport)
           agent = @build.call(self, transport, history, @cancellable)
           trifecta = agent.trifecta
         rescue StandardError => e
@@ -468,7 +473,7 @@ module Pikuri
         Thread.current.name = "turn #{@id}"
         Thread.current.priority = @priority
         loop do
-          transport = locked do
+          picked, current = locked do
             picked = @next_transport
             if picked
               @transport = picked
@@ -476,11 +481,12 @@ module Pikuri
               @effects << Event::ModelPending.new(transport: nil)
             end
             @effects << Event::TurnStarted.new(user_message: message, attachments:)
-            picked
+            [picked, @transport]
           end
 
           outcome, error = begin
-            @agent.run_loop(user_message: message, attachments:, transport:)
+            probe(current)
+            @agent.run_loop(user_message: message, attachments:, transport: picked)
             [:completed, nil]
           rescue Pikuri::Agent::Control::Cancellable::Cancelled
             [:cancelled, nil]
@@ -510,6 +516,18 @@ module Pikuri
         end
         agent = locked { @state == :closed ? @agent : nil }
         release(agent) if agent
+      end
+
+      # Learn the turn's model before its first request, and size its server's
+      # permits from the slot count. After {Event::TurnStarted}, so a UI shows
+      # the message during a router's cold load. Skipped when nothing is left
+      # to learn.
+      def probe(transport)
+        server = Probe.server(transport)
+        return if transport.context_window && transport.modalities && Throttle.sized?(server)
+
+        slots = Probe.props(transport).total_slots
+        Throttle.default(server, slots) if slots && Throttle.key_for(server)
       end
 
       # Snapshot the history and hand it to +on_turn_end+, on the turn's

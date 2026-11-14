@@ -41,7 +41,17 @@ conv.cancel
 convs.shutdown(timeout: 5)
 ```
 
-Coming: a request throttle for a small server shared by many conversations, and a titler.
+- `Pikuri::Conversations::Throttle` — how many requests may fly against one server at a
+  time, process-wide. A llama.cpp sizes itself from its `/props` slot count on a
+  conversation's first turn; size any other server yourself, and pass the throttle to the
+  agents you build outside a list, so they queue with the rest:
+
+```ruby
+Pikuri::Conversations::Throttle.limit('http://localhost:8080', 1)   # llama-server --parallel 1
+titler = Pikuri::Agent.new(transport:, system_prompt:, around_request: Pikuri::Conversations::Throttle)
+```
+
+Coming: a titler.
 
 ## Install
 

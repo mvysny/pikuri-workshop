@@ -18,10 +18,11 @@ module Pikuri
   #   conv.submit('how do I keep an avocado?')   # => :started; events reach +listener+
   #   convs.shutdown(timeout: 5)
   #
-  # {Conversation} is one live conversation and its turn state; {HistoryFile}
-  # is the stored format of an {Pikuri::Agent::History}; {Store} keeps one
-  # folder per conversation. A list never touches a store: the host joins them
-  # in +on_turn_end+.
+  # {Conversation} is one live conversation and its turn state; {Throttle}
+  # bounds the requests in flight against each server, sized from what {Probe}
+  # learns at a turn's start; {HistoryFile} is the stored format of an
+  # {Pikuri::Agent::History}; {Store} keeps one folder per conversation. A list
+  # never touches a store: the host joins them in +on_turn_end+.
   #
   # Thread-safe.
   class Conversations
@@ -38,7 +39,7 @@ module Pikuri
     #   +(conversation)+ → one per conversation
     # @param configure [#call, nil] +(configurator, conversation)+ — the
     #   +Agent.new+ block: tools, extensions, more listeners. The conversation's
-    #   cancel token, history and listener are wired already.
+    #   cancel token, history, listener and {Throttle} are wired already.
     # @param on_turn_end [#call, nil] +(conversation, history)+ after every turn
     #   — completed, cancelled or failed — on the turn's thread, before the
     #   conversation goes idle, so "idle" means "saved". Not called once the
@@ -115,7 +116,8 @@ module Pikuri
 
     def build_agent(conv, transport, history, cancellable)
       prompt = @system_prompt.respond_to?(:call) ? @system_prompt.call(conv) : @system_prompt
-      Pikuri::Agent.new(transport:, system_prompt: prompt, cancellable:, streaming: @streaming, history:) do |c|
+      Pikuri::Agent.new(transport:, system_prompt: prompt, cancellable:, streaming: @streaming, history:,
+                        around_request: Throttle) do |c|
         c.add_listener(conv.listener)
         @configure&.call(c, conv)
       end

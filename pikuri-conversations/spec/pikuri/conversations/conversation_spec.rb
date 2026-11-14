@@ -67,7 +67,40 @@ RSpec.describe Pikuri::Conversations::Conversation do
     g
   end
 
-  after { convs.shutdown(timeout: 5) }
+  # The probe dials /props for real; every example answers it here instead, and
+  # records what was asked.
+  let(:detector) { Pikuri::Agent::ContextWindowDetector }
+  let(:probed) { Queue.new }
+  let(:props) { detector::Props::NONE }
+  let(:looked_up) { nil }
+
+  before do
+    @detect = detector.method(:detect)
+    @detect_modalities = detector.method(:detect_modalities)
+    log = probed
+    full = props
+    cheap = looked_up
+    detector.define_singleton_method(:detect) do |transport, **|
+      log << [:detect, transport.model]
+      full
+    end
+    detector.define_singleton_method(:detect_modalities) do |transport, **|
+      log << [:modalities, transport.model]
+      cheap
+    end
+  end
+
+  after do
+    convs.shutdown(timeout: 5)
+    detect = @detect
+    detect_modalities = @detect_modalities
+    detector.define_singleton_method(:detect) { |*a, **k| detect.call(*a, **k) }
+    detector.define_singleton_method(:detect_modalities) { |*a, **k| detect_modalities.call(*a, **k) }
+    Pikuri::Conversations::Probe.reset!
+    Pikuri::Conversations::Throttle.reset!
+  end
+
+  def drain(queue) = Array.new(queue.size) { queue.pop }
 
   def contents(history) = history.messages.map(&:content)
 
@@ -240,6 +273,114 @@ RSpec.describe Pikuri::Conversations::Conversation do
     recorder.await(Event::Ready, nth: 2)
     assert_nil conv.history
     assert_equal :idle, conv.status.state
+  end
+
+  context 'the throttle' do
+    let(:server) { 'http://throttled.invalid/v1' }
+
+    # Counts the requests inside the HTTP call at once: Gate#await runs inside
+    # the adapter, so inside the permit.
+    let(:counting_gate) do
+      Class.new(Pikuri::Testing::Gate) do
+        attr_reader :peak, :in_flight
+
+        def initialize
+          super
+          @counter = Mutex.new
+          @in_flight = 0
+          @peak = 0
+        end
+
+        def await
+          @counter.synchronize { @peak = [@peak, @in_flight += 1].max }
+          super
+        ensure
+          @counter.synchronize { @in_flight -= 1 }
+        end
+      end.new
+    end
+
+    it 'queues the turns of many conversations against a server sized to one' do
+      Pikuri::Conversations::Throttle.limit(server, 1)
+      gate = counting_gate
+      gate.block!
+      recorders = Array.new(3) { Recorder.new }
+      conversations = recorders.each_with_index.map do |rec, i|
+        transport = Pikuri::Testing.fake_transport(api_base: server, gate:) { |llm| llm.reply("answer #{i}") }
+        convs.open(id: "c#{i}", transport:, listener: rec)
+      end
+      recorders.each { _1.await(Event::Ready) }
+      conversations.each { _1.submit('hi') }
+
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      sleep 0.01 until gate.in_flight == 1 || Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      sleep 0.1
+      assert_equal 1, gate.in_flight, 'a second request got past the permit'
+      gate.release!
+
+      recorders.each { assert_equal :completed, _1.await(Event::TurnEnded).outcome }
+      assert_equal 1, gate.peak
+    ensure
+      gate&.release!
+    end
+
+    context 'sized by the probe' do
+      let(:props) { detector::Props.new(n_ctx: 16_384, total_slots: 2, modalities: { vision: true }) }
+
+      it "seeds the server's permits and the model's facts at the first turn, once" do
+        transport = Pikuri::Testing.fake_transport(api_base: server, context_window: nil) do |llm|
+          llm.reply('one')
+          llm.reply('two')
+        end
+        conv = open(transport)
+        recorder.await(Event::Ready)
+        refute Pikuri::Conversations::Throttle.sized?(server)
+        assert_nil conv.status.model.context_window
+
+        conv.submit('hi')
+        recorder.await(Event::TurnEnded)
+        conv.submit('again')
+        recorder.await(Event::TurnEnded, nth: 2)
+
+        assert_equal({ 'http://throttled.invalid' => 2 }, Pikuri::Conversations::Throttle.sizes)
+        assert_equal 16_384, conv.status.model.context_window
+        # The gem's own probe, then the agent's: pikuri-core still probes for
+        # its cap until the detector leaves it.
+        assert_equal [[:detect, 'fake-model']] * 2, drain(probed)
+      end
+
+      it 'leaves a host-set limit alone' do
+        Pikuri::Conversations::Throttle.limit(server, 1)
+        conv = open(Pikuri::Testing.fake_transport(api_base: server, context_window: nil) { |llm| llm.reply('one') })
+        recorder.await(Event::Ready)
+        conv.submit('hi')
+        recorder.await(Event::TurnEnded)
+        assert_equal 1, Pikuri::Conversations::Throttle.for(server).permits
+      end
+    end
+
+    it 'asks nothing when the cap and inputs are stated and the server is sized' do
+      Pikuri::Conversations::Throttle.limit(server, 1)
+      conv = open(Pikuri::Testing.fake_transport(api_base: server) { |llm| llm.reply('one') })
+      recorder.await(Event::Ready)
+      conv.submit('hi')
+      recorder.await(Event::TurnEnded)
+      assert_empty drain(probed)
+    end
+  end
+
+  context 'when the transport states no inputs' do
+    let(:looked_up) { { vision: false } }
+
+    it 'looks them up at boot, without loading the model, and refuses an image up front' do
+      conv = open(Pikuri::Testing.fake_transport(modalities: nil))
+      recorder.await(Event::Ready)
+      assert_equal [[:modalities, 'fake-model']], drain(probed)
+      assert_equal({ vision: false }, conv.status.next_model.modalities)
+
+      png = Pikuri::Attachment.new(mime: 'image/png', filename: 'shot.png', bytes: 'png'.b)
+      assert_raises(Pikuri::Agent::UnsupportedAttachmentError) { conv.submit('look', attachments: [png]) }
+    end
   end
 
   context 'when the agent fails to boot' do
