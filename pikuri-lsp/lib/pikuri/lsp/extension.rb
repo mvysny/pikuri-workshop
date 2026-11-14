@@ -4,7 +4,7 @@ module Pikuri
   module Lsp
     # Wires the +lsp+ tool onto an agent: builds the {Servers} runtime from a
     # {Registry}, arms its teardown, and hands the tool an event emitter so a host
-    # can draw a bar while a cold index runs.
+    # can show that a cold index is running.
     #
     #   registry = Pikuri::Lsp::Registry.from_h(config['lsp_servers'])
     #   Pikuri::Agent.new(transport: ..., system_prompt: ...) do |c|

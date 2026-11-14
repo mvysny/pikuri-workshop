@@ -89,7 +89,7 @@ describe Pikuri::Lsp::Readiness do
 
       assert_equal true, result
       first = seen.first
-      assert_equal 'java', first.server_id, 'so a host can key two concurrent bars'
+      assert_equal 'java', first.server_id, 'so a host tells two concurrent tasks apart'
       assert_equal 'Initialize Workspace', first.title
       assert_equal 'Importing gradle project', first.message
       assert_nil first.percentage, 'a begin carries none, and plenty of servers never do'
@@ -118,19 +118,38 @@ describe Pikuri::Lsp::Readiness do
       assert_equal ['Initialize Workspace'], seen.map(&:title).uniq
     end
 
-    it 'always takes the bar down, even when the server never sent an end' do
+    it 'yields a task once under way and once over, not every report in between' do
+      readiness = gate.call
+      readiness.observe('$/progress', progress.call('begin'))
+      Thread.new do
+        3.times do |i|
+          sleep described_class::TICK * 2
+          readiness.observe('$/progress',
+                            progress.call('report').merge('value' => { 'kind' => 'report',
+                                                                       'message' => "#{i}/3 projects" }))
+        end
+        readiness.observe('$/progress', progress.call('end'))
+      end
+
+      _result, seen = waiting.call(readiness)
+
+      assert_equal [false, true], seen.map(&:done), 'every listener prints each event as a line of its own'
+      assert_equal 'Importing gradle project', seen.first.message
+    end
+
+    it 'always ends what it showed, even when the server never sent an end' do
       readiness = gate.call
       readiness.observe('$/progress', progress.call('begin'))
       dead = false
       result, seen = waiting.call(readiness, alive: -> { !dead.tap { dead = true } })
 
       assert_equal false, result, 'a child that died indexing will never be ready'
-      assert seen.last.done, 'otherwise a host keeps the bar up forever'
+      assert seen.last.done, 'otherwise a host shows the task running forever'
       assert_equal 'Initialize Workspace', seen.last.title
       assert_nil seen.last.percentage, 'the terminal event carries no stale progress'
     end
 
-    it 'raises on cancellation, and takes the bar down on the way out' do
+    it 'raises on cancellation, and ends what it showed on the way out' do
       readiness = gate.call
       readiness.observe('$/progress', progress.call('begin'))
       cancellable = Pikuri::Agent::Control::Cancellable.new
@@ -140,7 +159,7 @@ describe Pikuri::Lsp::Readiness do
       assert_raises(cancelled) do
         Timeout.timeout(5) { readiness.wait(cancellable: cancellable) { |update| seen << update } }
       end
-      assert_equal [true], seen.map(&:done), 'the human is the timeout, and their bar still goes away'
+      assert_equal [true], seen.map(&:done), 'the human is the timeout, and their task still ends'
     end
 
     it 'does not re-announce a task it already saw end' do

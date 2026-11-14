@@ -257,7 +257,7 @@ module Pikuri
       # @param entries [Array<StdioEntry>] zero or more servers. Order is the
       #   dispatch order.
       # @raise [ArgumentError] if two entries share an id — one would shadow the
-      #   other's log lines and progress bars.
+      #   other's log and progress lines.
       def initialize(entries: [])
         duplicate = entries.map(&:id).tally.find { |_, count| count > 1 }
         raise ArgumentError, "duplicate server id #{duplicate.first.inspect}" if duplicate

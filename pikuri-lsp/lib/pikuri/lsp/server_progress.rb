@@ -33,7 +33,7 @@ module Pikuri
     #     +"3200/4096 files"+; +nil+ when the server sent none.
     # @!attribute [r] percentage
     #   @return [Integer, nil] 0..100, or +nil+ — which is common enough that a
-    #     consumer needs an indeterminate spinner and not only a bar.
+    #     consumer must not assume a percentage.
     # @!attribute [r] done
     #   @return [Boolean] the task is over. Defaults to +false+.
     ServerProgress = Data.define(:server_id, :title, :message, :percentage, :done) do

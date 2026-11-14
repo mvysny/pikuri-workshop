@@ -172,8 +172,9 @@ module Pikuri
       private
 
       # @return [Array<String>] titles of the tasks the server has not ended.
-      #   The union with what a wait showed is what guarantees no bar outlives
-      #   its wait — including a task announced before the wait even started.
+      #   The union with what a wait showed is what guarantees no task shown
+      #   outlives its wait — including a task announced before the wait even
+      #   started.
       def open_titles
         @mutex.synchronize { @open.values.uniq }
       end
