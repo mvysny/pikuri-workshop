@@ -24,11 +24,11 @@ module Pikuri
     # argv, which {Navigator} relays as an +"Error: …"+ observation. That is the
     # same path a server dying *after* a successful spawn already took.
     #
-    # Sharing: +P_one_agent+, accepted for today — +@clients+ / +@active+ are
-    # unguarded, {#close} kills children another caller may be mid-request on,
-    # and a per-agent {Pikuri::Agent::Control::Cancellable} is threaded into
-    # every handshake. A shared server pool is buildable and simply isn't built,
-    # so N agents over one project means N sets of language servers.
+    # Sharing: +P_one_agent+ — +@clients+ / +@active+ are unguarded, {#close}
+    # kills children another caller may be mid-request on, and a per-agent
+    # {Pikuri::Agent::Control::Cancellable} is threaded into every handshake.
+    # N agents over one project means N sets of language servers, by decision
+    # (+D_lsp_per_agent+): sharing one would take a multiplexer.
     class Servers
       LOGGER = Pikuri.logger_for('Lsp::Servers')
       private_constant :LOGGER

@@ -8,8 +8,8 @@ Per-symbol truth lives in the yardoc ({Pikuri::Lsp::ClientWrapper},
 {Pikuri::Lsp::LspTool}, {Pikuri::Lsp::Registry::StdioEntry}); the forks —
 what was rejected on the way here — live in `design/decisions.md`, as
 `D_lsp_direct_not_mcp`, `D_lsp_operation_surface`,
-`D_lsp_no_startup_timeout`, `D_lsp_scheme_fallback` and
-`D_lsp_trifecta_legs`.
+`D_lsp_no_startup_timeout`, `D_lsp_scheme_fallback`,
+`D_lsp_trifecta_legs` and `D_lsp_per_agent`.
 
 ## What it does
 

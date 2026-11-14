@@ -51,10 +51,6 @@ and pikuri-webui must move their MCP wiring out of the per-agent factory.
 
 ## Open questions
 
-- `Q_lsp_lifetime` — LSP servers also start per agent (`Lsp::Extension#configure`), and jdtls is
-  slow. An LSP server holds the project, not a secret a conversation produced, so it could be
-  host-owned and passed in. Does anything a conversation does leave state in it that another
-  must not see (unsaved buffers via `didOpen`/`didChange`)?
 - `Q_subagent_mcp_view` — sub-agents get no MCP today (extensions aren't inherited). If a
   persona ever does, it needs its own `Connections`, never the parent's: a persona reading
   untrusted pages would otherwise drive the parent's logged-in browser.

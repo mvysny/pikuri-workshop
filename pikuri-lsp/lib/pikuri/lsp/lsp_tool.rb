@@ -48,10 +48,9 @@ module Pikuri
     # open-document bookkeeping assumes one caller (a second agent's
     # +didClose+ can land on a document the first is still asking about).
     #
-    # Ten agents over one project therefore means ten registries and ten sets
-    # of child processes, which is the honest cost of not having built a shared
-    # server pool. Nothing here refuses the sharing; it just goes wrong
-    # quietly, so don't.
+    # Ten agents over one project therefore means ten sets of child processes,
+    # by decision rather than omission (+D_lsp_per_agent+). Nothing here
+    # refuses the sharing; it just goes wrong quietly, so don't.
     class LspTool < Pikuri::Tool
       # Description shown to the LLM (opencode-shape). Per-parameter constraints
       # live in the parameter descriptions; the operation list is generated from

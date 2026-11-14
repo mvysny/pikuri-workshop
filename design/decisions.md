@@ -555,6 +555,43 @@ sake when no verdict moves. This is the stronger case, where one does.
 
 ---
 
+## D_lsp_per_agent — Why does every agent start its own language servers, when a server holds nothing a conversation produced?
+
+**Context.** An agent is one conversation (`pikuri:D_agent_is_one_conversation`), so
+`pikuri-code`'s `/clear` and every resume build a new agent, and `Lsp::Extension#configure`
+builds a new `Servers` with it. jdtls is the expensive case: 78 s cold on a multi-module repo,
+7.7 s warm with its data directory in a persistent cache (`book/lsp.md`). MCP had to split
+into a shared catalog and per-agent connections because a server's *state* would otherwise leak
+between conversations (`D_mcp_catalog_and_connections`); the question is whether LSP has the
+same problem, and if not, why it doesn't share.
+
+**It does not have the leak.** pikuri has no unsaved buffers: every call opens the document with
+its disk text and closes it afterwards (`D_lsp_document_sync`), so the server's documents and
+index are a cache of the disk, and a fresh server on the same root rebuilds the same cache from
+the same files. The denylist is applied by `Sources` against each agent's own `Filesystem`, not
+by the server. A server is bound to one root (`StdioEntry` has no `root:`), so a pool would be
+keyed by root and registry entry, and an agent on another workspace would never be answered
+from someone else's folder.
+
+**Decision.** Per agent anyway: `LspTool` and `Servers` are `P_one_agent`, the servers start on
+this agent's first call and die with it.
+
+**Rejected: a shared pool keyed by root.** The protocol has no sessions. One connection is one
+client: one `initialize`, one set of open documents, the client presumed the authority for every
+URI it opened. Two agents on one connection is a *multiplexer* — the client side renumbering
+requests, reference-counting `didOpen` / `didClose` per URI so one agent's close does not drop a
+document the other is still asking about, a `close` that waits for the last user rather than
+killing a child mid-request, and a cancellation that stops one agent's wait without aborting the
+other's. That is the machinery `ra-multiplex` / `lspmux` exist to provide for rust-analyzer, and
+it buys back jdtls's warm start on a `/clear`. A coding agent is one session by design; the
+saving does not pay for the gem stopping being teachable.
+
+**Consequences.** A `/clear` on a Java project waits out jdtls's warm start again, and N agents
+over one project run N sets of servers. A host that finds that intolerable is the trigger to
+revisit, and the pool it would build is keyed by root, never shared across roots.
+
+---
+
 ## D_no_skills_in_sub_agents — Why does a sub-agent get no skill catalog and no `skill` tool?
 
 **Context.** Two halves of "does a sub-agent get skills?" were settled by
