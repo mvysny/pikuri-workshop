@@ -83,7 +83,9 @@ module Pikuri
         @title_cancellable = Pikuri::Agent::Control::Cancellable.new
 
         @lock = Mutex.new
-        @released = ConditionVariable.new
+        # Broadcast when the agent is released or one of the threads ends.
+        @changed = ConditionVariable.new
+        @threads = 0
         @cancellable = Pikuri::Agent::Control::Cancellable.new
         @state = :new
         @agent = nil
@@ -276,16 +278,24 @@ module Pikuri
       # @param timeout [Numeric] seconds
       # @return [Boolean] whether it was released in time
       def wait_closed(timeout)
-        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
-        @lock.synchronize do
-          until @agent_released
-            remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            return false if remaining <= 0
+        wait_until(timeout) { @agent_released }
+      end
 
-            @released.wait(@lock, remaining)
-          end
-          true
-        end
+      # Block until nothing of this conversation is in flight: no boot, no
+      # turn, and none of its threads still running — a turn's title included
+      # — so every event they emit has reached the listener.
+      #
+      #   conv.submit('how do I keep an avocado?')
+      #   conv.wait_settled(5)   # TurnEnded heard, the title landed, the save done
+      #
+      # The +:idle+ state alone comes too early: a turn goes idle under the
+      # lock and only then emits {Event::TurnEnded}, with its title already
+      # asked on a thread of its own. Specs are the main user.
+      #
+      # @param timeout [Numeric] seconds
+      # @return [Boolean] whether it settled in time
+      def wait_settled(timeout)
+        wait_until(timeout) { @threads.zero? && !%i[booting running].include?(@state) }
       end
 
       # Start the boot of a +:new+ conversation; any other state ignores it.
@@ -621,20 +631,45 @@ module Pikuri
         ensure
           @lock.synchronize do
             @agent_released = true
-            @released.broadcast
+            @changed.broadcast
           end
           emit(Event::Closed.new)
           @on_closed&.call(self)
         end
       end
 
+      # Counted from before the thread exists to after its last event, so
+      # {#wait_settled} needs no thread names — a thread names itself only
+      # once it runs.
       def spawn(name, &task)
+        @lock.synchronize { @threads += 1 }
         Thread.new do
           Thread.current.name = name
           Thread.current.report_on_exception = false
           task.call
         rescue Exception => e # rubocop:disable Lint/RescueException
           LOGGER.error("#{name}: #{e.class}: #{e.message}\n#{e.backtrace&.first(10)&.join("\n")}")
+        ensure
+          @lock.synchronize do
+            @threads -= 1
+            @changed.broadcast
+          end
+        end
+      end
+
+      # Block on +@changed+ until the block, run under the lock, holds.
+      #
+      # @return [Boolean] false when +timeout+ ran out first
+      def wait_until(timeout)
+        deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+        @lock.synchronize do
+          until yield
+            remaining = deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            return false if remaining <= 0
+
+            @changed.wait(@lock, remaining)
+          end
+          true
         end
       end
     end

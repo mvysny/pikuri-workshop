@@ -219,6 +219,24 @@ RSpec.describe Pikuri::Conversations::Conversation do
     assert_equal 1, recorder.all(Event::Booting).size
   end
 
+  it 'settles only once the listener has heard TurnEnded, though idle before' do
+    held = Queue.new
+    recorder.define_singleton_method(:on_event) do |event|
+      held.pop if event.is_a?(Event::TurnEnded)
+      super(event)
+    end
+    conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('hi') })
+    assert conv.wait_settled(5)
+    assert_equal :idle, conv.status.state
+
+    conv.submit('hello')
+    Timeout.timeout(5) { sleep 0.005 until conv.status.state == :idle }
+    refute conv.wait_settled(0.05)
+    held << true
+    assert conv.wait_settled(5)
+    assert_equal 1, recorder.all(Event::TurnEnded).size
+  end
+
   it 'applies a model switch at the next turn, last pick wins' do
     first = Pikuri::Testing.fake_transport(model: 'a') { |llm| llm.reply('from a') }
     second = Pikuri::Testing.fake_transport(model: 'b') { |llm| llm.reply('from b') }
@@ -501,9 +519,23 @@ RSpec.describe Pikuri::Conversations::Conversation do
       assert_operator ended, :<, recorder.events.index { _1.is_a?(Event::Titled) }
 
       conv.submit('and ripe?')
-      recorder.await(Event::TurnEnded, nth: 2)
-      sleep 0.05
+      assert conv.wait_settled(5)
+      assert_equal 2, recorder.all(Event::TurnEnded).size
       assert_equal 1, recorder.all(Event::Titled).size
+    end
+
+    it 'settles only once the title has landed' do
+      titler_gate.block!
+      conv = open(chat('Keep it cool.'), untitled: true)
+      conv.submit('how do I keep an avocado?')
+      titling.pop
+      refute conv.wait_settled(0.05)
+
+      titler_gate.release!
+      assert conv.wait_settled(5)
+      assert_equal 1, recorder.all(Event::Titled).size
+    ensure
+      titler_gate.release!
     end
 
     it 'titles a resumed conversation from its own opener' do
@@ -519,8 +551,8 @@ RSpec.describe Pikuri::Conversations::Conversation do
     it 'leaves a conversation that has a name alone' do
       conv = open(chat('Keep it cool.'))
       conv.submit('how do I keep an avocado?')
-      recorder.await(Event::TurnEnded)
-      sleep 0.05
+      assert conv.wait_settled(5)
+      assert_equal 1, recorder.all(Event::TurnEnded).size
       assert_empty recorder.all(Event::Titled)
     end
 
@@ -531,8 +563,8 @@ RSpec.describe Pikuri::Conversations::Conversation do
       titling.pop
       assert_equal :closed, conv.close
       titler_gate.release!
-      recorder.await(Event::Closed)
-      sleep 0.05
+      assert conv.wait_settled(5)
+      assert_equal 1, recorder.all(Event::Closed).size
       assert_empty recorder.all(Event::Titled)
     ensure
       titler_gate.release!

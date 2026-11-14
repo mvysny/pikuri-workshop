@@ -1,6 +1,7 @@
 # pikuri-conversations: papercuts from the first host migration
 
-Status: **collected from pikuri-webui's move onto the gem (2026-11-14); none scheduled.** Each
+Status: **collected from pikuri-webui's move onto the gem (2026-11-14); the first five are
+fixed, these are what is left.** Each
 is small, and each cost the host a workaround or a paragraph. The bigger find from the same
 migration has its own file: `injection-overtakes-turn-message.md`.
 
@@ -14,23 +15,10 @@ away: the boot thread would still install an agent built from the old history, s
 needs the boot to learn it was superseded (a generation counter it checks before installing,
 say) and a fresh boot started behind it.
 
-## Hosts' specs need a way to wait for a turn to finish
-
-- **Waiting for a turn to finish**: with no executor to swap for an inline one,
-  pikuri-webui polls until the state is not `running`/`booting` *and* no thread named
-  `turn <id>` / `boot <id>` / `title <id>` is alive (the state check alone passes before the
-  `TurnEnded` listener has run). It cannot cover the title: the turn spawns `title <id>` on its
-  way out and the thread names itself only once it runs, so a host spec waits for the title by
-  its effect instead (this flaked ~1 in 5 runs before it did). A public
-  `Conversation#wait_idle(timeout)` beside
-  `wait_closed` — returning once `TurnEnded` has been emitted and any title asked — would make
-  that one call, and stop hosts depending on thread names.
-
 ## From pikuri-tui's move onto the gem (2026-11-14)
 
 Three more, from moving pikuri-tui's three shells (`Chat` / `Code` / `Computer::App`) off their
-own turn loop. pikuri-tui stubbed the probe's `Detector` in its `spec_helper` for the
-fake-transport point above.
+own turn loop.
 
 ### `open` takes one listener, but a host has several panes
 
