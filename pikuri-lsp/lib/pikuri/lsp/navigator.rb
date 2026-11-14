@@ -7,7 +7,7 @@ module Pikuri
     # the behaviour, so a spec can drive it with no tool in sight.
     #
     #   navigator = Navigator.new(servers: servers, filesystem: filesystem,
-    #                             on_progress: ->(progress) { ctx.emit_event(progress) })
+    #                             on_progress: ->(progress) { c.emit_event(progress) })
     #   navigator.navigate(operation: 'goToDefinition', symbol: 'resolve_for_read',
     #                      file: 'read.rb', line: 165)
     #

@@ -122,7 +122,7 @@ longer declared is a shape some providers reject. **Gating is add-only.**
 2. **Model-driven activation** — `mcp_connect`'s shape, generalized:
    advertise a *family* in one line, let the model materialize the
    schemas with a connect call. Paid once, model-controlled, no bootstrap
-   hole, and `ExtensionContext#add_raw_tool` already exists. This is what
+   hole, and `Configurator#add_raw_tool` already exists. This is what
    Claude Code does at scale today: the session this note was written in
    has ~100 MCP tools deferred to names-only, with a `ToolSearch` tool
    that fetches schemas on demand.

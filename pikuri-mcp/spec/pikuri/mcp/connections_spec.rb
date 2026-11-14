@@ -3,7 +3,7 @@
 # Integration spec against the in-tree fixture at
 # +spec/support/test_mcp_server.rb+, through the shared +TestServer.catalog+.
 RSpec.describe Pikuri::Mcp::Connections do
-  # Stand-in ExtensionContext recording what +add_raw_tool+ received.
+  # Stand-in Configurator recording what +add_raw_tool+ received.
   def fake_ctx
     ctx = Object.new
     added = []
@@ -139,7 +139,7 @@ RSpec.describe Pikuri::Mcp::Connections do
   end
 
   describe Pikuri::Mcp::Connect do
-    def connect_tool(ctx) = Pikuri::Mcp::Connect.new(catalog: TestServer.catalog, connections: @connections, ctx: ctx)
+    def connect_tool(ctx) = Pikuri::Mcp::Connect.new(catalog: TestServer.catalog, connections: @connections, configurator: ctx)
 
     it 'registers the tools and reports the count' do
       ctx = fake_ctx

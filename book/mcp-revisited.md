@@ -486,6 +486,6 @@ of text the model has to decide to read, which is why
 [a skill needs a trigger and an MCP server doesn't](skills.md#why-a-skill-needs-a-trigger-and-an-mcp-server-doesnt).
 
 The vocabulary you have now (`Pikuri::Agent`, `Tool`, listeners, the Extension protocol,
-configure/bind, sub-agent privilege separation, MCP's verifier, synthesizer and per-agent
+configure, sub-agent privilege separation, MCP's verifier, synthesizer and per-agent
 `mcp_connect`, a container as the MCP boundary) is enough to read the
 [`pikuri-mcp`](../pikuri-mcp/README.md) sources directly.

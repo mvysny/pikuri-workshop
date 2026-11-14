@@ -33,9 +33,10 @@ Registry ──Catalog.build──▶ Catalog ───────────�
 
 - **{Pikuri::Mcp::Catalog}** — built once by the host, holds no process. The
   only MCP object shared between agents.
-- **{Pikuri::Mcp::Extension}** — one per agent (a second `configure` raises).
-  Its `bind` registers {Pikuri::Mcp::Connect} and, for a resumed
-  conversation, re-registers every server an `mcp_connect` in the history named.
+- **{Pikuri::Mcp::Extension}** — one per agent (pikuri's `add_extension`
+  refuses a reused one). Its `configure` registers {Pikuri::Mcp::Connect} and,
+  for a resumed conversation, re-registers every server an `mcp_connect` in the
+  history named.
 - **{Pikuri::Mcp::Connections}** — the agent's processes, one
   {Pikuri::Mcp::ClientWrapper} per server it actually called, closed by the
   agent's `on_close`.

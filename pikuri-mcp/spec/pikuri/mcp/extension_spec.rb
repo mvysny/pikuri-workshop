@@ -12,24 +12,17 @@ RSpec.describe Pikuri::Mcp::Extension do
     ])
   end
 
-  let(:configurator) do
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base', id: '', streaming: false, cancellable: nil, interloper: nil
-    )
-  end
-
-  # Stand-in ExtensionContext: records +add_raw_tool+, and its agent exports
-  # +history+.
-  def fake_ctx(history = Pikuri::Agent::History.new)
-    ctx = Object.new
+  # Stand-in Configurator: the three calls the extension makes, recorded.
+  def fake_configurator(history = nil)
+    c = Object.new
     added = []
-    agent = Object.new
-    agent.define_singleton_method(:export_history) { history }
-    ctx.define_singleton_method(:agent) { agent }
-    ctx.define_singleton_method(:add_raw_tool) { |t| added << t }
-    ctx.define_singleton_method(:added_names) { added.map(&:name) }
-    ctx
+    closers = []
+    c.define_singleton_method(:history) { history }
+    c.define_singleton_method(:add_raw_tool) { |t| added << t }
+    c.define_singleton_method(:on_close) { |&blk| closers << blk }
+    c.define_singleton_method(:added_names) { added.map(&:name) }
+    c.define_singleton_method(:closers) { closers }
+    c
   end
 
   def connect_call(id, call_id: 'call_1')
@@ -39,10 +32,9 @@ RSpec.describe Pikuri::Mcp::Extension do
     )
   end
 
-  def bound(ext, ctx)
-    ext.configure(configurator)
-    ext.bind(ctx)
-    ctx
+  def configured(ext, c)
+    ext.configure(c)
+    c
   end
 
   it 'is an Agent::Extension by composition' do
@@ -54,10 +46,10 @@ RSpec.describe Pikuri::Mcp::Extension do
 
     it 'adds no tool, no prompt, no close handler and no trifecta legs' do
       ext = described_class.new(catalog: empty)
-      ctx = bound(ext, fake_ctx)
-      assert_equal [], ctx.added_names
+      c = configured(ext, fake_configurator)
+      assert_equal [], c.added_names
       assert_equal [], ext.system_prompt_snippets
-      assert_equal [], configurator.on_close_handlers
+      assert_equal [], c.closers
       assert_nil ext.trifecta_contribution([])
     end
   end
@@ -65,11 +57,11 @@ RSpec.describe Pikuri::Mcp::Extension do
   describe '#configure' do
     it 'creates this agent its own Connections and closes them on close' do
       ext = described_class.new(catalog: catalog)
-      ext.configure(configurator)
+      c = configured(ext, fake_configurator)
       refute_nil ext.connections
       closed = false
       ext.connections.define_singleton_method(:close) { closed = true }
-      configurator.on_close_handlers.each(&:call)
+      c.closers.each(&:call)
       assert closed
     end
   end
@@ -80,27 +72,28 @@ RSpec.describe Pikuri::Mcp::Extension do
     assert_match(%r{<id>test</id>}, snippets.first)
   end
 
-  describe '#bind' do
+  describe 'the tools it registers' do
     it 'registers only mcp_connect on a fresh conversation' do
-      assert_equal ['mcp_connect'], bound(described_class.new(catalog: catalog), fake_ctx).added_names
+      assert_equal ['mcp_connect'], configured(described_class.new(catalog: catalog), fake_configurator).added_names
     end
 
     it "re-registers the tools of every server a restored conversation connected" do
       ext = described_class.new(catalog: catalog)
-      ctx = bound(ext, fake_ctx(Pikuri::Agent::History.new(messages: [connect_call('test')])))
-      assert_equal %w[mcp_connect test__echo], ctx.added_names
+      c = configured(ext, fake_configurator(Pikuri::Agent::History.new(messages: [connect_call('test')])))
+      assert_equal %w[mcp_connect test__echo], c.added_names
       assert ext.connections.registered?('test')
     end
 
     it 'registers a server once however often the history connected it' do
       history = Pikuri::Agent::History.new(messages: [connect_call('test', call_id: 'a'), connect_call('test', call_id: 'b')])
-      ctx = bound(described_class.new(catalog: catalog), fake_ctx(history))
-      assert_equal %w[mcp_connect test__echo], ctx.added_names
+      c = configured(described_class.new(catalog: catalog), fake_configurator(history))
+      assert_equal %w[mcp_connect test__echo], c.added_names
     end
 
     it 'skips a connected id that is no longer in the catalog' do
-      ctx = bound(described_class.new(catalog: catalog), fake_ctx(Pikuri::Agent::History.new(messages: [connect_call('gone')])))
-      assert_equal ['mcp_connect'], ctx.added_names
+      c = configured(described_class.new(catalog: catalog),
+                     fake_configurator(Pikuri::Agent::History.new(messages: [connect_call('gone')])))
+      assert_equal ['mcp_connect'], c.added_names
     end
   end
 end

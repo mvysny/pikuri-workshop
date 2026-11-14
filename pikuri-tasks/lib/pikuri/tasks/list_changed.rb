@@ -3,8 +3,8 @@
 module Pikuri
   module Tasks
     # Domain event emitted after every {List} mutation (add / status
-    # change / delete), wired by {Extension#bind} via
-    # {Pikuri::Agent::ExtensionContext#emit_event}. Carries a frozen
+    # change / delete), wired by {Extension#configure} via
+    # {Pikuri::Agent::Configurator#emit_event}. Carries a frozen
     # whole-list snapshot ({List#items}), so a consumer needs no +List+
     # reference — render or serialize the payload as-is.
     #

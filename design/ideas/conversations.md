@@ -157,7 +157,7 @@ stated.
 
 **Stays**: the `Interloper` — not only host plumbing: `Skill::Extension#schedule_load_skill`
 queues through it in pikuri-code's single-threaded REPL. `Extension`, `Configurator`,
-`ExtensionContext`, listeners — unchanged; listeners stay read-only.
+listeners — unchanged; listeners stay read-only.
 
 ## `pikuri-conversations` — the shape
 

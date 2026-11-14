@@ -69,13 +69,17 @@ module Pikuri
       attr_reader :activation
 
       # Register the +skill+ tool, and — when the catalog gates anything — the
-      # listener that fires a promotion. No-op when the catalog is empty (the
-      # +<available_skills>+ snippet is contributed by
+      # listener that fires a promotion. Keeps the agent's interloper, which
+      # {#schedule_load_skill} and {#announce} enqueue onto, and +c+, which
+      # {#announce} emits through. Registers nothing when the catalog is empty
+      # (the +<available_skills>+ snippet is contributed by
       # {#system_prompt_snippets}).
       #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
       def configure(c)
+        @interloper = c.agent.interloper
+        @configurator = c
         return if @catalog.empty?
 
         if c.tools.any?(Pikuri::Skill::SkillTool)
@@ -85,18 +89,6 @@ module Pikuri
 
         c.add_tool(Pikuri::Skill::SkillTool.new(activation: @activation))
         c.add_listener(path_activation_listener) if gate_armed?
-        nil
-      end
-
-      # Capture the live agent's interloper so {#schedule_load_skill} and
-      # {#announce} can enqueue onto it, and the context {#announce} emits
-      # through.
-      #
-      # @param ctx [Pikuri::Agent::ExtensionContext]
-      # @return [void]
-      def bind(ctx)
-        @interloper = ctx.agent.interloper
-        @ctx = ctx
         nil
       end
 
@@ -110,7 +102,7 @@ module Pikuri
         return if skills.empty?
 
         @interloper.inject_system_message(Pikuri::Skill::Renderer.format_promotion(skills))
-        @ctx&.emit_event(Pikuri::Skill::Promoted.new(skills: skills, path: path))
+        @configurator&.emit_event(Pikuri::Skill::Promoted.new(skills: skills, path: path))
         nil
       end
 

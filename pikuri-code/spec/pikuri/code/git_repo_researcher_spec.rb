@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pikuri/testing'
+
 require 'pikuri-web'
 
 RSpec.describe Pikuri::Code::GIT_REPO_RESEARCHER do
@@ -42,16 +44,7 @@ RSpec.describe Pikuri::Code::GIT_REPO_RESEARCHER do
       ]
     end
 
-    let(:configurator) do
-      Pikuri::Agent::Configurator.new(
-        transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-        system_prompt_base: 'base',
-        id: '',
-        streaming: false,
-        cancellable: nil,
-        interloper: nil
-      )
-    end
+    let(:configurator) { Pikuri::Testing.configurator }
 
     it 'configures cleanly when every persona tool is registered' do
       tools.each { |t| configurator.add_tool(t) }

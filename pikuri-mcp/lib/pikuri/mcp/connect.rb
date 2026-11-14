@@ -11,7 +11,7 @@ module Pikuri
     #
     # Sharing: +P_one_agent+ — it answers "already connected" from its agent's
     # {Connections}, and registers into that agent's
-    # {Pikuri::Agent::ExtensionContext}.
+    # {Pikuri::Agent::Configurator}.
     class Connect < Pikuri::Tool
       # The tool name, which {Extension} also looks for in a restored history.
       NAME = 'mcp_connect'
@@ -28,8 +28,8 @@ module Pikuri
 
       # @param catalog [Catalog] the ids the model may name.
       # @param connections [Connections] the agent's own; registers the tools.
-      # @param ctx [Pikuri::Agent::ExtensionContext] the agent's context.
-      def initialize(catalog:, connections:, ctx:)
+      # @param configurator [Pikuri::Agent::Configurator] the agent's.
+      def initialize(catalog:, connections:, configurator:)
         super(
           name: NAME,
           description: DESCRIPTION,
@@ -50,7 +50,7 @@ module Pikuri
                                               'are in your toolset, call them directly.')
             end
 
-            count = connections.register_tools(id, ctx)
+            count = connections.register_tools(id, configurator)
             Pikuri::Tool::Result.new(
               content: "Connected to MCP server '#{id}'. Added #{count} tool#{'s' if count != 1} " \
                        'to your toolset.',

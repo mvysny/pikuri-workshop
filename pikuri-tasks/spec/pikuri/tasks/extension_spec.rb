@@ -1,16 +1,9 @@
 # frozen_string_literal: true
 
+require 'pikuri/testing'
+
 RSpec.describe Pikuri::Tasks::Extension do
-  let(:configurator) do
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base',
-      id: '',
-      streaming: false,
-      cancellable: nil,
-      interloper: nil
-    )
-  end
+  let(:configurator) { Pikuri::Testing.configurator }
 
   it 'is an Agent::Extension by composition' do
     assert_kind_of Pikuri::Agent::Extension, described_class.new
@@ -65,55 +58,38 @@ RSpec.describe Pikuri::Tasks::Extension do
     end
   end
 
-  describe '#bind' do
-    # Minimal Agent::ExtensionContext stand-in recording emitted events.
-    let(:fake_ctx_class) do
-      Class.new do
-        attr_reader :emitted
+  describe 'the ListChanged bridge' do
+    let(:recorder) { Pikuri::Agent::Listener::InMemoryEventList.new }
 
-        def initialize
-          @emitted = []
-        end
+    before { configurator.add_listener(recorder) }
 
-        def emit_event(event)
-          @emitted << event
-        end
-      end
-    end
-
-    it 'arms List#on_change to emit one ListChanged snapshot per batch create' do
+    it 'emits one ListChanged snapshot per batch create' do
       ext = described_class.new
       ext.configure(configurator)
-      ctx = fake_ctx_class.new
-
-      ext.bind(ctx)
       task_create = configurator.tools.find { |t| t.name == 'task_create' }
       task_create.run('items' => %w[one two])
 
-      assert_equal 1, ctx.emitted.size
-      assert_kind_of Pikuri::Tasks::ListChanged, ctx.emitted.first
-      assert_equal %w[one two], ctx.emitted.first.items.map(&:content)
+      assert_equal 1, recorder.events.size
+      assert_kind_of Pikuri::Tasks::ListChanged, recorder.events.first
+      assert_equal %w[one two], recorder.events.first.items.map(&:content)
     end
 
     it 'emits on status change and delete too, carrying frozen snapshots' do
       ext = described_class.new
       ext.configure(configurator)
-      ctx = fake_ctx_class.new
-      ext.bind(ctx)
 
       ext.list.add('one')
       ext.list.set_status(id: 1, status: 'completed')
       ext.list.delete(1)
 
-      assert_equal 3, ctx.emitted.size
-      assert_equal 'completed', ctx.emitted[1].items.first.status
-      assert_empty ctx.emitted[2].items
-      assert(ctx.emitted.all? { |e| e.items.frozen? })
+      assert_equal 3, recorder.events.size
+      assert_equal 'completed', recorder.events[1].items.first.status
+      assert_empty recorder.events[2].items
+      assert(recorder.events.all? { |e| e.items.frozen? })
     end
 
-    it 'emits nothing before bind — on_change defaults to nil' do
+    it 'emits nothing from a list no agent configured — on_change defaults to nil' do
       ext = described_class.new
-      ext.configure(configurator)
 
       ext.list.add('quiet') # must not raise
       assert_equal 1, ext.list.size

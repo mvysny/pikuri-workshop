@@ -106,9 +106,9 @@ module Pikuri
       #   a host that wants to flush it explicitly.
       attr_reader :recorder
 
-      # Register the +recall+ tool and (optionally) append the resident
-      # persona summary. Raises if +recall+ was pre-registered — the
-      # extension is its sole owner and a duplicate would bind to a
+      # Register the +recall+ tool, start the capture worker and arm its
+      # bounded flush on agent close. Raises if +recall+ was pre-registered —
+      # the extension is its sole owner and a duplicate would bind to a
       # different client / namespace.
       #
       # @param c [Pikuri::Agent::Configurator]
@@ -121,6 +121,8 @@ module Pikuri
         end
 
         c.add_tool Recall.new(client: @client, user_id: @user_id)
+        @recorder.start
+        c.on_close { @recorder.close }
         nil
       end
 
@@ -139,19 +141,6 @@ module Pikuri
         snippet ? [snippet] : []
       end
 
-      # Start the capture worker and arm its bounded flush on agent
-      # close. Keyed to this specific agent via
-      # {Pikuri::Agent::ExtensionContext#on_close} (not
-      # {Configurator#on_close}) so the lifetime tracks the live agent.
-      #
-      # @param ctx [Pikuri::Agent::ExtensionContext]
-      # @return [void]
-      def bind(ctx)
-        @recorder.start
-        ctx.on_close { @recorder.close }
-        nil
-      end
-
       # Per-turn hook. Enqueues the user's words for asynchronous
       # capture, then returns the automatic prefetch slice (or +nil+ to
       # inject nothing this turn). Capture happens regardless of whether
@@ -159,7 +148,7 @@ module Pikuri
       #
       # Each attachment is captured as a note naming it, after the text:
       #
-      #   on_user_message(ctx, "what's wrong here?", [png])
+      #   on_user_message("what's wrong here?", [png])
       #   # captures: "what's wrong here?\n[user attached image: shot.png (image/png)]"
       #
       # so a fact extracted from the turn keeps its referent, and an
@@ -170,15 +159,12 @@ module Pikuri
       # alone — a filename is a poor query — so an attachment-only turn
       # recalls nothing.
       #
-      # @param ctx [Pikuri::Agent::ExtensionContext] unused (the
-      #   namespace is fixed at construction); part of the protocol
-      #   signature.
       # @param content [String] the incoming user message; +""+ when it
       #   carries only attachments.
       # @param attachments [Array<Pikuri::Attachment>] what the user showed
       #   the model with it.
       # @return [String, nil] a +<memory-context>+ block, or +nil+.
-      def on_user_message(_ctx, content, attachments)
+      def on_user_message(content, attachments)
         notes = attachments.map { |a| "[user attached #{a.mime.split('/').first}: #{a.filename} (#{a.mime})]" }
         @recorder.enqueue([content, *notes].reject { |t| t.to_s.strip.empty? }.join("\n"))
         prefetch(content)

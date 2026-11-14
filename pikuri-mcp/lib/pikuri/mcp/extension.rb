@@ -20,9 +20,9 @@ module Pikuri
     # +<id>__<tool>+ calls, since a server connected but not yet used was
     # promised its tools too.
     #
-    # One extension per agent, and +add_extension+ refuses a reused one: a
-    # shared instance would share its {Connections}, the very leak this design
-    # prevents. Sub-agents don't inherit extensions, so they get no MCP.
+    # One extension per agent — +add_extension+ refuses a reused one, which
+    # would share its {Connections}, the very leak this design prevents.
+    # Sub-agents don't inherit extensions, so they get no MCP.
     class Extension
       include Pikuri::Agent::Extension
 
@@ -40,7 +40,8 @@ module Pikuri
       #   +configure+ or when the catalog is empty.
       attr_reader :connections
 
-      # Create this agent's {Connections} and arm their teardown.
+      # Create this agent's {Connections}, arm their teardown, register
+      # +mcp_connect+ and re-register what a resumed conversation connected.
       #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
@@ -50,24 +51,14 @@ module Pikuri
         connections = Connections.new(@catalog)
         @connections = connections
         c.on_close { connections.close }
+        c.add_raw_tool(Connect.new(catalog: @catalog, connections: connections, configurator: c).to_ruby_llm_tool)
+        restore_connects(c) if c.history
         nil
       end
 
       # @return [Array<String>] the +<available_mcps>+ block, or +[]+.
       def system_prompt_snippets
         @catalog.empty? ? [] : [@catalog.system_prompt_snippet]
-      end
-
-      # Register +mcp_connect+ and re-register what a restored history connected.
-      #
-      # @param ctx [Pikuri::Agent::ExtensionContext]
-      # @return [void]
-      def bind(ctx)
-        return if @connections.nil?
-
-        ctx.add_raw_tool(Connect.new(catalog: @catalog, connections: @connections, ctx: ctx).to_ruby_llm_tool)
-        restore_connects(ctx)
-        nil
       end
 
       # The MCP surface's legs, attached here because MCP tools synthesize as
@@ -101,15 +92,15 @@ module Pikuri
 
       private
 
-      def restore_connects(ctx)
-        ctx.agent.export_history.messages.each do |message|
+      def restore_connects(c)
+        c.history.messages.each do |message|
           message.tool_calls.each do |call|
             next unless call.name == Connect::NAME
 
             id = call.arguments['id'] || call.arguments[:id]
             next unless @catalog.include?(id) && !@connections.registered?(id)
 
-            @connections.register_tools(id, ctx)
+            @connections.register_tools(id, c)
           end
         end
       end

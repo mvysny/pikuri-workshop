@@ -74,7 +74,7 @@ module Pikuri
       #
       # Runs on the reader thread: it only records state and parks a
       # {ServerProgress} for {#wait} to emit, because
-      # {Pikuri::Agent::ExtensionContext#emit_event} is the agent thread's.
+      # {Pikuri::Agent::Configurator#emit_event} is the agent thread's.
       #
       # @param method [String] the notification method.
       # @param params [Hash, nil] its +params+ member.

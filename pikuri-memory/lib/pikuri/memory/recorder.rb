@@ -55,7 +55,7 @@ module Pikuri
       end
 
       # Start the background worker. Idempotent — a second call is a
-      # no-op, so {Extension#bind} can call it without guarding.
+      # no-op, so {Extension#configure} can call it without guarding.
       #
       # @return [self]
       def start

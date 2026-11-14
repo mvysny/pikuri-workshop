@@ -3,7 +3,7 @@
 pikuri decided `pikuri:D_agent_is_one_conversation`: one `Agent` is one conversation.
 `clear_conversation`, `load_history!`, `Extension#on_conversation_reset` and `Event::Reset` are
 gone; a host closes the old agent and builds a new one, resuming via `Agent.new(history:)`. An
-extension that needs the restored conversation reads it in `bind` (`ctx.agent.export_history`).
+extension that needs the restored conversation reads it in `configure` (`c.history`).
 This file is what the workshop (and the downstream hosts) must do about it.
 
 ## Why, in one paragraph
@@ -25,7 +25,7 @@ closes the agent and calls a `build_conversation` lambda, the skill extension bu
 
 **Found on the way**: a host object that outlives the agent and offers only a subscribe —
 `Workspace::ReadOnly#on_change` — kept the closed agent's `Code::Extension` reporting plan-mode
-flips after a `/clear` (printed twice). Fixed by going quiet on `ctx.on_close`; an unsubscribe on
+flips after a `/clear` (printed twice). Fixed by going quiet on `c.on_close`; an unsubscribe on
 `ReadOnly` would be the cleaner pikuri-side fix. Any other shared host object with a
 subscribe-only API has the same shape.
 

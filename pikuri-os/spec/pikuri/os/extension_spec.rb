@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pikuri/testing'
+
 require 'pathname'
 
 RSpec.describe Pikuri::Os::Extension do
@@ -29,13 +31,7 @@ RSpec.describe Pikuri::Os::Extension do
     end
   end
 
-  def build_configurator
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base', id: '', streaming: false,
-      cancellable: nil, interloper: nil
-    )
-  end
+  def build_configurator = Pikuri::Testing.configurator
 
   def with_singleton(obj, name)
     original = obj.method(name)

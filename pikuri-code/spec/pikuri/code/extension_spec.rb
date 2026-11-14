@@ -1,33 +1,14 @@
 # frozen_string_literal: true
 
+require 'pikuri/testing'
+
 RSpec.describe Pikuri::Code::Extension do
   let(:filesystem) do
     Pikuri::Workspace::Filesystem.new(project_root: Dir.pwd)
   end
   let(:confirmer) { Pikuri::Workspace::Confirmer::AutoApprove.new }
 
-  def build_configurator
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base',
-      id: '',
-      streaming: false,
-      cancellable: nil,
-      interloper: nil
-    )
-  end
-
-  # Minimal ExtensionContext stand-in that records emitted events.
-  def build_ctx
-    ctx = Object.new
-    events = []
-    ctx.define_singleton_method(:emit_event) { |e| events << e }
-    ctx.define_singleton_method(:events) { events }
-    on_close = []
-    ctx.define_singleton_method(:on_close) { |&blk| on_close << blk }
-    ctx.define_singleton_method(:close!) { on_close.each(&:call) }
-    ctx
-  end
+  def build_configurator = Pikuri::Testing.configurator
 
   it 'is an Agent::Extension by composition' do
     ext = described_class.new(filesystem: filesystem, confirmer: confirmer)
@@ -88,10 +69,10 @@ RSpec.describe Pikuri::Code::Extension do
       ext = described_class.new(filesystem: filesystem, confirmer: confirmer, read_only: read_only)
       ext.configure(build_configurator)
 
-      assert_nil ext.on_user_message(nil, 'hello', [])
+      assert_nil ext.on_user_message('hello', [])
 
       read_only.activate!
-      reminder = ext.on_user_message(nil, 'hello', [])
+      reminder = ext.on_user_message('hello', [])
       assert_match(/plan mode/i, reminder)
     end
 
@@ -99,46 +80,39 @@ RSpec.describe Pikuri::Code::Extension do
       ext = described_class.new(filesystem: filesystem, confirmer: confirmer)
       ext.configure(build_configurator)
 
-      assert_nil ext.on_user_message(nil, 'hello', [])
+      assert_nil ext.on_user_message('hello', [])
     end
   end
 
-  describe '#bind event bridge' do
+  describe 'the plan-mode event bridge' do
     let(:read_only) { Pikuri::Workspace::ReadOnly.new }
+    let(:recorder) { Pikuri::Agent::Listener::InMemoryEventList.new }
+
+    def configured(ext)
+      c = build_configurator
+      c.add_listener(recorder)
+      ext.configure(c)
+      c
+    end
 
     it 'emits Code::PlanModeChanged on every transition' do
-      ext = described_class.new(filesystem: filesystem, confirmer: confirmer, read_only: read_only)
-      ext.configure(build_configurator)
-      ctx = build_ctx
-      ext.bind(ctx)
+      configured(described_class.new(filesystem: filesystem, confirmer: confirmer, read_only: read_only))
 
       read_only.activate!
       read_only.deactivate!
 
-      assert_equal [true, false], ctx.events.map(&:active)
-      assert ctx.events.all? { |e| e.is_a?(Pikuri::Code::PlanModeChanged) }
+      assert_equal [true, false], recorder.events.map(&:active)
+      assert recorder.events.all? { |e| e.is_a?(Pikuri::Code::PlanModeChanged) }
     end
 
     # The flag outlives the agent: a "/clear" builds the next agent on it.
     it 'goes quiet once its agent closes' do
-      ext = described_class.new(filesystem: filesystem, confirmer: confirmer, read_only: read_only)
-      ext.configure(build_configurator)
-      ctx = build_ctx
-      ext.bind(ctx)
+      c = configured(described_class.new(filesystem: filesystem, confirmer: confirmer, read_only: read_only))
 
-      ctx.close!
+      c.agent.close
       read_only.activate!
 
-      assert_empty ctx.events
-    end
-
-    it 'is a no-op when no read-only flag is wired' do
-      ext = described_class.new(filesystem: filesystem, confirmer: confirmer)
-      ext.configure(build_configurator)
-      ctx = build_ctx
-
-      ext.bind(ctx) # must not raise
-      assert_empty ctx.events
+      assert_empty recorder.events
     end
   end
 end

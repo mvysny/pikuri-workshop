@@ -15,7 +15,7 @@ module Pikuri
     # file-editing tools (via {Pikuri::Workspace::Extension}'s +read_only:+), so
     # their refusal and this reminder stay in lockstep. With no flag, {Bash} +
     # {GitClone} still install but plan mode is unavailable. The transition is a
-    # {PlanModeChanged} domain event emitted from {#bind} — a pikuri-code
+    # {PlanModeChanged} domain event emitted from {#configure}'s bridge — a pikuri-code
     # concern, not a core event (the loop never reads plan mode).
     #
     # == Usage
@@ -125,6 +125,7 @@ module Pikuri
         # Sub-agent-only (never visible to the parent) — it exists solely for
         # the GIT_REPO_RESEARCHER persona.
         c.add_sub_agent_tool GitClone.new(filesystem: @filesystem)
+        bridge_plan_mode(c) if @read_only
         nil
       end
 
@@ -133,39 +134,37 @@ module Pikuri
       #   appear together); otherwise none.
       def system_prompt_snippets = @read_only ? [PLAN_MODE_PROMPT] : []
 
+      # Inject {PLAN_MODE_REMINDER} on every turn plan mode is active — the
+      # soft half of the defense, re-asserting the posture
+      # even when the *host* engaged it and the model never saw a tool call.
+      # +nil+ (inject nothing) when plan mode is off or unwired.
+      #
+      # @param _content [String]
+      # @param _attachments [Array<Pikuri::Attachment>]
+      # @return [String, nil]
+      def on_user_message(_content, _attachments)
+        return nil unless @read_only&.active?
+
+        PLAN_MODE_REMINDER
+      end
+
+      private
+
       # Bridge plan-mode transitions onto the listener stream so UI chrome can
       # render the posture — both model-driven ({EnterPlanMode} / {ExitPlanMode})
-      # and host-driven flips. No-op when plan mode isn't wired.
+      # and host-driven flips.
       #
       # The flag outlives this agent — a host's "/clear" closes the agent and
       # builds the next on the same flag — and +ReadOnly+ has no unsubscribe,
       # so the bridge goes quiet on close rather than reporting the next
       # conversation's flips through a closed agent's listeners.
       #
-      # @param ctx [Pikuri::Agent::ExtensionContext]
+      # @param c [Pikuri::Agent::Configurator]
       # @return [void]
-      def bind(ctx)
-        return nil unless @read_only
-
+      def bridge_plan_mode(c)
         live = true
-        ctx.on_close { live = false }
-        @read_only.on_change { |active| ctx.emit_event(PlanModeChanged.new(active: active)) if live }
-        nil
-      end
-
-      # Inject {PLAN_MODE_REMINDER} on every turn plan mode is active — the
-      # soft half of the defense, re-asserting the posture
-      # even when the *host* engaged it and the model never saw a tool call.
-      # +nil+ (inject nothing) when plan mode is off or unwired.
-      #
-      # @param _ctx [Pikuri::Agent::ExtensionContext]
-      # @param _content [String]
-      # @param _attachments [Array<Pikuri::Attachment>]
-      # @return [String, nil]
-      def on_user_message(_ctx, _content, _attachments)
-        return nil unless @read_only&.active?
-
-        PLAN_MODE_REMINDER
+        c.on_close { live = false }
+        @read_only.on_change { |active| c.emit_event(PlanModeChanged.new(active: active)) if live }
       end
     end
   end

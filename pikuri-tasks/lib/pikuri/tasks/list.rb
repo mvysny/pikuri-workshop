@@ -37,7 +37,7 @@ module Pikuri
     # list would read and complete each other's tasks. Unguarded, and it needs
     # no lock because its only caller is the agent whose tool calls are already
     # serialized. Another thread (a UI rendering the list) must not touch a
-    # +List+ directly: it consumes the {ListChanged} events {Extension#bind}
+    # +List+ directly: it consumes the {ListChanged} events {Extension#configure}
     # wires onto the listener stream, whose +items+ payload is an immutable
     # snapshot safe to hand across threads.
     class List
@@ -50,7 +50,7 @@ module Pikuri
 
       # Optional zero-argument hook invoked synchronously after every
       # *successful* mutation (a raise means nothing changed, so no
-      # notify). Set by {Extension#bind} to emit a {ListChanged}; +nil+
+      # notify). Set by {Extension#configure} to emit a {ListChanged}; +nil+
       # (default) disables notification.
       #
       # @return [Proc, nil]

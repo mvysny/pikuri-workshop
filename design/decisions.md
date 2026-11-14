@@ -465,8 +465,8 @@ content)`), and pikuri should eventually too; the shape is settled so the
 deferral is a scheduling choice:
 
 - The event is emitted by `Workspace::Workspace`, beside the read-before-edit
-  ledger it already owns, and bridged to `ctx.emit_event` in
-  `Workspace::Extension#bind` — the `Tasks::Extension` shape. `WriteGate` is the
+  ledger it already owns, and bridged to `c.emit_event` in
+  `Workspace::Extension#configure` — the `Tasks::Extension` shape. `WriteGate` is the
   wrong hook: it is stateless, it runs *before* the write, and a refused write
   must not notify.
 - The payload is the path, never the bytes; every consumer reads content through
@@ -1721,7 +1721,7 @@ what a foreign server holds, so it assumes every one is stateful.
   a new process — a connection's, or a restart after a crash — may answer differently, and
   re-verifying would put the LLM call back on every connection.
 - **A resumed conversation gets its tools back from its `mcp_connect` calls**, read from the
-  restored history in `bind`. Scanning the connects, not the `<id>__<tool>` calls: a server
+  restored history in `configure`. Scanning the connects, not the `<id>__<tool>` calls: a server
   connected but not yet used was promised its tools ("Added 25 tools"), a re-connect must answer
   "already connected", and an id may itself contain `__`. Nothing is replayed; the server starts
   blank on the next call (`pikuri:D_history_load_repairs`).

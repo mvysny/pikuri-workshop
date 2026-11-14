@@ -296,18 +296,19 @@ it through pikuri's chokepoint would mean forking the gem. pikuri still owns the
 
 ## The extension
 
-`Pikuri::Mcp::Extension` has the same `configure(c)` + `bind(ctx)` shape as the
-`Os::Extension` and `Memory::Extension` you've already wired:
+`Pikuri::Mcp::Extension` has the same one-hook shape as the `Os::Extension` and
+`Memory::Extension` you've already wired. Its `configure(c)` runs once, on the parent's
+Configurator:
 
-- `configure(c)` runs once on the parent's Configurator. It gives the agent its own
-  `Connections` and registers an `on_close` handler that tears its servers down on agent
-  shutdown. The `<available_mcps>` block comes from the catalog. A second `configure` on the
-  same extension raises: one extension per agent, or two agents would share processes.
-- `bind(ctx)` runs once on the parent agent. It installs the per-agent `mcp_connect` tool, so
-  re-connecting an already-active server comes back as an LLM-actionable
-  `"Error: server '...' is already connected; ..."`. When the agent resumes a saved
-  conversation (`Agent.new(history:)`), `bind` also finds every `mcp_connect` in it and puts
-  that server's tools back, so the model can call what it was told it has.
+- It gives the agent its own `Connections` and registers an `on_close` handler that tears its
+  servers down on agent shutdown. The `<available_mcps>` block comes from the catalog. pikuri
+  refuses to add one extension to a second agent, since two agents would then share processes.
+- It installs the per-agent `mcp_connect` tool, so re-connecting an already-active server comes
+  back as an LLM-actionable `"Error: server '...' is already connected; ..."`. The tool keeps
+  `c`, whose `add_raw_tool` is how a server's tools join the toolset mid-conversation.
+- When the agent resumes a saved conversation (`Agent.new(history:)`), it finds every
+  `mcp_connect` in `c.history` and puts that server's tools back, so the model can call what it
+  was told it has.
 
 Sub-agents do **not** inherit the extension or the `mcp_connect` tool; pikuri's sub-agents
 chapter's lesson about extension non-inheritance applies. `pikuri-openlibrary` spawns no

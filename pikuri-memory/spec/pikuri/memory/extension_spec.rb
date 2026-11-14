@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'pikuri/testing'
 
 describe Pikuri::Memory::Extension do
   def record(text, created_at: nil, score: nil)
@@ -48,29 +49,7 @@ describe Pikuri::Memory::Extension do
     end
   end
 
-  # A standalone Configurator (no full Agent needed to test #configure).
-  def build_configurator
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base', id: '', streaming: false,
-      cancellable: nil, interloper: nil
-    )
-  end
-
-  # A minimal Agent::ExtensionContext stand-in that records on_close blocks.
-  let(:fake_ctx_class) do
-    Class.new do
-      attr_reader :close_blocks
-
-      def initialize
-        @close_blocks = []
-      end
-
-      def on_close(&blk)
-        @close_blocks << blk
-      end
-    end
-  end
+  def build_configurator = Pikuri::Testing.configurator
 
   describe '#configure' do
     it 'registers the recall tool' do
@@ -189,7 +168,7 @@ describe Pikuri::Memory::Extension do
       client.search_rows = [record('lives in Brno', created_at: '2026-05-01T17:04:11.884889+00:00', score: 0.8)]
       ext = described_class.new(client: client, user_id: 'u', resident_persona: false)
 
-      block = ext.on_user_message(nil, 'where do I live?', [])
+      block = ext.on_user_message('where do I live?', [])
 
       assert_match(/<memory-context>/, block)
       assert_match(/NOT new user input/, block)
@@ -200,7 +179,7 @@ describe Pikuri::Memory::Extension do
 
     it 'returns nil when search finds nothing' do
       ext = described_class.new(client: fake_client_class.new, user_id: 'u', resident_persona: false)
-      assert_nil ext.on_user_message(nil, 'anything', [])
+      assert_nil ext.on_user_message('anything', [])
     end
 
     it 'gates by threshold client-side, dropping low-similarity rows' do
@@ -211,7 +190,7 @@ describe Pikuri::Memory::Extension do
       ]
       ext = described_class.new(client: client, user_id: 'u', threshold: 0.5, resident_persona: false)
 
-      block = ext.on_user_message(nil, 'q', [])
+      block = ext.on_user_message('q', [])
 
       assert_match(/relevant/, block)
       refute_match(/noise/, block)
@@ -222,27 +201,25 @@ describe Pikuri::Memory::Extension do
       client.search_error = RuntimeError.new('mem0 down')
       ext = described_class.new(client: client, user_id: 'u', resident_persona: false)
 
-      assert_nil ext.on_user_message(nil, 'q', [])
+      assert_nil ext.on_user_message('q', [])
     end
 
     it 'returns nil for blank content' do
       ext = described_class.new(client: fake_client_class.new, user_id: 'u', resident_persona: false)
-      assert_nil ext.on_user_message(nil, '   ', [])
+      assert_nil ext.on_user_message('   ', [])
     end
   end
 
-  describe '#on_user_message capture + #bind' do
-    it 'bind starts the recorder and enqueued turns reach client.add' do
+  describe '#on_user_message capture' do
+    it 'configure starts the recorder and enqueued turns reach client.add' do
       require 'timeout'
       client = fake_client_class.new
       ext = described_class.new(client: client, user_id: 'martin', resident_persona: false)
-      ctx = fake_ctx_class.new
 
-      ext.bind(ctx)
-      ext.on_user_message(nil, 'I am vegetarian', [])
+      ext.configure(build_configurator)
+      ext.on_user_message('I am vegetarian', [])
 
       assert_equal 'I am vegetarian', client.await_add
-      refute_empty ctx.close_blocks
     ensure
       ext.recorder.close
     end
@@ -254,9 +231,9 @@ describe Pikuri::Memory::Extension do
         require 'timeout'
         client = fake_client_class.new
         ext = described_class.new(client: client, user_id: 'martin', resident_persona: false)
-        ext.bind(fake_ctx_class.new)
+        ext.configure(build_configurator)
 
-        ext.on_user_message(nil, "what's wrong here?", [png])
+        ext.on_user_message("what's wrong here?", [png])
 
         assert_equal "what's wrong here?\n[user attached image: shot.png (image/png)]", client.await_add
         assert_equal ["what's wrong here?"], client.queries
@@ -268,9 +245,9 @@ describe Pikuri::Memory::Extension do
         require 'timeout'
         client = fake_client_class.new
         ext = described_class.new(client: client, user_id: 'martin', resident_persona: false)
-        ext.bind(fake_ctx_class.new)
+        ext.configure(build_configurator)
 
-        assert_nil ext.on_user_message(nil, '', [png])
+        assert_nil ext.on_user_message('', [png])
         assert_equal '[user attached image: shot.png (image/png)]', client.await_add
         assert_nil client.queries
       ensure
@@ -278,13 +255,18 @@ describe Pikuri::Memory::Extension do
       end
     end
 
-    it 'the on_close block closes the recorder' do
+    it 'closing the agent closes the recorder' do
       client = fake_client_class.new
       ext = described_class.new(client: client, user_id: 'u', resident_persona: false)
-      ctx = fake_ctx_class.new
-      ext.bind(ctx)
+      c = build_configurator
+      ext.configure(c)
+      closed = false
+      real_close = ext.recorder.method(:close)
+      ext.recorder.define_singleton_method(:close) { (closed = true) && real_close.call }
 
-      ctx.close_blocks.each(&:call) # must not raise; recorder stops
+      c.agent.close
+
+      assert closed
     end
 
     # The recall feedback loop (one hallucinated fact re-extracted into 800
@@ -298,9 +280,9 @@ describe Pikuri::Memory::Extension do
       client = fake_client_class.new
       client.search_rows = [record('Martin drives a Volvo V70', score: 0.9)]
       ext = described_class.new(client: client, user_id: 'martin', resident_persona: false)
-      ext.bind(fake_ctx_class.new)
+      ext.configure(build_configurator)
 
-      block = ext.on_user_message(nil, 'what car do I drive?', [])
+      block = ext.on_user_message('what car do I drive?', [])
 
       assert_includes block, 'Volvo V70' # the prefetch did fire
       assert_equal 'what car do I drive?', client.await_add

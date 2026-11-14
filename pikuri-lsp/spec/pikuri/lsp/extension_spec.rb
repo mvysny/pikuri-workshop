@@ -1,36 +1,16 @@
 # frozen_string_literal: true
 
 require 'tmpdir'
+require 'pikuri/testing'
 
 describe Pikuri::Lsp::Extension do
   entry = Pikuri::Lsp::Registry::StdioEntry.new(id: 'ruby', command: %w[ruby-lsp], files: %w[*.rb])
   registry = Pikuri::Lsp::Registry.new(entries: [entry])
 
-  configurator = lambda do
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base', id: '', streaming: false,
-      cancellable: nil, interloper: nil
-    )
-  end
-
-  # Minimal ExtensionContext stand-in recording what was emitted.
-  fake_ctx = Class.new do
-    attr_reader :emitted
-
-    def initialize
-      @emitted = []
-    end
-
-    def emit_event(event)
-      @emitted << event
-    end
-  end
-
   wired = lambda do |the_registry = registry, &block|
     Dir.mktmpdir('pikuri-lsp-ext-') do |root|
       fs = Pikuri::Workspace::Filesystem.new(project_root: File.realpath(root))
-      c = configurator.call
+      c = Pikuri::Testing.configurator
       ext = described_class.new(registry: the_registry, filesystem: fs)
       ext.configure(c)
       block.call(ext, c, root)
@@ -56,11 +36,14 @@ describe Pikuri::Lsp::Extension do
     end
   end
 
-  it 'arms a teardown that a crash-free exit runs even before a child exists' do
+  it 'arms a teardown that closing the agent runs even before a child exists' do
     wired.call do |ext, c|
-      assert_equal 1, c.on_close_handlers.size
-      c.on_close_handlers.each(&:call)
+      closed = false
+      ext.servers.define_singleton_method(:close) { closed = true }
 
+      c.agent.close
+
+      assert closed
       assert_empty ext.servers.started_ids
     end
   end
@@ -68,31 +51,19 @@ describe Pikuri::Lsp::Extension do
   it 'is a no-op on an empty registry, so a host that configures nothing wires no tool' do
     wired.call(Pikuri::Lsp::Registry::EMPTY) do |ext, c|
       assert_empty c.tools
-      assert_empty c.on_close_handlers
       assert_nil ext.servers
     end
   end
 
-  describe '#bind' do
-    it 'points the tool progress callback at the agent event stream' do
-      wired.call do |ext, c|
-        ctx = fake_ctx.new
-        ext.bind(ctx)
-        progress = Pikuri::Lsp::ServerProgress.new(server_id: 'ruby', title: 'Indexing')
+  it 'points the tool progress callback at the agent event stream' do
+    wired.call do |_ext, c|
+      recorder = Pikuri::Agent::Listener::InMemoryEventList.new
+      c.add_listener(recorder)
+      progress = Pikuri::Lsp::ServerProgress.new(server_id: 'ruby', title: 'Indexing')
 
-        c.tools.first.on_progress.call(progress)
+      c.tools.first.on_progress.call(progress)
 
-        assert_equal [progress], ctx.emitted
-      end
-    end
-
-    it 'binds harmlessly when there was no tool to hand an emitter to' do
-      wired.call(Pikuri::Lsp::Registry::EMPTY) do |ext|
-        ctx = fake_ctx.new
-        ext.bind(ctx)
-
-        assert_empty ctx.emitted
-      end
+      assert_equal [progress], recorder.events
     end
   end
 end

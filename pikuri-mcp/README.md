@@ -58,13 +58,12 @@ agent = Pikuri::Agent.new(transport: ..., system_prompt: ...) do |c|
 end
 ```
 
-The extension's `configure` builds the shared `Mcp::Servers` (which
-eager-starts every configured server), appends `<available_mcps>` to
-the system prompt, and registers a close handler so the agent's
-`#close` tears down the MCP subprocesses. Its `bind(ctx)` adds a
-per-agent `mcp_connect` tool with its own activation set. Sub-agents
-don't inherit extensions, so they get neither the servers nor
-`mcp_connect`.
+The extension's `configure` gives the agent its own `Mcp::Connections`
+(a server starts on the agent's first call to one of its tools),
+appends `<available_mcps>` to the system prompt, adds the per-agent
+`mcp_connect` tool, and registers a close handler so the agent's
+`#close` tears down the MCP subprocesses. Sub-agents don't inherit
+extensions, so they get neither the servers nor `mcp_connect`.
 
 ## Further reading
 

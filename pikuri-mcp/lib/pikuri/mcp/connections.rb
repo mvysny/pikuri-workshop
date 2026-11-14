@@ -7,7 +7,7 @@ module Pikuri
     # One agent's own MCP processes, spawned lazily from a {Catalog}:
     #
     #   connections = Connections.new(catalog)
-    #   connections.register_tools('openlibrary', ctx)   # tools in the toolset, nothing spawned yet
+    #   connections.register_tools('openlibrary', c)     # tools in the toolset, nothing spawned yet
     #   # ... the model calls openlibrary__search: the process starts now
     #   connections.close                                # on the agent's close
     #
@@ -30,7 +30,7 @@ module Pikuri
     # MCP tools carry JSON Schema in +input_schema+, which
     # +RubyLLM::Tool.params(schema)+ accepts directly, so {#register_tools}
     # synthesizes +RubyLLM::Tool+ subclasses and feeds them through
-    # {Pikuri::Agent::ExtensionContext#add_raw_tool} — no
+    # {Pikuri::Agent::Configurator#add_raw_tool} — no
     # +Pikuri::Tool::Parameters+ in the middle. Strict argument validation is
     # therefore not extended to MCP tools; the server validates, and the
     # provenance prefix plus {Catalog}'s audit log are the compensating
@@ -53,20 +53,20 @@ module Pikuri
       # @return [Boolean] whether {#register_tools} already ran for +id+.
       def registered?(id) = @registered.include?(id)
 
-      # Add every tool of server +id+ to +ctx+'s agent, named
+      # Add every tool of server +id+ to +c+'s agent, named
       # +<id>__<tool>+ and prefixed +[From MCP server "<id>"]+. Spawns nothing.
       #
       # @param id [String] a {Catalog#ids} member.
-      # @param ctx [Pikuri::Agent::ExtensionContext] the agent's context.
+      # @param c [Pikuri::Agent::Configurator] the agent's.
       # @return [Integer] how many tools were registered.
       # @raise [KeyError] when +id+ is not in the catalog.
       # @raise [ArgumentError] when +id+ is already registered — tools would
       #   double up.
-      def register_tools(id, ctx)
+      def register_tools(id, c)
         tools = @catalog.fetch(id).tools
         raise ArgumentError, "MCP server #{id.inspect} is already registered" if registered?(id)
 
-        tools.each { |mcp_tool| ctx.add_raw_tool(synthesize(id, mcp_tool)) }
+        tools.each { |mcp_tool| c.add_raw_tool(synthesize(id, mcp_tool)) }
         @registered << id
         tools.size
       end

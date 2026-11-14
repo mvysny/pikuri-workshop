@@ -9,8 +9,8 @@ module Pikuri
   module Tasks
     # An {Pikuri::Agent::Extension} that auto-wires an in-memory task list
     # onto an agent: constructs a fresh {List}, registers the four task
-    # tools against it, contributes a workflow snippet, and (in {#bind})
-    # arms {ListChanged} emission.
+    # tools against it, contributes a workflow snippet, and arms
+    # {ListChanged} emission.
     #
     #   Pikuri::Agent.new(transport: ..., system_prompt: ...) do |c|
     #     c.add_extension Pikuri::Tasks::Extension.new
@@ -53,7 +53,7 @@ module Pikuri
 
       # @return [List] the per-agent list, exposed for tests. Do NOT read
       #   it from another thread — it's agent-thread-confined; consume the
-      #   {ListChanged} events wired by {#bind} instead.
+      #   {ListChanged} events wired by {#configure} instead.
       attr_reader :list
 
       # Construct the four tools (each sharing +@list+), register them,
@@ -74,22 +74,15 @@ module Pikuri
         end
 
         TOOL_CLASSES.each { |cls| c.add_tool(cls.new(list: @list)) }
+        # How a UI listener observes the list without touching the
+        # agent-thread-confined {List}: a fresh {List#items} snapshot after
+        # every mutation.
+        @list.on_change = -> { c.emit_event(ListChanged.new(items: @list.items)) }
         nil
       end
 
       # @return [Array<String>] the static task-workflow snippet.
       def system_prompt_snippets = [PROMPT_SNIPPET]
-
-      # Arm {List#on_change} to emit a {ListChanged} (carrying a fresh
-      # {List#items} snapshot) after every mutation — how a UI listener
-      # observes the list without touching the agent-thread-confined {List}.
-      #
-      # @param ctx [Pikuri::Agent::ExtensionContext]
-      # @return [void]
-      def bind(ctx)
-        @list.on_change = -> { ctx.emit_event(ListChanged.new(items: @list.items)) }
-        nil
-      end
     end
   end
 end

@@ -39,7 +39,6 @@ module Pikuri
         @registry = registry
         @filesystem = filesystem
         @servers = nil
-        @tool = nil
       end
 
       # @return [Servers, nil] the runtime built in +configure+, or +nil+ when the
@@ -49,33 +48,22 @@ module Pikuri
       # Build the {Servers} runtime, arm its teardown, register the tool — in that
       # order, so +close+ is armed before any call can spawn a child.
       #
+      # The tool's progress goes to the agent's event stream. It emits on the
+      # thread that is blocked waiting for an index — the agent's own — which is
+      # what makes {Pikuri::Agent::Configurator#emit_event} legal from there.
+      #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
       def configure(c)
         return if @registry.empty?
 
-        servers = Servers.new(registry: @registry, root: @filesystem.project_root,
-                              cancellable: c.cancellable)
+        cancellable = c.agent.cancellable
+        servers = Servers.new(registry: @registry, root: @filesystem.project_root, cancellable: cancellable)
         @servers = servers
         c.on_close { servers.close }
-        @tool = LspTool.new(servers: @servers, filesystem: @filesystem,
-                            cancellable: c.cancellable)
-        c.add_tool @tool
-        nil
-      end
-
-      # Point the tool's progress callback at the agent's event stream.
-      #
-      # The tool emits on the thread that is blocked waiting for an index — the
-      # agent's own — which is what makes {Pikuri::Agent::ExtensionContext#emit_event}
-      # legal from there.
-      #
-      # @param ctx [Pikuri::Agent::ExtensionContext]
-      # @return [void]
-      def bind(ctx)
-        return if @tool.nil?
-
-        @tool.on_progress = ->(progress) { ctx.emit_event(progress) }
+        tool = LspTool.new(servers: servers, filesystem: @filesystem, cancellable: cancellable)
+        tool.on_progress = ->(progress) { c.emit_event(progress) }
+        c.add_tool tool
         nil
       end
     end

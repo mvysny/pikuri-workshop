@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'pikuri/testing'
+
 RSpec.describe Pikuri::Skill::Extension do
   # Minimal stand-in for a non-empty catalog — same shape used in
   # agent_spec.rb's skill_catalog wiring section, lifted here so
@@ -44,7 +46,8 @@ RSpec.describe Pikuri::Skill::Extension do
   let(:empty_catalog) { Pikuri::Skill::Catalog::EMPTY }
   let(:non_empty_activation) { Pikuri::Skill::Activation.new(catalog: non_empty_catalog) }
   let(:root) { Pathname.new(Dir.pwd) }
-  let(:interloper) { Pikuri::Agent::Control::Interloper.new }
+  let(:configurator) { Pikuri::Testing.configurator }
+  let(:interloper) { configurator.agent.interloper }
 
   # An extension over a catalog holding one ungated and one gated skill —
   # everything the gate has an opinion about.
@@ -52,26 +55,12 @@ RSpec.describe Pikuri::Skill::Extension do
     described_class.new(catalog: fake_catalog_class.new([sample_skill, gated_skill]), root: root)
   end
 
-  def build_configurator(interloper:)
-    Pikuri::Agent::Configurator.new(
-      transport: Pikuri::Agent::ChatTransport.new(model: 'm'),
-      system_prompt_base: 'base',
-      id: '',
-      streaming: false,
-      cancellable: nil,
-      interloper: interloper
-    )
-  end
-
-  let(:configurator) { build_configurator(interloper: interloper) }
-
-  # Minimal ExtensionContext stand-in: the extension reaches ctx.agent.interloper
-  # on bind and ctx.emit_event on a promotion.
-  def ctx_reaching(interloper)
-    agent = Struct.new(:interloper).new(interloper)
-    Struct.new(:agent, :events) do
-      def emit_event(event) = events << event
-    end.new(agent, [])
+  # The listeners +configure+ adds, recorded on the way to the agent.
+  def recording_listeners(c)
+    added = []
+    real_add = c.method(:add_listener)
+    c.define_singleton_method(:add_listener) { |l| (added << l) && real_add.call(l) }
+    added
   end
 
   it 'is an Agent::Extension by composition' do
@@ -114,10 +103,10 @@ RSpec.describe Pikuri::Skill::Extension do
     end
   end
 
-  describe '#bind / #schedule_load_skill' do
-    it 'captures the agent interloper on bind, then enqueues a :system skill block' do
+  describe '#schedule_load_skill' do
+    it "enqueues a :system skill block on the agent's interloper" do
       ext = described_class.new(catalog: non_empty_catalog, root: root)
-      ext.bind(ctx_reaching(interloper))
+      ext.configure(configurator)
 
       returned = ext.schedule_load_skill('sample')
 
@@ -131,7 +120,7 @@ RSpec.describe Pikuri::Skill::Extension do
 
     it 'raises KeyError for a name absent from the catalog, enqueuing nothing' do
       ext = described_class.new(catalog: non_empty_catalog, root: root)
-      ext.bind(ctx_reaching(interloper))
+      ext.configure(configurator)
 
       assert_raises(KeyError) { ext.schedule_load_skill('no-such-skill') }
       assert_equal [], interloper.peek
@@ -204,7 +193,6 @@ RSpec.describe Pikuri::Skill::Extension do
     it 'refuses a withheld name to the host too, and allows it once fired' do
       ext = gated_extension
       ext.configure(configurator)
-      ext.bind(ctx_reaching(interloper))
 
       assert_raises(KeyError) { ext.schedule_load_skill('gated') }
       ext.activation.activate([gated_skill])
@@ -212,24 +200,26 @@ RSpec.describe Pikuri::Skill::Extension do
     end
 
     it 'registers the activation listener when there is somewhere to promote to' do
+      added = recording_listeners(configurator)
       gated_extension.configure(configurator)
 
-      assert configurator.listeners.any?(Pikuri::Skill::PathActivationListener)
+      assert added.any?(Pikuri::Skill::PathActivationListener)
     end
 
     it 'registers no listener when nothing is gated' do
+      added = recording_listeners(configurator)
       described_class.new(catalog: non_empty_catalog, root: root).configure(configurator)
 
-      assert_equal [], configurator.listeners
+      assert_equal [], added
     end
   end
 
   describe '#announce' do
     it 'injects the promotion and emits Skill::Promoted' do
       ext = gated_extension
+      recorder = Pikuri::Agent::Listener::InMemoryEventList.new
+      configurator.add_listener(recorder)
       ext.configure(configurator)
-      ctx = ctx_reaching(interloper)
-      ext.bind(ctx)
 
       ext.announce([gated_skill], 'lib/a.rb')
 
@@ -238,7 +228,7 @@ RSpec.describe Pikuri::Skill::Extension do
       assert_equal :system, pending.first.kind
       assert pending.first.content.include?('<name>gated</name>'), pending.first.content
 
-      event = ctx.events.first
+      event = recorder.events.first
       assert_kind_of Pikuri::Skill::Promoted, event
       assert_equal 'lib/a.rb', event.path
       assert_equal 'skills available: gated (matched lib/a.rb)', event.to_s
@@ -247,7 +237,6 @@ RSpec.describe Pikuri::Skill::Extension do
     it 'injects nothing when nothing was newly promoted' do
       ext = gated_extension
       ext.configure(configurator)
-      ext.bind(ctx_reaching(interloper))
 
       ext.announce([], 'lib/a.rb')
 
