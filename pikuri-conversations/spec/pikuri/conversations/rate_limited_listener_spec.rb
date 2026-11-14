@@ -134,6 +134,38 @@ RSpec.describe Pikuri::Conversations::RateLimitedListener do
     assert_nil listener.for_sub_agent
   end
 
+  # A sub-agent failing mid-stream emits nothing after its last delta, and
+  # its limiter sees no TurnEnded.
+  describe "a failed sub-agent's tail" do
+    let(:sub_inner) { Pikuri::Agent::Listener::InMemoryEventList.new }
+    let(:sub) do
+      sub_inner = self.sub_inner
+      inner.define_singleton_method(:for_sub_agent) { |**| sub_inner }
+      listener.for_sub_agent(id: 'researcher 0')
+    end
+
+    before do
+      sub.on_event(assistant_delta('Found'))
+      sub.on_event(assistant_delta(' it')) # within the period: held back
+    end
+
+    it "is flushed ahead of its parent's TurnEnded" do
+      ended = Pikuri::Conversations::Event::TurnEnded.new(outcome: :failed, error: RuntimeError.new('down'),
+                                                          restarting: false)
+      listener.on_event(ended)
+
+      assert_equal [assistant_delta('Found'), assistant_delta(' it')], sub_inner.events
+      assert_equal [ended], inner.events
+    end
+
+    it "is flushed ahead of its parent's next event, when the failure is caught" do
+      listener.on_event(assistant_delta('Then'))
+
+      assert_equal [assistant_delta('Found'), assistant_delta(' it')], sub_inner.events
+      assert_equal [assistant_delta('Then')], inner.events
+    end
+  end
+
   it 'names its fps and the inner listener' do
     assert_equal "RateLimited(10fps, #{inner})", listener.to_s
   end

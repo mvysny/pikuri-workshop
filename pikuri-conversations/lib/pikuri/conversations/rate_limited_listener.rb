@@ -36,6 +36,12 @@ module Pikuri
     # own doc promises so). The tail is flushed, not dropped: no bookend comes
     # to show that text whole, and the host's failure notice follows it.
     #
+    # A sub-agent's limiter ({#for_sub_agent}) never sees a +TurnEnded+, so a
+    # sub-agent failing mid-stream would leave its tail in a limiter nobody
+    # calls again. Its parent flushes it instead, ahead of the parent's next
+    # event — +TurnEnded+ at the latest, which also forgets the turn's
+    # sub-agents.
+    #
     # No timer: the tick schedule advances only when an event arrives, so a
     # model that pauses mid-reply leaves up to one period's text unshown until
     # its next delta or bookend. The schedule is anchored at construction, so
@@ -57,6 +63,7 @@ module Pikuri
         @next_tick_at = clock.call
         @assistant_buffer = String.new
         @thinking_buffer = String.new
+        @sub_agents = []
       end
 
       # @param event [Data] an agent event, a conversation's, or an extension's own
@@ -79,6 +86,7 @@ module Pikuri
           @inner.on_event(event)
         when Event::TurnEnded
           flush
+          @sub_agents.clear
           @inner.on_event(event)
         when *Event::ALL
           @inner.on_event(event)
@@ -89,8 +97,9 @@ module Pikuri
       end
 
       # Wraps the inner listener's sub-agent variant in a fresh limiter of the
-      # same +fps+. A sub-agent runs on its parent's turn thread, so the new
-      # limiter's buffers stay single-threaded too.
+      # same +fps+, which this one flushes ahead of its own events. A sub-agent
+      # runs on its parent's turn thread, so the new limiter's buffers stay
+      # single-threaded too.
       #
       # @param params [Hash{Symbol => Object}] forwarded to the inner's +for_sub_agent+
       # @return [RateLimitedListener, nil] +nil+ when the inner one opts out
@@ -98,11 +107,25 @@ module Pikuri
         inner_sub = @inner.respond_to?(:for_sub_agent) ? @inner.for_sub_agent(**params) : @inner
         return nil if inner_sub.nil?
 
-        self.class.new(inner_sub, fps: @fps, clock: @clock)
+        sub = self.class.new(inner_sub, fps: @fps, clock: @clock)
+        @sub_agents << sub
+        sub
       end
 
       # @return [String] e.g. +"RateLimited(15fps, Listener)"+
       def to_s = "RateLimited(#{@fps}fps, #{@inner})"
+
+      protected
+
+      # Sub-agents first: whatever they still hold came before this agent's
+      # buffered text, which only started once their tool call returned.
+      #
+      # @return [void]
+      def flush
+        @sub_agents.each { |sub| sub.flush } # not &:flush, which can't call a protected method
+        flush_thinking
+        flush_assistant
+      end
 
       private
 
@@ -114,12 +137,6 @@ module Pikuri
         flush
         missed = ((now - @next_tick_at) / @period).floor + 1
         @next_tick_at += missed * @period
-      end
-
-      # @return [void]
-      def flush
-        flush_thinking
-        flush_assistant
       end
 
       # @return [void]

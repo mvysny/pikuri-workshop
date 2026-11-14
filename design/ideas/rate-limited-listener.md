@@ -1,9 +1,9 @@
 # A rate-limited listener for hosts that render a stream
 
 Status: **workshop side landed (2026-11-14): `Pikuri::Conversations::RateLimitedListener`,
-`Event::ALL`, `TurnEnded`'s thread promise.** The reasoning below now lives in the class's
-yardoc. What's left is the three hosts' swaps, each in its own repo; graduate (delete this file)
-once they're done.
+`Event::ALL`, `TurnEnded`'s thread promise, a failed sub-agent's tail. pikuri-tui swapped
+(`149c8ab`).** The reasoning below now lives in the class's yardoc. What's left is pikuri-webui's
+and Puri's swaps, each in its own repo; graduate (delete this file) once they're done.
 
 ## Why
 
@@ -80,6 +80,11 @@ Puri ignores thinking deltas, so it would pay for buffering them — trivially.
 - **Keep `for_sub_agent`** (was `Q_sub_agents`), wrapping the inner listener's variant. Free for
   webui; a sub-agent runs on its parent's turn thread, so a fresh limiter per sub-agent stays
   single-threaded.
+- **A failed sub-agent's tail is flushed by its parent.** The sub-agent's limiter never sees a
+  `TurnEnded` (`sub_agent_tool.rb` lets the error escape to the parent's `run_loop`), so the
+  parent keeps the turn's sub-agent limiters and flushes them ahead of its own buffers — at its
+  next event, `TurnEnded` at the latest, which also forgets them. Ordered right even if a
+  sub-agent's failure is someday caught into a tool result.
 - **Recognising a conversation event: `Pikuri::Conversations::Event::ALL`** (was
   `Q_bypass_test`), a frozen array the gem exports, computed from `Event.constants` so a new
   variant can't be left off it. pikuri-webui computes exactly this today (`Agents::Runner::
@@ -111,7 +116,9 @@ Not counted on: pikuri-core emitting an `Event::Failed` beside `Cancelled` would
   bypasses the buffers; a bare `TurnEnded` after deltas flushes them first.~~ Done.
 - ~~`Event::ALL` exported; `TurnEnded`'s yardoc states its thread, with the spec pinning it.~~
   Done (`conversation_spec.rb`, "ends a failed turn on the thread its agent's last event came on").
-- pikuri-tui swaps its copy for it and drops its lock (keeping the fan-out).
+- ~~pikuri-tui swaps its copy for it and drops its lock.~~ Done (`149c8ab`, all three apps; core's
+  `ListenerList` replaced the fan-out).
+- ~~A failed sub-agent's tail is flushed, not lost.~~ Done.
 - pikuri-webui swaps its copy, deletes `CONVERSATION_EVENTS` for `Event::ALL`, and routes
   `TurnEnded` through the limiter.
 - Puri wraps its renderer in it, which ends its race; `TurnListener` keeps only rendering.
