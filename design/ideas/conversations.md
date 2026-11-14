@@ -1,7 +1,8 @@
 # A slim `Agent` and `pikuri-conversations`: one design, two layers
 
-Status: **shape settled; `Conversations::HistoryFile` and `Store` built, the scheduler and the
-throttle not.** pikuri has done its half: an `Agent` is one conversation, resumed through
+Status: **shape settled; `HistoryFile`, `Store` and the scheduler (`Conversations`,
+`Conversation`, slice 1) built; the throttle, the probe and the titler (slice 2) not.** Slice 1
+needed nothing from pikuri (see *What slice 1 taught*). pikuri has done its half: an `Agent` is one conversation, resumed through
 `Agent.new(history:)` (`pikuri:D_agent_is_one_conversation`); `History` is in-memory only; every
 agent owns its `Interloper`; and `Agent.new(around_request:)` replaced `ServerPermits`, which is
 deleted — the throttle is ours to build. Grew out of pikuri's early-cancel fix
@@ -58,7 +59,7 @@ joins them in one `on_turn_end` line.
 |---|---|---|---|
 | `ServerPermits` + `RequestThrottle` | deleted from pikuri (`8d764bd`) | `Conversations::Throttle`, passed as `Agent.new(around_request:)` | only N concurrent trees need it |
 | sizing permits from `/props` `total_slots` | pikuri's probe did it | the throttle, probing once per server | pikuri's probe no longer seeds slots |
-| `ContextWindowDetector` | pikuri-core | stays (`Q_detector_home`) | a bin resolves its cap at boot in one line |
+| `ContextWindowDetector`, `ChatTransport#with_detected_modalities` | pikuri-core | the gem's `/props` probe, its only caller (the throttle's `total_slots`, the turn task's step 3) | its future is more servers (vLLM's `max_model_len`, Ollama's `/api/show`), not explaining better; a bin states its cap or shows none |
 | `History`, the value | pikuri-core | stays | `export_history` / `Agent.new(history:)` speak it |
 | its JSON, `save(dir)` / `load(dir)`, `Attachment#stored_name` | dropped from pikuri (`5c87269`) | `Conversations::HistoryFile` — **built** (`D_history_file`) | storing is the host's; a deployment that never resumes shouldn't carry a format |
 | the folder of conversations: ids, `meta.json`, list, retitle, delete, upload stash | webui `Store`, Puri `Store` | `Conversations::Store` — **built** | two copies of one format; a bin holds one conversation |
@@ -153,7 +154,7 @@ agent (`D_mcp_catalog_and_connections`); a host's titler must do the same.
 `request_throttle.rb`, `spec/pikuri/agent/{server_permits,request_throttle,throttle_integration}_spec.rb`,
 and `D_probe_when_unknown` in pikuri's `design/decisions.md`, the reasoning for re-seeding slots
 from the probe). pikuri's probe no longer seeds slots and is skipped once cap + modalities are
-stated.
+stated; it leaves core next, for the gem (see Settled).
 
 **Stays**: the `Interloper` — not only host plumbing: `Skill::Extension#schedule_load_skill`
 queues through it in pikuri-code's single-threaded REPL. `Extension`, `Configurator`,
@@ -172,8 +173,8 @@ convs = Pikuri::Conversations.new(
   system_prompt: ->(conv) { prompt },                  # String or per-conversation proc
   configure: ->(c, conv) { c.add_tool(...) },           # the Agent.new block, minus what the gem owns
   on_turn_end: ->(conv, history) { store.save(entry, history, model:, server:) },  # optional
-  streaming: true, priority: 0, executor: nil)         # nil: an own CachedThreadPool
-convs.limit('http://localhost:8080', 1)                # the throttle, ex-ServerPermits.limit
+  streaming: true, priority: 0)
+convs.limit('http://localhost:8080', 1)                # slice 2: the throttle, ex-ServerPermits.limit
 conv = convs.open(id:, transport:, listener:, history: nil, boot: true)
 conv.submit('how do I keep an avocado?')               # => :started
 conv.submit('also, ripe?')                              # => :injected
@@ -183,12 +184,12 @@ conv.submit('also, ripe?')                              # => :injected
 
 | Method | Behaviour |
 |---|---|
-| `new(system_prompt:, configure:, on_turn_end: nil, streaming: true, priority: 0, executor: nil)` | the gem builds every `Agent` itself, wiring what it owns — `cancellable:`, the forwarding listener, its `around_request` — then calls `configure`. `priority` is each turn thread's |
+| `new(system_prompt:, configure:, on_turn_end: nil, streaming: true, priority: 0)` | the gem builds every `Agent` itself, wiring what it owns — `cancellable:`, `history:`, the conversation's listener, (slice 2) its `around_request` — then calls `configure`. `priority` is each turn thread's |
 | `open(id:, transport:, listener:, history: nil, boot: true)` → `Conversation` | a conversation. `listener` hears the agent's events and the conversation's, fixed for its life. `boot: false` leaves it in `:new` until the first `submit` (Puri) |
 | `[](id)`, `each` | lookup |
-| `limit(server, permits)` | an explicit permit count, overriding the probe's `total_slots` |
-| `around_request` | the list's throttle, for side agents the host builds (titler); `open` wires it itself |
-| `executor` | for host side work (titler) on the same threads |
+| `limit(server, permits)` | slice 2: an explicit permit count, overriding the probe's `total_slots` |
+| `around_request` | slice 2: the list's throttle, for side agents the host builds (titler); `open` wires it itself |
+| `executor` | dropped from slice 1 (see Settled); `Q_titler` decides whether side work needs one |
 | `shutdown(timeout: 0)` | cancel every turn; running turns unwind, run `on_turn_end`, close their agents; waits at most `timeout`, never on a host lock. `0` returns at once (webui's Puma `:state` hook) |
 
 **`Conversation`** — every method is thread-safe, returns at once, never calls out under the
@@ -196,22 +197,25 @@ gem's lock.
 
 | Method | Behaviour |
 |---|---|
-| `submit(text = nil, attachments: [])` | `:new`: boot, queue it → `:started`. `:booting`: queued → `:started`. `:idle`: start a turn → `:started`. `:running`: inject → `:injected`. Blank while running → `:ignored`; blank while idle → a bare turn delivering pending injections. `:closed` → `:discarded`. Raises `UnsupportedAttachmentError` synchronously when the next model's stated modalities refuse one |
+| `submit(text = nil, attachments: [])` | `:new`: boot, queue it → `:started`. `:booting`: queued → `:started`. `:idle`: start a turn → `:started`. `:running`: inject → `:injected`. Blank: a bare turn delivering pending injections, `:ignored` when none are (always while running). `:closed` → `:discarded`. Raises `UnsupportedAttachmentError` synchronously when the next model's stated modalities refuse one |
 | `inject_system(text)` | inject a reference block; if idle, start a bare turn to deliver it (tui/pikuri-code `/skill`). Same answers as `submit` |
 | `cancel` | `:booting`: cancels construction (the token reaches MCP synthesis). `:running`: `cancel!`. Undelivered injections **stay** (webui's `D_interloper_mid_loop_input`) — the host decides: a blank `submit` re-sends them (tui), `discard_pending` drops them (Puri) |
 | `pending` / `discard_pending` | snapshot / take-and-clear of the undelivered `Interloper::Item`s |
 | `switch_model(transport)` | last-wins; re-picking the current model clears the pending one. Applied at the next turn's start via `Agent#transport=`. → `:selected` / `:discarded` |
 | `clear` | `:idle` → close the agent and build a fresh one, extensions and all (`pikuri:D_agent_is_one_conversation`) → `:cleared`; running → `:busy` |
-| `close(force: false)` | idle or `:new` → close the agent, `:closed`. Running → `:busy`, or with `force` cancel and close once it unwinds. Once closing, `on_turn_end` is **not** called — a delete never races a save |
+| `close(force: false)` | idle or `:new` → close the agent (off-thread), `:closed`. Booting or running → `:busy`, or with `force` cancel, `:closing`, close once it unwinds. Once closing, `on_turn_end` is **not** called — a delete never races a save. `Closed` follows the agent's release; `wait_closed(timeout)` blocks for it |
 | `status` → `Status` | frozen snapshot: `state`, `pending` count, `model` (what the agent is on), `next_model` (pending or current) — each a transport, so its `modalities` / `context_window` ride along. Readable under the host's lock |
 | `history` | the last snapshot — from `open`, or the last `on_turn_end` |
 | `trifecta` | `nil` until booted |
 | `id`, `listener` | as opened |
 
 **State machine**, guarded by the gem's lock:
-`:new → :booting → :idle ⇄ :running → :closed`. A message arriving in `:new`/`:booting` goes into
-the agent-to-be's `Interloper`; the first turn after boot is a bare turn that drains it — one
-queue, not two.
+`:new → :booting → :idle ⇄ :running → :closed`; a failed boot returns to `:new`, keeping its
+messages, and the next `submit` boots again. A message arriving in `:new`/`:booting` waits in
+the gem: the agent builds its `Interloper` itself, so it can't be the agent-to-be's. After boot
+the last waiting user message is the first turn's message and the earlier ones go into the
+`Interloper`, which `run_loop` drains ahead of it — order kept, and the common case (one
+message) is an ordinary turn, not a `UserTurn(mid_loop: true)`.
 
 **The turn task**, on a pool thread:
 
@@ -219,10 +223,11 @@ queue, not two.
    thread, or the restart in step 6 on the worker — resets the `Cancellable` in the same critical
    section, so no cancel can fall between (`pikuri:D_host_resets_cancel`).
 2. Name the thread `turn <id>`, set its priority.
-3. Take the pending model switch; probe `/props` if this transport hasn't been (cached per
-   server+model, seeds the throttle's slots, `pikuri:D_deferred_cap_probe`'s reason intact);
-   `agent.transport = resolved`.
-4. `agent.run_loop(...)`, rescuing `Cancelled` and `StandardError` into an outcome.
+3. Take the pending model switch. Slice 2: probe `/props` if this transport hasn't been (cached
+   per server+model, seeds the throttle's slots, `pikuri:D_deferred_cap_probe`'s reason intact);
+   slice 1 leaves the probe to the agent's own `run_loop`.
+4. `agent.run_loop(user_message:, attachments:, transport: picked)`, rescuing `Cancelled` and
+   `StandardError` into an outcome.
 5. Unless closing: `on_turn_end.(conv, agent.export_history)` — on the worker, off the lock,
    before going idle, for every outcome.
 6. Under the lock: completed **and** `interloper.pending?` and not closing → stay `:running`,
@@ -264,14 +269,23 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
   `shutdown(timeout:)` instead of a thread kill. Its dummy backend (`turns:` strategy) stays
   outside the gem — the GTK specs keep their own fake.
 - **bins**: unchanged in shape, slightly simpler — `run_loop(message)` returns the answer, a
-  model switch is `agent.transport =`, the cap needs a stated or boot-resolved transport.
+  model switch is `agent.transport =`; with no probe in core, a bin's cap and modalities are what
+  its transport states — otherwise `ctx=8.4k` with no denominator, and an attachment the model
+  can't take reaches the server, which refuses it.
 
 ## Settled
 
 - **Sub-agents stay plain `Agent#run_loop` calls, inline on the parent's thread**, sharing the
   parent's cancel token — never submitted to the pool and awaited, which deadlocks a bounded pool.
-- **The executor is unbounded** (`CachedThreadPool`, `pikuri-webui:D_serial_turn_executor`): a turn
-  holds its thread through waits that aren't load — a `Confirmer` on a human, a long `bash`.
+- **Unbounded: a plain thread per boot, per turn task, per agent release** — no pool, no
+  concurrent-ruby. A turn holds its thread through waits that aren't load — a `Confirmer` on a
+  human, a long `bash` (`pikuri-webui:D_serial_turn_executor`) — so a bound is wrong, and a
+  thread's start cost is nothing beside a turn's seconds. A thread per task also names itself
+  (`boot <id>`, `turn <id>`, `close <id>`) and is the one `wait_closed` needs nothing to join.
+- **Turns may hop threads**: `Agent`'s header says nothing is confined to a thread, and no
+  `lib/` in pikuri or the workshop reads `Thread.current` (was `Q_thread_hopping`).
+- **The gem never lets a host hook strand it**: a listener or `on_turn_end` that raises is
+  logged at error, and the state machine moves on.
 - **Load is bounded per request by the throttle**, never per turn (`pikuri:D_llm_request_throttle`).
 - **The gem never calls out under its own lock** — no listener, no hook, no host code; webui's
   listeners take its global monitor (`pikuri-webui:D_global_monitor`). It owns
@@ -285,6 +299,13 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
   back, its logged-in browser does not), and webui rejected
   reaping already.
 - **`Agent` stays thread-unsafe**; the two `Control`s remain the only doors in from another thread.
+- **The `/props` probe moves here** (was `Q_detector_home`). It fails pikuri's placement test —
+  llama.cpp-only, router re-probes, a bearer key, and its future is more servers. Inside the
+  workshop the gem is its only caller. It bends the gem's rule ("refuses anything one bin
+  needs") only if a bin needs it, and it doesn't: the detector calls the cap a cosmetic readout,
+  pikuri's overflow note argues the curve is in absolute tokens with no knee, and an unknown
+  modality already goes out. `D_context_window_sources` still holds: a bin without a stated cap
+  shows none rather than ruby_llm's registry guess.
 - **Naming**: the gem `pikuri-conversations`; `Conversations` / `Conversation`, not
   `SessionList` / `Session` (an HTTP session) nor `pikuri-host` (it hosts nothing by itself).
 
@@ -301,10 +322,31 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
 - **A grab-bag `pikuri-ext` for utilities**: refuses nothing, and charges every host the union
   of every utility's dependencies.
 
+## What slice 1 taught
+
+Built against pikuri `3aed7e2` with no pikuri change; nothing on the `Agent` list above blocks
+the scheduler:
+
+- **`Agent#transport=` isn't needed by the gem.** It passes `run_loop(transport:)` only when a
+  pick is pending, and validates attachments first — the only thing `run_loop` does ahead of
+  applying the switch — so the switch can't be lost. The writer stays a bins nicety.
+- **`run_loop` returning the answer isn't needed**: the gem reads `export_history`.
+- **The probe stays in core until slice 2**: the agent probes on its first turn as today.
+- **A small duplication**: `submit`'s synchronous `UnsupportedAttachmentError` re-states
+  `Agent`'s private MIME-family → modality table (three entries). A public
+  `ChatTransport#refusal(attachment)` in pikuri would remove it; not worth a pikuri change alone.
+- **What a host sees**: the first message after a cold boot is an ordinary `UserTurn` only when
+  it's the one waiting; earlier waiting messages arrive `mid_loop: true`.
+
 ## Open questions
 
-- `Q_detector_home` — `ContextWindowDetector` stays in core as a utility bins call at boot, or
-  moves to the gem with the throttle (then bins state their cap or show none).
+- `Q_overflow` — pikuri's `context-budget.md` and `context-overflow-behavior.md` don't move
+  whole: their refusals (the per-turn budget line; core raises, the operator watches) become
+  pikuri `D_` entries first, and the open remainder moves here as one idea file — compaction as
+  a `Conversation` operation (close the agent, build a fresh one from a summarised `History`, so
+  `clear` with a seed history, between turns or on `TurnEnded(:failed)` from overflow), and the
+  late warning for legs no operator watches. Reactive compaction needs no cap; proactive
+  compaction and the warning take it from the probe.
 - `Q_probe_at_boot` — probing in step 3 keeps a router from loading a model the conversation
   never uses, but then `status.next_model.modalities` is unknown before the first turn, so an
   attachment can fail only inside the turn (`TurnEnded(:failed, UnsupportedAttachmentError)`).
@@ -315,14 +357,13 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
   15 fps timer alive. A conversation-level listener swap is cheap (the gem owns the forwarder).
 - `Q_confirmer_token` — pikuri-code's `Confirmer` should watch the cancel token as Puri's does, so
   `cancel` needs no host hook; a pikuri-code change, not the gem's.
-- `Q_thread_hopping` — a conversation's turns hop pool threads; check `Subprocess`, `Finalizers`,
-  the LSP client for `Thread.current` affinity.
 - `Q_titler` — webui's and Puri's titlers side by side: prompt, when it fires (first turn end?),
   how it reports back.
 - `Q_permit_scope` — `convs.limit` makes the permit registry per list, where
   `pikuri:D_rate_limiter_scope` says one per process, keyed by server: two lists against one
   llama.cpp would each hand out its slots. Keep the registry process-global inside the gem, or
-  record why per-list is fine.
+  record why per-list is fine. Likely one answer with `Q_probe_at_boot`: a process-wide probe
+  cache keyed by server+model, feeding both the slot count and `status.next_model`.
 - `Q_book` — the chapter: lost cancels, stranded injections, a lock-order inversion around a
   synchronous core.
 
@@ -330,7 +371,8 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
 
 - pikuri's `Agent` has the shape above, its bins and the workshop's bins follow, and pikuri's
   `D_llm_request_throttle` (done) and `D_deferred_cap_probe` say where those moved.
-- `pikuri-conversations` holds the scheduler, the throttle, `HistoryFile`, `Store` and `Titler`; pikuri-tui
+- `pikuri-conversations` holds the scheduler, the throttle, the `/props` probe, `HistoryFile`,
+  `Store` and `Titler`; pikuri-tui
   (first — one conversation, the cheapest test), then pikuri-webui, then Puri drive their
   conversations through it, their own turn state machines and stores gone.
 - The workshop's pitch (`README.md`, `AGENTS.md`'s "What this is") covers a gem that runs no

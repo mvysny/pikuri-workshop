@@ -8,9 +8,12 @@ Gem::Specification.new do |spec|
   spec.authors     = ['Martin Vysny']
   spec.email       = ['martin@vysny.me']
 
-  spec.summary     = 'Store, list and resume pikuri conversations.'
+  spec.summary     = 'Host, store, list and resume pikuri conversations.'
   spec.description = <<~DESC
     pikuri-conversations is the hosting half pikuri leaves to its hosts.
+    +Pikuri::Conversations+ runs many live conversations, an agent each,
+    its turns on threads of its own, with mid-turn messages, cancel and
+    model switches handled from any thread.
     +Pikuri::Conversations::HistoryFile+ is the stored format of a
     +Pikuri::Agent::History+ (pikuri keeps it in memory only), validating
     stored bytes on the way back in and confining attachments to the

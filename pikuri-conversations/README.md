@@ -25,8 +25,23 @@ entry = store.list.first
 agent = Pikuri::Agent.new(transport:, system_prompt:, history: store.history(entry))
 ```
 
-Coming: the asynchronous half — one agent per conversation, its turns on a thread pool,
-mid-turn messages injected, cancel and model switches handled the way every host needs.
+- `Pikuri::Conversations` — the live ones: one agent per conversation, built and run on
+  threads of its own. A message sent while a turn runs is injected into it; cancel, model
+  switches, clear and close are safe from any thread and never block it.
+
+```ruby
+convs = Pikuri::Conversations.new(
+  system_prompt: 'You are a helpful assistant.',
+  on_turn_end: ->(conv, history) { store.save(store.find(conv.id), history, model:, server:) }
+)
+conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
+conv.submit('how do I keep an avocado?')   # => :started — events reach your listener
+conv.submit('also, ripe?')                  # => :injected — the running turn reads it
+conv.cancel
+convs.shutdown(timeout: 5)
+```
+
+Coming: a request throttle for a small server shared by many conversations, and a titler.
 
 ## Install
 
