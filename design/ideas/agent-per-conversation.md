@@ -46,15 +46,7 @@ Built: `Mcp::Catalog` once per process, `Mcp::Connections` per agent and lazy, t
 check, restore from the history's `mcp_connect` calls; why is `D_mcp_catalog_and_connections`.
 **Breaking for the hosts**: `Mcp::Extension.new(registry:, synthesize_descriptions:,
 verify_mcp_servers:)` is now `Mcp::Extension.new(catalog:)`, one per agent, the catalog built
-once with `Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)` — pikuri-tui
-and pikuri-webui must move their MCP wiring out of the per-agent factory.
-
-## Open questions
-
-- `Q_subagent_mcp_view` — sub-agents get no MCP today (extensions aren't inherited). If a
-  persona ever does, it needs its own `Connections`, never the parent's: a persona reading
-  untrusted pages would otherwise drive the parent's logged-in browser.
-- `Q_extension_reuse_guard` — reusing an extension instance across two agents silently shares
-  per-conversation state. `Mcp::Extension` now raises on a second `configure`; worth the same
-  guard for every extension in core's `Configurator#add_extension`, or is the protocol yardoc
-  enough?
+once with `Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)`. Only
+pikuri-tui wires MCP (`Code::App#default_build_agent` builds the registry and the old-shape
+extension per agent); it still takes `pikuri-mcp` from pikuri at 9b982d6, so the change lands
+when it moves to the workshop's gems. pikuri-webui parses `[[code.mcp]]` but wires nothing.

@@ -22,7 +22,10 @@ module Pikuri
     #
     # One extension per agent — +add_extension+ refuses a reused one, which
     # would share its {Connections}, the very leak this design prevents.
-    # Sub-agents don't inherit extensions, so they get no MCP.
+    # Sub-agents don't inherit extensions, so they get no MCP. Should one ever
+    # get it, it takes its own {Connections}, never the parent's: a persona
+    # reading untrusted pages would otherwise drive the parent's logged-in
+    # browser.
     class Extension
       include Pikuri::Agent::Extension
 
