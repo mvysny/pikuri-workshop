@@ -16,16 +16,18 @@ module Pikuri
     # before its first message (+pikuri:D_deferred_cap_probe+). It calls
     # {.modalities} at boot, so {Conversation#status} and {Conversation#submit}
     # know which attachments the model refuses before the first turn. The slot
-    # count goes to {Throttle.default}.
+    # count goes to {Throttle.default}, and the agent gets {.facts} — pikuri's
+    # +Agent+ never probes, so its cap and modalities are whatever its
+    # transport states.
     #
     # Stated facts win: a transport's own +context_window+ and +modalities+ are
     # never overwritten by {.facts}.
     #
     # == Implementation details
     #
-    # The asking is pikuri-core's +ContextWindowDetector+, which reaches only a
-    # llama.cpp behind ruby_llm's +:openai+ provider and answers +nil+ fields
-    # for anything else. A failed probe is cached for {RETRY_AFTER}, so a server
+    # {Detector} does the asking; it reaches only a llama.cpp behind ruby_llm's
+    # +:openai+ provider and answers +nil+ fields for anything else. A failed
+    # probe is cached for {RETRY_AFTER}, so a server
     # without +/props+ costs one 404 a minute rather than one a turn. Two turns
     # asking about one uncached model at once probe it once: the second waits
     # for the first.
@@ -39,7 +41,7 @@ module Pikuri
       # @return [Integer]
       RETRY_AFTER = 60
 
-      Props = Pikuri::Agent::ContextWindowDetector::Props
+      Props = Detector::Props
       private_constant :Props
 
       Entry = Data.define(:value, :at)
@@ -54,11 +56,11 @@ module Pikuri
         # The full answer for +transport+'s model, cached.
         #
         # @param transport [Pikuri::Agent::ChatTransport]
-        # @return [Pikuri::Agent::ContextWindowDetector::Props] every field
+        # @return [Detector::Props] every field
         #   +nil+ when the server answered nothing
         def props(transport)
           ask(@props, transport) do
-            Pikuri::Agent::ContextWindowDetector.detect(transport, openai_base: server(transport))
+            Detector.detect(transport, openai_base: server(transport))
           end || Props::NONE
         end
 
@@ -73,7 +75,7 @@ module Pikuri
           return cached if cached
 
           ask(@modalities, transport) do
-            Pikuri::Agent::ContextWindowDetector.detect_modalities(transport, openai_base: server(transport))
+            Detector.detect_modalities(transport, openai_base: server(transport))
           end
         end
 

@@ -85,6 +85,7 @@ module Pikuri
         @agent = nil
         @trifecta = nil
         @next_transport = nil
+        @cap = nil
         @waiting = []
         @run_after_boot = false
         @cancelled_boot = false
@@ -150,13 +151,8 @@ module Pikuri
         end
       end
 
-      # @return [Array<Pikuri::Agent::Control::Interloper::Item>] the messages
-      #   waiting for the agent, in delivery order
-      def pending
-        locked { @agent ? @agent.interloper.peek : @waiting.dup }
-      end
-
-      # Drop every message waiting for the agent.
+      # Drop every message waiting for the agent. Their count is
+      # {Status#pending}, and {Event::PendingChanged} reports each change.
       #
       # @return [Array<Pikuri::Agent::Control::Interloper::Item>] what was dropped
       def discard_pending
@@ -418,7 +414,8 @@ module Pikuri
           # The lookup that loads no model, so #status and #submit know the
           # model's inputs before the first turn.
           Probe.modalities(transport)
-          agent = @build.call(self, transport, history, @cancellable)
+          facts = Probe.facts(transport)
+          agent = @build.call(self, facts, history, @cancellable)
           trifecta = agent.trifecta
         rescue StandardError => e
           agent&.close
@@ -438,6 +435,8 @@ module Pikuri
           @waiting.each { |item| inject(agent, item) }
           @waiting.clear
           @effects << Event::Ready.new(trifecta:)
+          @cap = facts.context_window
+          @effects << Event::ContextCap.new(cap: @cap)
           run = @run_after_boot && !@cancelled_boot && (first || agent.interloper.pending?)
           @run_after_boot = false
           if run
@@ -473,20 +472,21 @@ module Pikuri
         Thread.current.name = "turn #{@id}"
         Thread.current.priority = @priority
         loop do
-          picked, current = locked do
-            picked = @next_transport
-            if picked
-              @transport = picked
+          transport = locked do
+            if @next_transport
+              @transport = @next_transport
               @next_transport = nil
               @effects << Event::ModelPending.new(transport: nil)
             end
             @effects << Event::TurnStarted.new(user_message: message, attachments:)
-            [picked, @transport]
+            @transport
           end
 
           outcome, error = begin
-            probe(current)
-            @agent.run_loop(user_message: message, attachments:, transport: picked)
+            facts = probe(transport)
+            # One door for both: a picked model switches the chat, and the
+            # same model with newly learnt facts is adopted silently.
+            @agent.run_loop(user_message: message, attachments:, transport: facts)
             [:completed, nil]
           rescue Pikuri::Agent::Control::Cancellable::Cancelled
             [:cancelled, nil]
@@ -518,16 +518,26 @@ module Pikuri
         release(agent) if agent
       end
 
-      # Learn the turn's model before its first request, and size its server's
-      # permits from the slot count. After {Event::TurnStarted}, so a UI shows
-      # the message during a router's cold load. Skipped when nothing is left
-      # to learn.
+      # Learn the turn's model before its first request: size its server's
+      # permits from the slot count, and announce the cap when it is news.
+      # After {Event::TurnStarted}, so a UI shows the message during a router's
+      # cold load. The asking is skipped when nothing is left to learn.
+      #
+      # @return [Pikuri::Agent::ChatTransport] +transport+ with what is known
       def probe(transport)
         server = Probe.server(transport)
-        return if transport.context_window && transport.modalities && Throttle.sized?(server)
-
-        slots = Probe.props(transport).total_slots
-        Throttle.default(server, slots) if slots && Throttle.key_for(server)
+        unless transport.context_window && transport.modalities && Throttle.sized?(server)
+          slots = Probe.props(transport).total_slots
+          Throttle.default(server, slots) if slots && Throttle.key_for(server)
+        end
+        facts = Probe.facts(transport)
+        locked do
+          unless facts.context_window == @cap
+            @cap = facts.context_window
+            @effects << Event::ContextCap.new(cap: @cap)
+          end
+        end
+        facts
       end
 
       # Snapshot the history and hand it to +on_turn_end+, on the turn's

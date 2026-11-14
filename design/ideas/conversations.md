@@ -1,9 +1,8 @@
 # A slim `Agent` and `pikuri-conversations`: one design, two layers
 
 Status: **shape settled; built: `HistoryFile`, `Store`, the scheduler (`Conversations`,
-`Conversation`), the `Throttle` and the `Probe`'s cache — the probe still asks through core's
-detector. Not built: the titler, and moving the detector, which needs one pikuri change (see
-*What the build taught*).** pikuri has done the rest of its half: an `Agent` is one conversation, resumed through
+`Conversation`), the `Throttle` and the `Probe` with its `Detector`, moved here from core
+(pikuri `76663ef`, `0e5882f`). Not built: the titler.** pikuri has done its half: an `Agent` is one conversation, resumed through
 `Agent.new(history:)` (`pikuri:D_agent_is_one_conversation`); `History` is in-memory only; every
 agent owns its `Interloper`; and `Agent.new(around_request:)` replaced `ServerPermits`, which is
 deleted — the throttle is ours to build. Grew out of pikuri's early-cancel fix
@@ -60,7 +59,7 @@ joins them in one `on_turn_end` line.
 |---|---|---|---|
 | `ServerPermits` + `RequestThrottle` | deleted from pikuri (`8d764bd`) | `Conversations::Throttle`, itself the `Agent.new(around_request:)` hook — **built** | only N concurrent trees need it |
 | sizing permits from `/props` `total_slots` | pikuri's probe did it | `Conversations::Probe`, once per server+model, at a turn's start — **built** | pikuri's probe no longer seeds slots |
-| `ContextWindowDetector`, `ChatTransport#with_detected_modalities` | pikuri-core | `Conversations::Probe`, its only caller — **waits on pikuri** | its future is more servers (vLLM's `max_model_len`, Ollama's `/api/show`), not explaining better; a bin states its cap or shows none |
+| `ContextWindowDetector`, `ChatTransport#with_detected_modalities`, `Event::ContextCap` | dropped from pikuri (`76663ef`, `0e5882f`) | `Conversations::Probe::Detector`, and `Conversations::Event::ContextCap` announcing what it learns — **built** | its future is more servers (vLLM's `max_model_len`, Ollama's `/api/show`), not explaining better; a bin states its cap or shows none |
 | `History`, the value | pikuri-core | stays | `export_history` / `Agent.new(history:)` speak it |
 | its JSON, `save(dir)` / `load(dir)`, `Attachment#stored_name` | dropped from pikuri (`5c87269`) | `Conversations::HistoryFile` — **built** (`D_history_file`) | storing is the host's; a deployment that never resumes shouldn't carry a format |
 | the folder of conversations: ids, `meta.json`, list, retitle, delete, upload stash | webui `Store`, Puri `Store` | `Conversations::Store` — **built** | two copies of one format; a bin holds one conversation |
@@ -109,7 +108,7 @@ agent = Pikuri::Agent.new(transport:, system_prompt:, cancellable: nil, id: '', 
   c.add_tool(...); c.add_listener(...); c.add_extension(...); c.on_close { ... }
 end
 answer = agent.run_loop('how do I keep an avocado?', attachments: [])  # => final assistant text
-agent.transport = other                 # switch, between turns only
+agent.run_loop('and now?', transport: other)  # a switch, or the same model's newly learnt facts
 ```
 
 **Constructor**
@@ -129,11 +128,11 @@ agent.transport = other                 # switch, between turns only
 
 | Method | Behaviour | Change |
 |---|---|---|
-| `run_loop(user_message = nil, attachments: [])` | one turn: drain the `Interloper`, append the message, `complete`; blank = bare turn | positional message; **returns the final assistant text** (replaces `last_assistant_content`, whose three callers read it right after); **`transport:` kwarg dropped** — not done in pikuri yet |
-| `transport` / `transport=` | the current transport; the writer switches between turns, emits `ModelSwitched` + `ContextCap`. A transport differing only in stated facts (cap, modalities) emits `ContextCap` alone | **new writer** — replaces `run_loop(transport:)`, so a switch is never lost to a turn that dies before its top |
+| `run_loop(user_message = nil, attachments: [], transport: nil)` | one turn: drain the `Interloper`, append the message, `complete`; blank = bare turn | positional message; **returns the final assistant text** (replaces `last_assistant_content`, whose three callers read it right after) — not done in pikuri yet |
+| `transport:` on `run_loop` | another model switches (`ModelSwitched`); the same model differing only in stated facts (cap, modalities) is adopted silently — **done** (`76663ef`, `0e5882f`). A `transport=` writer was rejected (`pikuri:D_deferred_cap_probe`): the gem validates attachments before the turn, so a switch is never lost | — |
 | `export_history`, `close`, `trifecta` | as today | `clear_conversation` and `load_history!` **gone — done** (`a31c2eb`) |
 | `tools`, `sub_agent_tools`, `extensions`, `cancellable`, `interloper`, `streaming` | readers, as today | — |
-| `context_window_cap`, `modalities` | — | **dropped**: `transport.context_window` / `transport.modalities` |
+| `context_window_cap`, `modalities` | — | **dropped — done** (`76663ef`): `transport.context_window` / `transport.modalities` |
 | `model`, `system_prompt`, `last_assistant_content` | — | **dropped**: no non-spec callers, or `run_loop`'s return |
 
 Errors unchanged: `Cancellable::Cancelled`, `EmptyTurnError`, `UnsupportedAttachmentError` (from the
@@ -144,8 +143,8 @@ transport's stated modalities; unknown goes out).
 `request.ruby_llm` event. `around`, not a `before`/`after` pair: a permit must be released when a
 request raises, is cancelled, or streams for 20 s. On the agent rather than the transport, so a
 model switch can't drop it and a fresh lambda can't break `ChatTransport#==`; `api_base` is
-handed per call because a switch may change server. The throttle is one object per list, not per
-server: it looks up its permits by `api_base`. Not inherited by itself: `SubAgentTool` passes
+handed per call because a switch may change server. The throttle is one process-wide module,
+`Conversations::Throttle`: it looks up its permits by `api_base`. Not inherited by itself: `SubAgentTool` passes
 `parent.around_request`. The MCP boot passes take it from the host:
 `Mcp::Catalog.build(registry, transport:, around_request:)` hands it to each `Thinker`'s one-shot
 agent (`D_mcp_catalog_and_connections`); a host's titler must do the same.
@@ -200,7 +199,7 @@ gem's lock.
 | `submit(text = nil, attachments: [])` | `:new`: boot, queue it → `:started`. `:booting`: queued → `:started`. `:idle`: start a turn → `:started`. `:running`: inject → `:injected`. Blank: a bare turn delivering pending injections, `:ignored` when none are (always while running). `:closed` → `:discarded`. Raises `UnsupportedAttachmentError` synchronously when the next model's modalities — stated, or learnt by the `Probe` — refuse one |
 | `inject_system(text)` | inject a reference block; if idle, start a bare turn to deliver it (tui/pikuri-code `/skill`). Same answers as `submit` |
 | `cancel` | `:booting`: cancels construction (the token reaches MCP synthesis). `:running`: `cancel!`. Undelivered injections **stay** (webui's `D_interloper_mid_loop_input`) — the host decides: a blank `submit` re-sends them (tui), `discard_pending` drops them (Puri) |
-| `pending` / `discard_pending` | snapshot / take-and-clear of the undelivered `Interloper::Item`s |
+| `discard_pending` | take-and-clear of the undelivered `Interloper::Item`s; their count is `status.pending`. No snapshot: pikuri dropped `Interloper#peek`, as no host read it |
 | `switch_model(transport)` | last-wins; re-picking the current model clears the pending one. Applied at the next turn's start through `run_loop(transport:)`. → `:selected` / `:discarded` |
 | `clear` | `:idle` → close the agent and build a fresh one, extensions and all (`pikuri:D_agent_is_one_conversation`) → `:cleared`; running → `:busy` |
 | `close(force: false)` | idle or `:new` → close the agent (off-thread), `:closed`. Booting or running → `:busy`, or with `force` cancel, `:closing`, close once it unwinds. Once closing, `on_turn_end` is **not** called — a delete never races a save. `Closed` follows the agent's release; `wait_closed(timeout)` blocks for it |
@@ -225,9 +224,10 @@ message) is an ordinary turn, not a `UserTurn(mid_loop: true)`.
 2. Name the thread `turn <id>`, set its priority.
 3. Take the pending model switch; emit `TurnStarted`; `Probe.props` the turn's transport (cached
    per server+model, seeds `Throttle.default` from `total_slots`; skipped when cap and
-   modalities are stated and the server is sized). Here, not at boot, for
-   `pikuri:D_deferred_cap_probe`'s reason: on a router it loads the model.
-4. `agent.run_loop(user_message:, attachments:, transport: picked)`, rescuing `Cancelled` and
+   modalities are stated and the server is sized), and emit `ContextCap` if the cap is news.
+   Here, not at boot, for `pikuri:D_deferred_cap_probe`'s reason: on a router it loads the model.
+4. `agent.run_loop(user_message:, attachments:, transport: Probe.facts(transport))` — a picked
+   model switches, newly learnt facts are adopted silently — rescuing `Cancelled` and
    `StandardError` into an outcome.
 5. Unless closing: `on_turn_end.(conv, agent.export_history)` — on the worker, off the lock,
    before going idle, for every outcome.
@@ -237,7 +237,8 @@ message) is an ordinary turn, not a `UserTurn(mid_loop: true)`.
 **Conversation events** (alongside the agent's, on the conversation's listener, never under the
 gem's lock): `Booting`, `Ready(trifecta:)`, `BootFailed(error:)`,
 `TurnStarted(user_message:, attachments:)` (before the probe, so a UI shows the message during a
-cold model load), `PendingChanged(count:)` (the gem owns `Interloper#on_change`),
+cold model load), `ContextCap(cap:)` (at boot, then when a turn's probe or a picked model changes
+it — pikuri's core announces none), `PendingChanged(count:)` (the gem owns `Interloper#on_change`),
 `ModelPending(transport:)` (`nil` = cleared), `CancelRequested`,
 `TurnEnded(outcome: :completed|:cancelled|:failed, error:, restarting:)` (after `on_turn_end`),
 `Closed`.
@@ -340,18 +341,10 @@ Built against pikuri `3aed7e2` with no pikuri change:
   when a pick is pending, and validates attachments first — the only thing `run_loop` does ahead
   of applying the switch — so the switch can't be lost.
 - **`run_loop` returning the answer isn't needed**: the gem reads `export_history`.
-- **Moving the detector does need pikuri**, one change: a transport that differs only in stated
-  facts (`context_window`, `modalities`) must not be a model switch. Today `apply_transport!`
-  compares structurally, so handing the agent `Probe.facts(transport)` after its first-turn
-  probe emits a spurious `ModelSwitched` and rebuilds its connection. Until then the gem hands
-  the agent the host's transport untouched, and the agent still probes for its own cap — one
-  extra `/props` per agent build or switch, the second hitting an already-loaded model. The
-  pikuri change, then: (1) `run_loop(transport:)` (or a `transport=` writer) treats a fact-only
-  difference as a `ContextCap`, not a switch; (2) `Agent` never probes — its cap and modalities
-  are its transport's, `{}` when unstated; (3) `ContextWindowDetector`,
-  `ChatTransport#with_detected_modalities` and `D_deferred_cap_probe` leave core, and
-  `SubAgentTool` reads `parent.transport.context_window`. The workshop side then moves the
-  detector under `Probe` and hands the agent `Probe.facts` at boot and at each turn's start.
+- **Moving the detector needed one pikuri change**, now done (`76663ef`, `0e5882f`): a transport
+  differing only in stated facts is adopted silently rather than switched to, so the gem hands
+  the agent `Probe.facts(transport)` at boot and at each turn's start; `Agent` never probes, and
+  core announces no cap — `Conversations::Event::ContextCap` does.
 - **A small duplication**: `submit`'s synchronous `UnsupportedAttachmentError` re-states
   `Agent`'s private MIME-family → modality table (three entries). A public
   `ChatTransport#refusal(attachment)` in pikuri would remove it; not worth a pikuri change alone.
@@ -381,7 +374,7 @@ Built against pikuri `3aed7e2` with no pikuri change:
 ## Done when
 
 - pikuri's `Agent` has the shape above, its bins and the workshop's bins follow, and pikuri's
-  `D_llm_request_throttle` (done) and `D_deferred_cap_probe` say where those moved.
+  `D_llm_request_throttle` and `D_deferred_cap_probe` say where those moved (both done).
 - `pikuri-conversations` holds the scheduler, the throttle, the `/props` probe, `HistoryFile`,
   `Store` and `Titler`; pikuri-tui
   (first — one conversation, the cheapest test), then pikuri-webui, then Puri drive their

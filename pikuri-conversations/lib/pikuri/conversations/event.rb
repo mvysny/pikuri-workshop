@@ -16,7 +16,7 @@ module Pikuri
     #
     # The agent's events narrate a turn from inside it; these narrate the
     # conversation around the turns — booting, a turn starting and ending, the
-    # pending count, a model picked for later. Never emitted under the
+    # pending count, a model picked for later, the context window learnt. Never emitted under the
     # conversation's lock, so a listener may take its host's own lock, and may
     # call back into the conversation.
     #
@@ -51,6 +51,19 @@ module Pikuri
       BootFailed = Data.define(:error) do
         # @return [String]
         def to_s = "Agent failed to boot: #{error.class}: #{error.message}"
+      end
+
+      # The context window the conversation's turns run against: once at boot,
+      # then whenever it changes — learnt by a turn's {Probe}, or a different
+      # model picked. Precedes the turn's first +Tokens+, so a readout of
+      # +used/cap+ never pairs a count with a stale cap.
+      #
+      # @!attribute [r] cap
+      #   @return [Integer, nil] in tokens; +nil+ when neither the transport
+      #     states one nor the server told
+      ContextCap = Data.define(:cap) do
+        # @return [String]
+        def to_s = cap ? "Context window: #{cap} tokens" : 'Context window unknown'
       end
 
       # A turn is starting. Emitted before the agent's own +UserTurn+.

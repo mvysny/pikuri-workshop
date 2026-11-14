@@ -33,8 +33,7 @@ empty.
   runs from the workshop; it should name pikuri's book.
 - **`pikuri-wire-check`** runs from the workshop only as
   `BUNDLE_GEMFILE=$PWD/Gemfile ruby "$(bundle show pikuri-core)/bin/pikuri-wire-check"` (it pins
-  pikuri's own Gemfile), and its phase 1 logs a spurious `ContextWindowDetector` WARN probing
-  its fake `wire-check.invalid` server.
+  pikuri's own Gemfile).
 
 ## Seen in runs, not yet looked at
 

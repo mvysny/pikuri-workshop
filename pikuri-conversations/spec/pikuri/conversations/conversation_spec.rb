@@ -69,7 +69,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
 
   # The probe dials /props for real; every example answers it here instead, and
   # records what was asked.
-  let(:detector) { Pikuri::Agent::ContextWindowDetector }
+  let(:detector) { Pikuri::Conversations::Probe::Detector }
   let(:probed) { Queue.new }
   let(:props) { detector::Props::NONE }
   let(:looked_up) { nil }
@@ -166,7 +166,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
     gate.release!
 
     assert_equal :cancelled, recorder.await(Event::TurnEnded).outcome
-    assert_equal ['actually, second'], conv.pending.map(&:content)
+    assert_equal 1, conv.status.pending
     assert_equal :started, conv.submit
     assert_equal :completed, recorder.await(Event::TurnEnded, nth: 2).outcome
     assert_equal 'done', conv.history.messages.last.content
@@ -344,9 +344,26 @@ RSpec.describe Pikuri::Conversations::Conversation do
 
         assert_equal({ 'http://throttled.invalid' => 2 }, Pikuri::Conversations::Throttle.sizes)
         assert_equal 16_384, conv.status.model.context_window
-        # The gem's own probe, then the agent's: pikuri-core still probes for
-        # its cap until the detector leaves it.
-        assert_equal [[:detect, 'fake-model']] * 2, drain(probed)
+        assert_equal [[:detect, 'fake-model']], drain(probed)
+        # Unknown at boot, learnt at the first turn ahead of its tokens, not
+        # repeated at the second.
+        assert_equal [nil, 16_384], recorder.all(Event::ContextCap).map(&:cap)
+        first_tokens = recorder.events.index { _1.is_a?(Pikuri::Agent::Event::Tokens) }
+        assert_operator recorder.events.index(Event::ContextCap.new(cap: 16_384)), :<, first_tokens
+        # The agent adopted the learnt cap as the same model, not a switch.
+        assert_empty recorder.all(Pikuri::Agent::Event::ModelSwitched)
+      end
+
+      it "announces a picked model's cap at its first turn" do
+        first = Pikuri::Testing.fake_transport(api_base: server, model: 'a', context_window: 4096) { |llm| llm.reply('a') }
+        second = Pikuri::Testing.fake_transport(api_base: server, model: 'b', context_window: nil) { |llm| llm.reply('b') }
+        conv = open(first)
+        recorder.await(Event::Ready)
+        conv.switch_model(second)
+        conv.submit('hi')
+        recorder.await(Event::TurnEnded)
+        assert_equal [4096, 16_384], recorder.all(Event::ContextCap).map(&:cap)
+        assert_equal 1, recorder.all(Pikuri::Agent::Event::ModelSwitched).size
       end
 
       it 'leaves a host-set limit alone' do

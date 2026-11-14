@@ -111,7 +111,7 @@ RSpec.describe Pikuri::Skill::Extension do
       returned = ext.schedule_load_skill('sample')
 
       assert_same sample_skill, returned
-      pending = interloper.peek
+      pending = interloper.drain!
       assert_equal 1, pending.size
       assert_equal :system, pending.first.kind
       assert pending.first.content.include?('<skill name="sample"'), pending.first.content
@@ -123,7 +123,7 @@ RSpec.describe Pikuri::Skill::Extension do
       ext.configure(configurator)
 
       assert_raises(KeyError) { ext.schedule_load_skill('no-such-skill') }
-      assert_equal [], interloper.peek
+      assert_equal [], interloper.drain!
     end
   end
 
@@ -223,7 +223,7 @@ RSpec.describe Pikuri::Skill::Extension do
 
       ext.announce([gated_skill], 'lib/a.rb')
 
-      pending = interloper.peek
+      pending = interloper.drain!
       assert_equal 1, pending.size
       assert_equal :system, pending.first.kind
       assert pending.first.content.include?('<name>gated</name>'), pending.first.content
@@ -240,7 +240,7 @@ RSpec.describe Pikuri::Skill::Extension do
 
       ext.announce([], 'lib/a.rb')
 
-      assert_equal [], interloper.peek
+      assert_equal [], interloper.drain!
     end
   end
 end

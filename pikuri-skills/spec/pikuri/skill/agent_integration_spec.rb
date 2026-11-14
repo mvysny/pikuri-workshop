@@ -126,7 +126,7 @@ RSpec.describe 'Pikuri::Skill::Extension agent integration' do
 
     ext.schedule_load_skill('sample')
 
-    pending = agent.interloper.peek
+    pending = agent.interloper.drain!
     assert_equal 1, pending.size
     assert_equal :system, pending.first.kind
     assert pending.first.content.include?('<skill name="sample"'), pending.first.content

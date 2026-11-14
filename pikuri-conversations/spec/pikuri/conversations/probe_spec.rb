@@ -2,10 +2,10 @@
 
 require 'pikuri/testing'
 
-# The detector is pikuri-core's; these stub it and check what the cache in front
-# of it does.
+# These stub the Detector (its own spec drives it over HTTP) and check what the
+# cache in front of it does.
 RSpec.describe Pikuri::Conversations::Probe do
-  let(:detector) { Pikuri::Agent::ContextWindowDetector }
+  let(:detector) { Pikuri::Conversations::Probe::Detector }
   let(:props) { detector::Props }
   let(:calls) { [] }
   let(:answer) { props.new(n_ctx: 16_384, total_slots: 4, modalities: { vision: true }) }
