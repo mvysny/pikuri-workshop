@@ -28,7 +28,8 @@ module Pikuri
     # 28-skill catalog the duplicate ran ~400 resident tokens.
     #
     # - {format_skill} — one skill's body block, injected when the skill is
-    #   loaded (by the +skill+ tool or a host-driven load):
+    #   loaded (by the +skill+ tool or a host-driven load, which opens its
+    #   second line with "The user loaded this skill."):
     #
     #     <skill name="pdf-tools" location="/repo/.pikuri/skills/pdf-tools/SKILL.md">
     #     Sidecar paths in this skill (e.g. scripts/, references/) are relative to /repo/.pikuri/skills/pdf-tools.
@@ -103,13 +104,19 @@ module Pikuri
       # +location+ so the model resolves relative sidecar paths against the
       # skill's directory via the +read+ tool.
       #
+      # +by_user:+ adds "The user loaded this skill." under the wrapper, for a
+      # load the human asked for (+/pdf-tools+): the block arrives with no
+      # +skill+ call of the model's ahead of it, and that the human picked it
+      # is the strongest cue to apply it.
+      #
       # @param skill [Pikuri::Skill::Catalog::Skill]
+      # @param by_user [Boolean] whether the human, not the model, loaded it
       # @return [String]
-      def format_skill(skill)
+      def format_skill(skill, by_user: false)
         base_dir = File.dirname(skill.location)
         <<~OUT
           <skill name="#{escape_xml(skill.name)}" location="#{escape_xml(skill.location)}">
-          Sidecar paths in this skill (e.g. scripts/, references/) are relative to #{base_dir}.
+          #{'The user loaded this skill. ' if by_user}Sidecar paths in this skill (e.g. scripts/, references/) are relative to #{base_dir}.
 
           #{skill.body}
           </skill>

@@ -115,6 +115,7 @@ RSpec.describe Pikuri::Skill::Extension do
       assert_equal 1, pending.size
       assert_equal :system, pending.first.kind
       assert pending.first.content.include?('<skill name="sample"'), pending.first.content
+      assert pending.first.content.include?('The user loaded this skill.'), pending.first.content
       assert pending.first.content.include?('do the thing.'), pending.first.content
     end
 

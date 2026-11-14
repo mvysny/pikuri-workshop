@@ -362,7 +362,7 @@ where grok-build routes both kinds through one mechanism), and pikuri declines t
 auto-registration — the two-registry split (`D_slash_commands`) keeps a model-invoked, advertised
 skill apart from a human-invoked, never-advertised command, because collapsing them would put a body
 pikuri charges per *use* onto a surface charged per *install*. Both of pikuri's doors render through
-the same `Renderer.format_skill`.
+the same `Renderer.format_skill`, the human's with one line saying the user loaded it.
 
 ### Frontmatter: the six standard fields, and the nine invented ones
 

@@ -108,8 +108,9 @@ module Pikuri
 
       # Schedule a skill for injection into the conversation on the host's
       # own initiative — the UI-driven counterpart of the +skill+ tool. Looks
-      # +name+ up in the catalog, renders its body identically to the tool,
-      # and *enqueues* it on the interloper as a reference block.
+      # +name+ up in the catalog, renders its body as the tool does but saying
+      # the user loaded it, and *enqueues* it on the interloper as a reference
+      # block.
       #
       #   ext   = Pikuri::Skill::Extension.new(catalog: catalog, root: project_root)
       #   agent = Pikuri::Agent.new(...) { |c| c.add_extension ext }
@@ -142,7 +143,7 @@ module Pikuri
         skill = @activation.get(name)
         raise KeyError, "no skill named #{name.inspect} in the catalog" if skill.nil?
 
-        @interloper.inject_system_message(Pikuri::Skill::Renderer.format_skill(skill))
+        @interloper.inject_system_message(Pikuri::Skill::Renderer.format_skill(skill, by_user: true))
         skill
       end
 

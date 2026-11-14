@@ -131,6 +131,14 @@ RSpec.describe Pikuri::Skill::Renderer do
       assert out.include?('</skill>'), out
     end
 
+    it 'says the user loaded it only when told so' do
+      skill = skill(name: 'pdf-tools', location: '/repo/.pikuri/skills/pdf-tools/SKILL.md', body: 'run pdftotext')
+
+      refute described_class.format_skill(skill).include?('The user loaded this skill.')
+      lines = described_class.format_skill(skill, by_user: true).lines
+      assert lines[1].start_with?('The user loaded this skill. Sidecar paths'), lines[1]
+    end
+
     it 'escapes XML metacharacters in the wrapper name/location attributes' do
       out = described_class.format_skill(
         skill(name: 'weird"<name>', location: '/tmp/a&b/SKILL.md')
