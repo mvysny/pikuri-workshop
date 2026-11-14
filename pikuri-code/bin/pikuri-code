@@ -125,6 +125,14 @@ if Dir.pwd != project_root.to_s
   Dir.chdir(project_root.to_s)
 end
 
+# Asks one of this bin's boot questions, before any agent exists. Anything but
+# y/yes, EOF included, is no.
+def yes?(question, detail)
+  puts question, detail
+  print '[y/N] '
+  %w[y yes].include?($stdin.gets.to_s.strip.downcase)
+end
+
 # The private-data declaration, and the only trifecta leg the framework
 # cannot determine for itself: nothing distinguishes ~/work/my/pikuri from
 # ~/work/client-payroll by inspection, because sensitivity is a property of
@@ -141,16 +149,12 @@ end
 # exactly the repo that most wants the loud one.
 private_repo =
   $stdin.tty? &&
-  Pikuri::Workspace::Confirmer::Terminal.new.confirm?(
-    request: Pikuri::Workspace::Confirmer::Request.new(
-      question: 'Does this project hold anything you would mind leaking ' \
-                '(credentials, client work, unpublished code)?',
-      detail: "#{project_root}\n\nThis sets one line of the trifecta report printed at " \
-              'startup; it blocks nothing either way. Say yes and the report will tell you ' \
-              'whenever this agent simultaneously holds private data, attacker-authored ' \
-              'content, and a way to send bytes out.'
-    )
-  )
+  yes?('Does this project hold anything you would mind leaking ' \
+       '(credentials, client work, unpublished code)?',
+       "#{project_root}\n\nThis sets one line of the trifecta report printed at " \
+       'startup; it blocks nothing either way. Say yes and the report will tell you ' \
+       'whenever this agent simultaneously holds private data, attacker-authored ' \
+       'content, and a way to send bytes out.')
 
 # The bytes-are-yours declaration, and the third of this bin's three trust
 # questions — which are genuinely three: this one asks whether the *sources*
@@ -200,15 +204,11 @@ elsif !unreviewed_bundles.empty?
 end
 repo_sources_are_mine =
   project_ships_bundles && unreviewed_bundles&.empty? && confirm_enabled && $stdin.tty? &&
-  Pikuri::Workspace::Confirmer::Terminal.new.confirm?(
-    request: Pikuri::Workspace::Confirmer::Request.new(
-      question: 'Did you write the files under this directory yourself?',
-      detail: "#{project_root}\n\nSay yes ONLY if nothing here arrived with a clone — no " \
-              'vendored dependencies, no fetched PR branch, no pasted bundle. This grades ' \
-              'the skills loaded from this repo in the trifecta report; it blocks nothing, ' \
-              'and the file tools keep reading your dependency caches either way.'
-    )
-  )
+  yes?('Did you write the files under this directory yourself?',
+       "#{project_root}\n\nSay yes ONLY if nothing here arrived with a clone — no " \
+       'vendored dependencies, no fetched PR branch, no pasted bundle. This grades ' \
+       'the skills loaded from this repo in the trifecta report; it blocks nothing, ' \
+       'and the file tools keep reading your dependency caches either way.')
 
 # Skill catalog. Two search bases — the project root and +Dir.home+ — under
 # which the catalog itself scans for +.pikuri/skills+ / +.claude/skills+ /
@@ -341,16 +341,12 @@ confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikur
 # already auto-approve everything).
 trusted_repo =
   confirm_enabled && $stdin.tty? &&
-  confirmer.confirm?(
-    request: Pikuri::Workspace::Confirmer::Request.new(
-      question: "Trust this directory's git config? Read-only git " \
-                '(status/diff/log/show/blame/…) will then run WITHOUT confirmation.',
-      detail: "#{project_root}\n\nSay yes ONLY if you control this repo's " \
-              '.git/config and committed .gitattributes. A hostile diff driver ' \
-              "(diff.external / textconv) can make `git diff` execute arbitrary " \
-              'code — and with the sandbox network shared, exfiltrate. Default is no.'
-    )
-  )
+  yes?("Trust this directory's git config? Read-only git " \
+       '(status/diff/log/show/blame/…) will then run WITHOUT confirmation.',
+       "#{project_root}\n\nSay yes ONLY if you control this repo's " \
+       '.git/config and committed .gitattributes. A hostile diff driver ' \
+       "(diff.external / textconv) can make `git diff` execute arbitrary " \
+       'code — and with the sandbox network shared, exfiltrate. Default is no.')
 code_passive_detector = confirm_enabled ? Pikuri::Code::Bash::PassiveCommandDetector.new(allow_git: trusted_repo) : nil
 
 # Bubblewrap sandbox wraps every Bash subprocess with a filesystem view
