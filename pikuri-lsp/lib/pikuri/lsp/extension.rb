@@ -15,6 +15,13 @@ module Pikuri
     # teardown — so a host that ships the gem without config costs the model
     # nothing.
     #
+    # **Not reusable: each agent gets its own instance.** Build it inside the
+    # per-agent block, as above, never once outside and passed to every agent: a
+    # second +configure+ raises. A shared instance would hand two agents one
+    # {Servers}, whose children speak to one client each (+D_lsp_per_agent+),
+    # and the first agent's close would kill the second's servers. Build a new
+    # one per agent from the same {Registry}, which is immutable.
+    #
     # == Implementation details
     #
     # There is deliberately no +trifecta_contribution+: the legs belong to the
@@ -33,6 +40,7 @@ module Pikuri
         @filesystem = filesystem
         @servers = nil
         @tool = nil
+        @configured = false
       end
 
       # @return [Servers, nil] the runtime built in +configure+, or +nil+ when the
@@ -44,12 +52,17 @@ module Pikuri
       #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
+      # @raise [RuntimeError] when this instance already configured an agent.
       def configure(c)
+        raise 'Lsp::Extension already configured an agent; build one per agent' if @configured
+
+        @configured = true
         return if @registry.empty?
 
-        @servers = Servers.new(registry: @registry, root: @filesystem.project_root,
-                               cancellable: c.cancellable)
-        c.on_close { @servers.close }
+        servers = Servers.new(registry: @registry, root: @filesystem.project_root,
+                              cancellable: c.cancellable)
+        @servers = servers
+        c.on_close { servers.close }
         @tool = LspTool.new(servers: @servers, filesystem: @filesystem,
                             cancellable: c.cancellable)
         c.add_tool @tool

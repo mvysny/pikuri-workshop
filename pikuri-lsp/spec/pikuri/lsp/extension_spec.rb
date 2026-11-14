@@ -65,6 +65,20 @@ describe Pikuri::Lsp::Extension do
     end
   end
 
+  it 'refuses a second agent, since a shared instance would share its servers' do
+    wired.call do |ext|
+      error = assert_raises(RuntimeError) { ext.configure(configurator.call) }
+
+      assert_includes error.message, 'build one per agent'
+    end
+  end
+
+  it 'refuses a second agent even on an empty registry' do
+    wired.call(Pikuri::Lsp::Registry::EMPTY) do |ext|
+      assert_raises(RuntimeError) { ext.configure(configurator.call) }
+    end
+  end
+
   it 'is a no-op on an empty registry, so a host that configures nothing wires no tool' do
     wired.call(Pikuri::Lsp::Registry::EMPTY) do |ext, c|
       assert_empty c.tools
