@@ -95,6 +95,8 @@ module Pikuri
         @waiting = []
         @run_after_boot = false
         @cancelled_boot = false
+        # Bumped by a clear while booting: a build for an older one is stale.
+        @boot_generation = 0
         @closing = false
         @agent_released = false
       end
@@ -194,12 +196,15 @@ module Pikuri
       # Everything outside the history goes with the old agent too — a task
       # list, activated skills, an MCP server's state (+pikuri:D_agent_is_one_conversation+).
       #
-      # @return [Symbol] +:cleared+, +:busy+ while booting or running, or
+      # A clear while booting starts that boot over from the empty history,
+      # on the same thread, so two agents never exist at once.
+      #
+      # @return [Symbol] +:cleared+, +:busy+ while a turn runs, or
       #   +:discarded+ when closed
       def clear
         locked do
           next :discarded if closed?
-          next :busy unless %i[new idle].include?(@state)
+          next :busy if @state == :running
 
           old = @agent
           dropped = old ? old.interloper.size : @waiting.size
@@ -209,7 +214,11 @@ module Pikuri
           @history = nil
           @effects << Event::Cleared.new
           @effects << Event::PendingChanged.new(count: 0) if dropped.positive?
-          if old
+          if @state == :booting
+            @boot_generation += 1
+            @run_after_boot = false
+            @effects << Event::Booting.new
+          elsif old
             old.interloper.on_change = nil
             start_boot(retiring: old)
           end
@@ -427,60 +436,77 @@ module Pikuri
       end
 
       def run_boot
-        transport, history = locked do
+        transport = locked do
           if @next_transport
             @transport = @next_transport
             @next_transport = nil
             @effects << Event::ModelPending.new(transport: nil)
           end
-          [@transport, @history]
+          @transport
         end
         begin
           # The lookup that loads no model, so #status and #submit know the
           # model's inputs before the first turn.
           Probe.modalities(transport)
-          # Closed during the probe (a dead server's connect timeout, say): an
-          # agent built now would only be closed again.
-          return release(nil) if locked { @state = :closed if @closing }
-
-          facts = Probe.facts(transport)
-          agent = @build.call(self, facts, history, @cancellable)
-          trifecta = agent.trifecta
         rescue StandardError => e
-          agent&.close
           return boot_failed(e)
         end
+        facts = Probe.facts(transport)
 
-        first = nil
-        outcome = locked do
-          if @closing
-            @state = :closed
-            next :close
+        loop do
+          # Read after the probe, the long wait (a dead server's connect
+          # timeout): a clear landing there costs no rebuild, and a close
+          # builds nothing.
+          closing, history, generation = locked do
+            @state = :closed if @closing
+            [@closing, @history, @boot_generation]
           end
-          @agent = agent
-          @trifecta = trifecta
-          agent.interloper.on_change = method(:pending_changed)
-          first = @waiting.pop if @waiting.last&.kind == :user
-          @waiting.each { |item| inject(agent, item) }
-          @waiting.clear
-          @effects << Event::Ready.new(trifecta:)
-          @cap = facts.context_window
-          @effects << Event::ContextCap.new(cap: @cap)
-          run = @run_after_boot && !@cancelled_boot && (first || agent.interloper.pending?)
-          @run_after_boot = false
-          if run
-            @state = :running
-            @cancellable.reset!
-            next :turn
+          return release(nil) if closing
+
+          begin
+            agent = @build.call(self, facts, history, @cancellable)
+            trifecta = agent.trifecta
+          rescue StandardError => e
+            agent&.close
+            return boot_failed(e)
           end
-          # A cancelled boot keeps its first message pending, like any other.
-          inject(agent, first) if first
-          @state = :idle
-          :idle
-        end
-        case outcome
-        when :close then release(agent)
-        when :turn then run_turns(first&.content, first&.attachments || [])
+
+          first = nil
+          outcome = locked do
+            if @closing
+              @state = :closed
+              next :close
+            end
+            # Cleared mid-build: this agent holds the history the clear dropped.
+            next :stale unless generation == @boot_generation
+
+            @agent = agent
+            @trifecta = trifecta
+            agent.interloper.on_change = method(:pending_changed)
+            first = @waiting.pop if @waiting.last&.kind == :user
+            @waiting.each { |item| inject(agent, item) }
+            @waiting.clear
+            @effects << Event::Ready.new(trifecta:)
+            @cap = facts.context_window
+            @effects << Event::ContextCap.new(cap: @cap)
+            run = @run_after_boot && !@cancelled_boot && (first || agent.interloper.pending?)
+            @run_after_boot = false
+            if run
+              @state = :running
+              @cancellable.reset!
+              next :turn
+            end
+            # A cancelled boot keeps its first message pending, like any other.
+            inject(agent, first) if first
+            @state = :idle
+            :idle
+          end
+          case outcome
+          when :stale then agent.close
+          when :close then release(agent)
+          when :turn then run_turns(first&.content, first&.attachments || [])
+          end
+          break unless outcome == :stale
         end
       end
 

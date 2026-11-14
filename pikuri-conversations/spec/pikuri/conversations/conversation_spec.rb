@@ -426,6 +426,64 @@ RSpec.describe Pikuri::Conversations::Conversation do
     assert_equal [Event::Booting, Event::Cleared, Event::Booting], restarts
   end
 
+  context 'clearing while booting' do
+    let(:resumed) do
+      Pikuri::Agent::History.new(
+        messages: [Pikuri::Agent::History::Message.new(id: Pikuri::Agent::History.mint_id, role: 'user', content: 'earlier')]
+      )
+    end
+    # Each build records the history it was handed, and the first one parks
+    # until released.
+    let(:built) { Queue.new }
+    let(:build_gate) { Queue.new }
+    let(:configure) do
+      histories = built
+      gate = build_gate
+      builds = 0
+      lambda do |c, _conv|
+        builds += 1
+        histories << c.history
+        gate.pop if builds == 1
+      end
+    end
+
+    def restarts = recorder.events.map(&:class).select { [Event::Cleared, Event::Booting, Event::Ready].include?(_1) }
+
+    it 'builds from the cleared history when the clear lands during the probe' do
+      probe_gate = Queue.new
+      detector.define_singleton_method(:detect_modalities) do |*, **|
+        probe_gate.pop
+        nil
+      end
+      build_gate << true
+      conv = open(Pikuri::Testing.fake_transport(modalities: nil), history: resumed)
+
+      assert_equal :cleared, conv.clear
+      probe_gate << true
+      recorder.await(Event::Ready)
+
+      assert_equal [nil], drain(built)
+      assert_nil conv.history
+      assert_equal :idle, conv.status.state
+      assert_equal [Event::Booting, Event::Cleared, Event::Booting, Event::Ready], restarts
+    end
+
+    it 'builds again when the clear lands during the build' do
+      conv = open(Pikuri::Testing.fake_transport, history: resumed)
+      first = built.pop
+
+      assert_equal :cleared, conv.clear
+      build_gate << true
+      recorder.await(Event::Ready)
+      assert conv.wait_settled(5)
+
+      assert_equal ['earlier'], contents(first)
+      assert_equal [nil], drain(built)
+      assert_nil conv.history
+      assert_equal [Event::Booting, Event::Cleared, Event::Booting, Event::Ready], restarts
+    end
+  end
+
   it 'reports a clear with no agent to replace, though nothing boots' do
     resumed = Pikuri::Agent::History.new(
       messages: [Pikuri::Agent::History::Message.new(id: Pikuri::Agent::History.mint_id, role: 'user', content: 'earlier')]
