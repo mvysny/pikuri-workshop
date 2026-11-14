@@ -217,17 +217,20 @@ module Pikuri
       # in flight, if any, ends without +on_turn_end+ — so a host deleting the
       # conversation from disk never races a save.
       #
+      # Refused while a turn runs, or while a boot has a message waiting to
+      # become one. A boot nothing waits on closes: it would lose nothing.
+      #
       # @param force [Boolean] cancel a running turn or boot and close once it
       #   unwinds, rather than refuse
-      # @return [Symbol] +:closed+, +:closing+ (forced; {Event::Closed} follows
-      #   once the turn unwinds) or +:busy+
+      # @return [Symbol] +:closed+, +:closing+ (a turn or boot was under way;
+      #   {Event::Closed} follows once it unwinds) or +:busy+
       def close(force: false)
         agent = nil
         result = locked do
           next :closed if closed?
 
           if %i[booting running].include?(@state)
-            next :busy unless force
+            next :busy unless force || (@state == :booting && @waiting.empty?)
 
             @closing = true
             @cancellable.cancel!
@@ -420,6 +423,10 @@ module Pikuri
           # The lookup that loads no model, so #status and #submit know the
           # model's inputs before the first turn.
           Probe.modalities(transport)
+          # Closed during the probe (a dead server's connect timeout, say): an
+          # agent built now would only be closed again.
+          return release(nil) if locked { @state = :closed if @closing }
+
           facts = Probe.facts(transport)
           agent = @build.call(self, facts, history, @cancellable)
           trifecta = agent.trifecta

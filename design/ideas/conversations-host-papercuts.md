@@ -4,15 +4,15 @@ Status: **collected from pikuri-webui's move onto the gem (2026-11-14); none sch
 is small, and each cost the host a workaround or a paragraph. The bigger find from the same
 migration has its own file: `injection-overtakes-turn-message.md`.
 
-## `close` answers `:busy` while the agent boots
+## `clear` answers `:busy` while the agent boots
 
-A host deleting a conversation calls `close` and refuses the delete on `:busy`. But boot
-includes `Probe.modalities`, a network lookup, so against an unreachable server a freshly
-viewed conversation sits in `:booting` for the length of a connect timeout, and a delete there
-is refused for a turn that does not exist. pikuri-webui works around it with a state read and a
-`close(force: true)`, which races a boot that turns into a turn in between (harmless there: a
-forced close never saves). Options: `close` without `force` closes a booting conversation that
-has no waiting message — nothing would be lost — and answers `:busy` only for a real turn.
+`close` closes a boot no message waits on; `clear` still refuses every boot. A conversation
+opened with `boot: true` sits in `:booting` for its probe — a connect timeout against an
+unreachable server — so a `/clear` typed then is refused, and pikuri-tui logs "clear
+conversation ignored: a turn is in progress" for a turn that does not exist. Not a guard
+away: the boot thread would still install an agent built from the old history, so the fix
+needs the boot to learn it was superseded (a generation counter it checks before installing,
+say) and a fresh boot started behind it.
 
 ## The first events arrive before `open` returns
 

@@ -272,6 +272,46 @@ RSpec.describe Pikuri::Conversations::Conversation do
       assert_equal :closed, conv.close
     end
 
+    context 'while booting' do
+      # The boot parks in its probe until released, as against a server that
+      # does not answer; a transport stating no modalities is what asks.
+      let(:probe_gate) { Queue.new }
+      let(:built) { Queue.new }
+      let(:configure) { ->(_c, _conv) { built << true } }
+      let(:transport) { Pikuri::Testing.fake_transport(modalities: nil) { |llm| llm.reply('hi') } }
+
+      before do
+        gate = probe_gate
+        detector.define_singleton_method(:detect_modalities) do |*, **|
+          gate.pop
+          nil
+        end
+      end
+
+      it 'closes a boot nothing waits on, without building the agent' do
+        conv = open(transport)
+        assert_equal :booting, conv.status.state
+
+        assert_equal :closing, conv.close
+        assert_equal :discarded, conv.submit('hello')
+        probe_gate << true
+
+        recorder.await(Event::Closed)
+        assert built.empty?
+        assert_empty recorder.all(Event::Ready)
+        assert_equal :closed, conv.status.state
+      end
+
+      it 'refuses a boot a message waits on' do
+        conv = open(transport)
+        conv.submit('hello')
+
+        assert_equal :busy, conv.close
+        probe_gate << true
+        assert_equal :completed, recorder.await(Event::TurnEnded).outcome
+      end
+    end
+
     it 'shuts the whole list down, waiting for the agents' do
       open(Pikuri::Testing.fake_transport)
       convs.open(id: 'c2', transport: Pikuri::Testing.fake_transport, listener: Recorder.new, boot: false)
