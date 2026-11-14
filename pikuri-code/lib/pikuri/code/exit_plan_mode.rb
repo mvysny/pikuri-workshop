@@ -44,8 +44,10 @@ module Pikuri
                               'to change and the changes to each, e.g. ' \
                               '"## Plan\n1. Add X to foo.rb\n2. ...".'
           },
-          execute: ->(plan:) {
-            ExitPlanMode.run(read_only: read_only, confirmer: confirmer, plan: plan)
+          wants_context: true,
+          execute: ->(plan:, context:) {
+            ExitPlanMode.run(read_only: read_only, confirmer: confirmer, plan: plan,
+                             cancellable: context.cancellable)
           },
           # No legs: flips a local mode flag (behind a confirmer, which grades
           # nothing here — there is no leg to gate).
@@ -68,10 +70,13 @@ module Pikuri
       # @param read_only [Pikuri::Workspace::ReadOnly]
       # @param confirmer [Pikuri::Workspace::Confirmer]
       # @param plan [String] the LLM-authored plan to show the user
+      # @param cancellable [Pikuri::Agent::Control::Cancellable] the calling
+      #   turn's token, so a cancel reaches a confirmation still waiting on the
+      #   human (+pikuri:D_confirmer_sees_the_cancel+).
       # @return [Pikuri::Tool::Result] +"Plan mode off"+ / +"Plan not
       #   approved"+ once the user has answered, or
       #   {Pikuri::Tool::Result.error} when there was no plan mode to exit
-      def self.run(read_only:, confirmer:, plan:)
+      def self.run(read_only:, confirmer:, plan:, cancellable:)
         unless read_only.active?
           return Pikuri::Tool::Result.error('not in plan mode, so there is nothing to exit. ' \
                                             'Proceed with the work directly.')
@@ -82,7 +87,7 @@ module Pikuri
           detail: plan
         )
 
-        case confirmer.ask(request: request)
+        case confirmer.ask(request: request, cancellable: cancellable)
         in Pikuri::Workspace::Confirmer::Approved
           read_only.deactivate!
           Pikuri::Tool::Result.new(

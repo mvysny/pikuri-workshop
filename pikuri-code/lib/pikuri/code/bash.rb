@@ -193,9 +193,10 @@ module Pikuri
                                "Timeout in seconds. Defaults to #{DEFAULT_TIMEOUT}, " \
                                "max #{MAX_TIMEOUT}, e.g. 300."
           },
-          execute: ->(command:, description: nil, timeout: DEFAULT_TIMEOUT) {
+          wants_context: true,
+          execute: ->(command:, context:, description: nil, timeout: DEFAULT_TIMEOUT) {
             Bash.run(filesystem: filesystem, confirmer: confirmer, sandbox: sandbox,
-                     passive_detector: passive_detector,
+                     passive_detector: passive_detector, cancellable: context.cancellable,
                      command: command, description: description, timeout: timeout)
           },
           # Both inbound axes come from the *sandbox*, not the workspace: the
@@ -234,10 +235,13 @@ module Pikuri
       # @param command [String] raw command as supplied by the LLM
       # @param description [String, nil] optional short label for the user
       # @param timeout [Integer] seconds before SIGTERM is sent
+      # @param cancellable [Pikuri::Agent::Control::Cancellable] the calling
+      #   turn's token, so a cancel reaches a confirmation still waiting on the
+      #   human (+pikuri:D_confirmer_sees_the_cancel+).
       # @return [Pikuri::Tool::Result] the transcript (+"exit 0, 41 lines"+)
       #   once the command ran, or {Pikuri::Tool::Result.error} on a rejection,
       #   a timeout or bad inputs
-      def self.run(filesystem:, confirmer:, command:, description:, timeout:,
+      def self.run(filesystem:, confirmer:, command:, description:, timeout:, cancellable:,
                    sandbox: Sandbox::NONE, passive_detector: nil)
         return Pikuri::Tool::Result.error('empty bash command.') if command.strip.empty?
         return Pikuri::Tool::Result.error("timeout must be >= 1, got #{timeout}") if timeout < 1
@@ -247,7 +251,7 @@ module Pikuri
         # without a prompt; everything else is confirmed by the human.
         unless passive_detector&.passive?(command)
           request = compose_request(command: command, description: description, timeout: timeout)
-          case decision = confirmer.ask(request: request)
+          case decision = confirmer.ask(request: request, cancellable: cancellable)
           in Pikuri::Workspace::Confirmer::Rejected | Pikuri::Workspace::Confirmer::Redirected
             return decision.observation('the bash command')
           in Pikuri::Workspace::Confirmer::Approved

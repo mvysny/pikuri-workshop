@@ -23,7 +23,7 @@ The pikuri entry is the reference column; everything else carries its provenance
   outside a declared root; `Filesystem::AllowAll` is the `--yolo` variant, same accessor surface
   but accepting any path *except* a hardcoded credential denylist (`~/.ssh`, `~/.aws`, `~/.gnupg`,
   `~/.kube`, `~/.docker`, `~/.netrc`, `/etc/shadow`, …). `Workspace::Confirmer` gates
-  state-mutating tools through `#confirm?(request:)`, all presentation owned by the confirmer.
+  state-mutating tools through `#ask(request:, cancellable:)`, all presentation owned by the confirmer.
   `Code::Bash::Sandbox` is the third seam, governing the bash subprocess's filesystem view rather
   than what the LLM observes: `Sandbox::Bubblewrap` composes a `bwrap` argv from
   `workspace.readable` / `writable` plus a curated `/etc` baseline and per-toolchain *content-only*

@@ -2,7 +2,7 @@
 # Checks the doc layer — the files described in AGENTS.md, "Design docs" — and nothing else:
 #   - every D_ / R_ slug cited outside design/ideas/ has its "## " heading in
 #     design/decisions.md / design/research.md; a cite qualified with its repo
-#     (pikuri:D_x, pikuri-workshop:D_x) is that repo's to resolve
+#     (pikuri:D_x, pikuri-webui:D_x) is that repo's to resolve
 #   - every "## D_" heading reads "D_<slug> — <the question>?"; decisions.md carries no
 #     "Superseded by" / "Amended by" / strikethrough / line-initial "Status:"
 #   - root AGENTS.md is under 34 KB — the one size rule: it is loaded every turn
@@ -36,7 +36,7 @@ tracked() { printf '%s\0' "${files[@]}"; }
 # $1 = prefix letter, $2 = the file whose "## <prefix>_<slug>" headings define them.
 check_namespace() {
   local prefix=$1 file=$2 pattern cited defined missing slug
-  pattern="(\\bpikuri(-workshop)?:)?\\b${prefix}_[a-z][a-z0-9_]*"
+  pattern="(\\b[a-z][a-z0-9-]*:)?\\b${prefix}_[a-z][a-z0-9_]*"
   # An idea names the entries it will add once it graduates, so ideas cite nothing yet.
   cited=$(tracked | grep -z -v "^$DESIGN/ideas/" | xargs -0 grep -I -o -h -E "$pattern" 2>/dev/null | grep -v : | sort -u || true)
   if [ ! -f "$file" ]; then

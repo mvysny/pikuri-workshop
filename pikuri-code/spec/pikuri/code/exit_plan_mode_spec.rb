@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 RSpec.describe Pikuri::Code::ExitPlanMode do
+  def never = Pikuri::Agent::Control::Cancellable::NEVER
+
   let(:read_only) { Pikuri::Workspace::ReadOnly.new }
 
   # Inline confirmer double: records every request it sees and returns
@@ -10,9 +12,11 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
   def build_confirmer(*answers)
     queue    = answers.dup
     requests = []
+    tokens   = []
     confirmer = Object.new
-    confirmer.define_singleton_method(:ask) do |request:|
+    confirmer.define_singleton_method(:ask) do |request:, cancellable:|
       requests << request
+      tokens << cancellable
       raise "unexpected #ask call (request: #{request.inspect})" if queue.empty?
 
       case (answer = queue.shift)
@@ -22,6 +26,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
       end
     end
     confirmer.define_singleton_method(:requests) { requests }
+    confirmer.define_singleton_method(:tokens) { tokens }
     confirmer
   end
 
@@ -33,13 +38,25 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     end
   end
 
+  describe '#run' do
+    it "hands the turn's cancellable to the confirmer, so a cancel reaches a parked prompt" do
+      read_only.activate!
+      confirmer = build_confirmer(true)
+      token = Pikuri::Agent::Control::Cancellable.new
+      described_class.new(read_only: read_only, confirmer: confirmer)
+                     .run({ 'plan' => 'do X' }, Pikuri::Tool::ExecuteContext.new(cancellable: token))
+
+      assert_same token, confirmer.tokens.first
+    end
+  end
+
   describe '.run while in plan mode' do
     before { read_only.activate! }
 
     it 'exits plan mode and tells the model to proceed when approved' do
       confirmer = build_confirmer(true)
 
-      result = described_class.run(read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
 
       refute read_only.active?
       assert_match(/no longer in plan mode/i, result)
@@ -48,7 +65,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     it 'shows the plan to the user as the request detail' do
       confirmer = build_confirmer(true)
 
-      described_class.run(read_only: read_only, confirmer: confirmer, plan: "## Plan\n1. step")
+      described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: "## Plan\n1. step")
 
       assert_equal "## Plan\n1. step", confirmer.requests.first.detail
     end
@@ -56,7 +73,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     it 'stays in plan mode and steers a refine when declined' do
       confirmer = build_confirmer(false)
 
-      result = described_class.run(read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
 
       assert read_only.active?
       assert_match(/still in plan mode/i, result)
@@ -65,7 +82,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     it 'stays in plan mode and quotes the user when redirected' do
       confirmer = build_confirmer(Pikuri::Workspace::Confirmer::Redirected.new(message: 'drop step 3'))
 
-      result = described_class.run(read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
 
       assert read_only.active?
       assert_includes result, 'did not approve the plan and said: drop step 3'
@@ -77,7 +94,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     it 'returns a nothing-to-exit observation without consulting the confirmer' do
       confirmer = build_confirmer # raises if consulted
 
-      result = described_class.run(read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
 
       assert_match(/nothing to exit/i, result)
       assert_empty confirmer.requests
