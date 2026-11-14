@@ -192,6 +192,69 @@ RSpec.describe Pikuri::Conversations::Conversation do
     convs&.shutdown(timeout: 5)
   end
 
+  context 'a system: block with the message' do
+    # What the model was handed, in order: [:system, text] and [:user, text].
+    def handed
+      recorder.events.filter_map do |event|
+        case event
+        in Pikuri::Agent::Event::SystemInjected(content:) then [:system, content]
+        in Pikuri::Agent::Event::UserTurn(content:) then [:user, content]
+        else nil
+        end
+      end
+    end
+
+    it 'goes ahead of the message in one turn from idle' do
+      conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('done') })
+      recorder.await(Event::Ready)
+
+      assert_equal :started, conv.submit('extract page 3', system: ['SKILL'])
+      refute recorder.await(Event::TurnEnded).restarting
+      assert_equal [[:system, 'SKILL'], [:user, 'extract page 3']], handed
+      assert_equal 1, recorder.all(Event::TurnStarted).size
+    end
+
+    it 'goes ahead of the message into a running turn' do
+      transport = Pikuri::Testing.fake_transport(gate:) do |llm|
+        llm.reply('one')
+        llm.reply('two')
+      end
+      conv = open(transport)
+      recorder.await(Event::Ready)
+      gate.block!
+      conv.submit('first')
+      parked.pop
+
+      assert_equal :injected, conv.submit('second', system: ['SKILL'])
+      gate.release!
+      refute recorder.await(Event::TurnEnded, nth: 2).restarting
+      assert_equal [[:user, 'first'], [:system, 'SKILL'], [:user, 'second']], handed
+    end
+
+    it 'waits ahead of the message for an agent still to boot' do
+      conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('done') }, boot: false)
+
+      assert_equal :started, conv.submit('extract page 3', system: ['SKILL'])
+      refute recorder.await(Event::TurnEnded).restarting
+      assert_equal [[:system, 'SKILL'], [:user, 'extract page 3']], handed
+    end
+
+    it 'runs a bare turn to deliver a block sent alone' do
+      conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('loaded') })
+      recorder.await(Event::Ready)
+
+      assert_equal :started, conv.submit(system: ['SKILL'])
+      assert_equal :completed, recorder.await(Event::TurnEnded).outcome
+      assert_equal [[:system, 'SKILL']], handed
+    end
+
+    it 'refuses a blank block, queueing nothing' do
+      conv = open(Pikuri::Testing.fake_transport, boot: false)
+      assert_raises(ArgumentError) { conv.submit('hello', system: ['  ']) }
+      assert_equal 0, conv.status.pending
+    end
+  end
+
   it 'stays :new until the first message, then runs it as an ordinary turn' do
     resumed = Pikuri::Agent::History.new(
       messages: [Pikuri::Agent::History::Message.new(id: Pikuri::Agent::History.mint_id, role: 'user', content: 'earlier')]

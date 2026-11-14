@@ -81,7 +81,7 @@ does, not of what it needs.
 | Synchronous answer to `submit` (`:started`/`:injected`/`:discarded`) | ✓ (404, drops stashed images) | | | — | `Conversation#submit` |
 | Attachments on submit and on injection | ✓ | ✓ | | pikuri-chat | both |
 | Which model the *next* turn reaches, and its modalities, thread-safely | ✓ (status bar) | ✓ (attachment check) | | — | `Conversation#status` |
-| Host-scheduled system injection + bare turn while idle (`/skill`) | | ✓ | | pikuri-code | `Conversation#inject_system` |
+| Host-scheduled system injection + bare turn while idle (`/skill`) | | ✓ | | pikuri-code | `Conversation#submit(system:)` |
 | Leftovers at turn end restart a turn — after a normal end only | ✓ (`D_interloper_mid_loop_input`) | ✓ | | — | turn task |
 | Cancel keeps undelivered injections | ✓ keeps | re-sends as a turn | drops | — | `Conversation#cancel` + host choice |
 | Cancel releases a parked confirmation | | ✓ (`cancel_pending!`) | ✓ (polls token) | — | the Confirmer watches the token |
@@ -198,8 +198,8 @@ gem's lock.
 
 | Method | Behaviour |
 |---|---|
-| `submit(text = nil, attachments: [])` | `:new`: boot, queue it → `:started`. `:booting`: queued → `:started`. `:idle`: start a turn → `:started`. `:running`: inject → `:injected`. Blank: a bare turn delivering pending injections, `:ignored` when none are (always while running). `:closed` → `:discarded`. Raises `UnsupportedAttachmentError` synchronously when the next model's modalities — stated, or learnt by the `Probe` — refuse one |
-| `inject_system(text)` | inject a reference block; if idle, start a bare turn to deliver it (tui/pikuri-code `/skill`). Same answers as `submit` |
+| `submit(text = nil, attachments: [], system: [])` | `:new`: boot, queue it → `:started`. `:booting`: queued → `:started`. `:idle`: start a turn → `:started`. `:running`: inject → `:injected`. Blank: a bare turn delivering pending injections, `:ignored` when none are (always while running). `:closed` → `:discarded`. Raises `UnsupportedAttachmentError` synchronously when the next model's modalities — stated, or learnt by the `Probe` — refuse one |
+| `submit(text, system: [block])` | reference blocks ahead of the message, in one step (tui/pikuri-code `/skill rest`); with no text, a bare turn delivers them |
 | `cancel` | `:booting`: cancels construction (the token reaches MCP synthesis). `:running`: `cancel!`. Undelivered injections **stay** (webui's `D_interloper_mid_loop_input`) — the host decides: a blank `submit` re-sends them (tui), `discard_pending` drops them (Puri) |
 | `discard_pending` | take-and-clear of the undelivered `Interloper::Item`s; their count is `status.pending`. No snapshot: pikuri dropped `Interloper#peek`, as no host read it |
 | `switch_model(transport)` | last-wins; re-picking the current model clears the pending one. Applied at the next turn's start through `run_loop(transport:)`. → `:selected` / `:discarded` |

@@ -103,6 +103,12 @@ module Pikuri
       # when not.
       #
       #   conv.submit('fix the tests', attachments: [png])   # => :started
+      #   conv.submit('extract page 3', system: [skill])     # the skill, then the message, one turn
+      #   conv.submit(system: [skill])                       # a bare turn delivers the skill alone
+      #
+      # +system:+ is reference text the host chose to show the model — a skill
+      # the user loaded with +/skill+. It goes ahead of +text+ in one step, so
+      # the two arrive in order whatever state the conversation is in.
       #
       # A blank message with no attachments delivers what is pending — a
       # correction typed into a turn that was then cancelled — and is
@@ -110,36 +116,30 @@ module Pikuri
       #
       # @param text [String, nil]
       # @param attachments [Array<Pikuri::Attachment>]
+      # @param system [Array<String>] reference blocks, in order, ahead of +text+
       # @return [Symbol] +:started+ (a turn or a boot starts, or a boot under way
       #   will deliver it), +:injected+ (the running turn reads it after its
       #   current tool batch, or a bare turn right after), +:ignored+ (blank, and
       #   nothing to deliver) or +:discarded+ (closed)
-      # @raise [ArgumentError] if an attachment is not a +Pikuri::Attachment+
+      # @raise [ArgumentError] if an attachment is not a +Pikuri::Attachment+,
+      #   or a +system:+ block is not a non-blank String
       # @raise [Pikuri::Agent::UnsupportedAttachmentError] if the next turn's
       #   transport states a modality that refuses an attachment; nothing is queued
-      def submit(text = nil, attachments: [])
+      def submit(text = nil, attachments: [], system: [])
         unless attachments.all?(Pikuri::Attachment)
           raise ArgumentError, "attachments must be Pikuri::Attachments, got #{attachments.map(&:class)}"
         end
+        unless system.all? { |block| block.is_a?(String) && !block.strip.empty? }
+          raise ArgumentError, "system: blocks must be non-blank Strings, got #{system.inspect}"
+        end
 
         blank = text.to_s.strip.empty?
-        item = Item.new(kind: :user, content: blank ? '' : text, attachments:) unless blank && attachments.empty?
+        items = system.map { |block| Item.new(kind: :system, content: block) }
+        items << Item.new(kind: :user, content: blank ? '' : text, attachments:) unless blank && attachments.empty?
         locked do
           refuse_attachments!(attachments)
-          deliver(item)
+          deliver(items)
         end
-      end
-
-      # Inject reference text the host chose to show the model — a skill the
-      # user loaded with +/skill+ — and run a bare turn to deliver it when idle.
-      #
-      # @param text [String]
-      # @return [Symbol] as {#submit}
-      # @raise [ArgumentError] if +text+ is blank
-      def inject_system(text)
-        raise ArgumentError, "text must not be blank, got #{text.inspect}" if text.to_s.strip.empty?
-
-        locked { deliver(Item.new(kind: :system, content: text)) }
       end
 
       # Stop the running turn, or the boot. Undelivered messages stay pending;
@@ -348,15 +348,15 @@ module Pikuri
         LOGGER.error("conversation #{@id}: listener raised on #{event.class}: #{e.class}: #{e.message}")
       end
 
-      # Hand +item+ (+nil+ for a blank submit) to the agent, or keep it for the
-      # agent-to-be. Under the lock.
-      def deliver(item)
+      # Hand +items+ (empty for a blank submit) to the agent, or keep them for
+      # the agent-to-be. Under the lock.
+      def deliver(items)
         return :discarded if closed?
 
         case @state
         when :new, :booting
-          if item
-            @waiting << item
+          unless items.empty?
+            @waiting.concat(items)
             @effects << Event::PendingChanged.new(count: @waiting.size)
           end
           return :ignored if @waiting.empty?
@@ -365,19 +365,22 @@ module Pikuri
           start_boot if @state == :new
           :started
         when :idle
-          if item&.kind == :user
-            start_turn(item.content, item.attachments)
+          # A trailing user message is the turn's own; run_loop drains what
+          # went into the interloper ahead of it, so the order holds.
+          message = items.last if items.last&.kind == :user
+          (message ? items[...-1] : items).each { |item| inject(@agent, item) }
+          if message
+            start_turn(message.content, message.attachments)
           else
-            inject(@agent, item) if item
             return :ignored unless @agent.interloper.pending?
 
             start_turn(nil, [])
           end
           :started
         when :running
-          return :ignored unless item
+          return :ignored if items.empty?
 
-          inject(@agent, item)
+          items.each { |item| inject(@agent, item) }
           :injected
         end
       end

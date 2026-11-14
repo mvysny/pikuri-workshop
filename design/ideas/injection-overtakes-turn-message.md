@@ -29,7 +29,7 @@ nothing happen, types a follow-up.
 ## Why it slipped through
 
 The drain-ahead order is right for both callers pikuri-core had in mind — a host-scheduled skill
-block (`inject_system`), and the gem's own boot case, where messages that waited for the agent
+block (`submit(system:)`), and the gem's own boot case, where messages that waited for the agent
 are injected *before* the last one becomes the turn's message, so they really are earlier. It is
 wrong only for an injection that arrived *after* the turn's message was accepted.
 
