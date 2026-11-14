@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- Add `Pikuri::Code::ProjectRoot`, moved from pikuri's `Workspace::ProjectRoot` (where it is gone): the VCS-marker climb that picks a coding agent's project root. Rename the constant where you call it.
 - **Breaking:** `Pikuri::Mcp::Extension.new(registry:, synthesize_descriptions:, verify_mcp_servers:)` is now `Pikuri::Mcp::Extension.new(catalog:)`, one per agent: build the catalog once per process with `Pikuri::Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)` and hand it to every agent (`D_mcp_catalog_and_connections`).
 - **Breaking:** `Pikuri::Mcp::Servers` is gone, split into `Pikuri::Mcp::Catalog` (verified once, shared, holds no process) and `Pikuri::Mcp::Connections` (one agent's own servers, started on its first tool call); `Pikuri::Mcp::Servers::Connect` is now `Pikuri::Mcp::Connect`.
 - An MCP server process now serves one agent only and starts on that agent's first call to its tools, so a browser logged in during one conversation is never logged in for another, and building an agent spawns nothing.

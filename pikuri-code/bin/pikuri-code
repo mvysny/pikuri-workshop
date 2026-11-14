@@ -105,9 +105,9 @@ end
 end
 
 # Climb from the launch directory to the project root, looking for
-# a VCS marker (.git / .hg / .svn). See {Pikuri::Workspace::ProjectRoot}
+# a VCS marker (.git / .hg / .svn). See {Pikuri::Code::ProjectRoot}
 # for why build-system markers (Gemfile, pom.xml, build.gradle.kts, …)
-# are deliberately NOT in the default list (Gradle/Maven/yarn-workspaces
+# are deliberately NOT markers (Gradle/Maven/yarn-workspaces
 # subprojects have their own copies, leading to wrong-project_root climbs).
 # Falls back to launch dir if no VCS marker is reachable.
 #
@@ -119,7 +119,7 @@ end
 # is one truth, not two, which the LLM would otherwise have to reason
 # about. Loud about it so the user isn't surprised by +pwd+ output later.
 launch_cwd   = Pathname.new(Dir.pwd)
-project_root = Pikuri::Workspace::ProjectRoot.find(cwd: launch_cwd) || launch_cwd
+project_root = Pikuri::Code::ProjectRoot.find(cwd: launch_cwd) || launch_cwd
 if Dir.pwd != project_root.to_s
   warn "Changing working directory to project root: #{project_root}"
   Dir.chdir(project_root.to_s)
