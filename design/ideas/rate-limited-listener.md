@@ -1,7 +1,9 @@
 # A rate-limited listener for hosts that render a stream
 
-Status: **requested by pikuri-tui (2026-11-14); not scheduled.** Three hosts carry their own
-copy today; this file is about moving one into pikuri-conversations so they can delete theirs.
+Status: **workshop side landed (2026-11-14): `Pikuri::Conversations::RateLimitedListener`,
+`Event::ALL`, `TurnEnded`'s thread promise.** The reasoning below now lives in the class's
+yardoc. What's left is the three hosts' swaps, each in its own repo; graduate (delete this file)
+once they're done.
 
 ## Why
 
@@ -105,11 +107,10 @@ Not counted on: pikuri-core emitting an `Event::Failed` beside `Cancelled` would
 
 ## Done when
 
-- The class is in pikuri-conversations with core's old spec ported (pikuri-tui's
-  `spec/shared/rate_limited_listener_spec.rb` already has the bookend and flush-ahead cases),
-  plus: a conversation event bypasses the buffers; a bare `TurnEnded` after deltas flushes them
-  first.
-- `Event::ALL` exported; `TurnEnded`'s yardoc states its thread, with the spec pinning it.
+- ~~The class is in pikuri-conversations with core's old spec ported, plus: a conversation event
+  bypasses the buffers; a bare `TurnEnded` after deltas flushes them first.~~ Done.
+- ~~`Event::ALL` exported; `TurnEnded`'s yardoc states its thread, with the spec pinning it.~~
+  Done (`conversation_spec.rb`, "ends a failed turn on the thread its agent's last event came on").
 - pikuri-tui swaps its copy for it and drops its lock (keeping the fan-out).
 - pikuri-webui swaps its copy, deletes `CONVERSATION_EVENTS` for `Event::ALL`, and routes
   `TurnEnded` through the limiter.

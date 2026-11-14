@@ -107,7 +107,9 @@ module Pikuri
         def to_s = 'Cancelling'
       end
 
-      # A turn ended, after the host's +on_turn_end+ ran.
+      # A turn ended, after the host's +on_turn_end+ ran. Emitted on the turn's
+      # own thread, after the agent's last event — {RateLimitedListener} flushes
+      # on it without a lock, relying on that.
       #
       # @!attribute [r] outcome
       #   @return [Symbol] +:completed+, +:cancelled+ or +:failed+
@@ -141,6 +143,16 @@ module Pikuri
         # @return [String]
         def to_s = 'Conversation closed'
       end
+
+      # Every variant above, to tell a conversation's event from an agent's:
+      #
+      #   case event
+      #   when *Pikuri::Conversations::Event::ALL then update_status(event)
+      #   else render(event)
+      #   end
+      #
+      # @return [Array<Class>]
+      ALL = constants.map { |name| const_get(name) }.freeze
     end
   end
 end

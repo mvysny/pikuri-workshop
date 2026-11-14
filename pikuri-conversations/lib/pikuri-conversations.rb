@@ -21,7 +21,8 @@ module Pikuri
   # {Conversation} is one live conversation and its turn state; {Throttle}
   # bounds the requests in flight against each server, sized from what {Probe}
   # learns at a turn's start; {Titler} names a conversation after its first
-  # turn; {HistoryFile} is the stored format of an
+  # turn; {RateLimitedListener} paces a streamed reply for a renderer;
+  # {HistoryFile} is the stored format of an
   # {Pikuri::Agent::History}; {Store} keeps one folder per conversation. A list
   # never touches a store: the host joins them in +on_turn_end+.
   #

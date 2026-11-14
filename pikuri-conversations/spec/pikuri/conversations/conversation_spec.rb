@@ -9,13 +9,15 @@ require 'pikuri/testing'
 RSpec.describe Pikuri::Conversations::Conversation do
   Event = Pikuri::Conversations::Event
 
-  # Records every event, agent's and conversation's alike, for #await to wait on.
+  # Records every event, agent's and conversation's alike, and the thread it came
+  # on, for #await to wait on.
   class Recorder < Pikuri::Agent::Listener::Base
-    attr_reader :events
+    attr_reader :events, :threads
 
     def initialize
       super
       @events = []
+      @threads = []
       @lock = Mutex.new
       @cv = ConditionVariable.new
     end
@@ -23,6 +25,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
     def on_event(event)
       @lock.synchronize do
         @events << event
+        @threads << Thread.current
         @cv.broadcast
       end
     end
@@ -123,6 +126,20 @@ RSpec.describe Pikuri::Conversations::Conversation do
     assert_equal ['how do I keep an avocado?', 'Keep it cool.'], contents(history)
     assert_equal :idle, conv.status.state
     assert_equal history, conv.history
+  end
+
+  # RateLimitedListener flushes on TurnEnded without a lock, relying on this.
+  it "ends a failed turn on the thread its agent's last event came on" do
+    conv = open(Pikuri::Testing.fake_transport { |_llm| }) # no reply scripted: the request raises
+    recorder.await(Event::Ready)
+    conv.submit('hello')
+    ended = recorder.await(Event::TurnEnded)
+    assert_equal :failed, ended.outcome
+
+    at = recorder.events.index(ended)
+    last_agent = recorder.events[0...at].rindex { |e| e.class.name.start_with?('Pikuri::Agent::Event::') }
+    assert_equal recorder.threads[last_agent], recorder.threads[at]
+    refute_equal Thread.current, recorder.threads[at]
   end
 
   it 'injects a message sent mid-turn and restarts a bare turn to deliver it' do

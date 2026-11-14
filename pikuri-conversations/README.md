@@ -63,6 +63,15 @@ conv   = convs.open(id: entry.id, transport:, listener:, untitled: store.stamp_t
 #   in Pikuri::Conversations::Event::Titled(title:) then entry = store.retitle(entry, title)
 ```
 
+- `Pikuri::Conversations::RateLimitedListener` — streamed deltas at most 15 times a second,
+  for a renderer that re-renders Markdown on each. Wrap the listener you open with; the
+  conversation's own events pass straight through, from whatever thread sends them:
+
+```ruby
+listener = Pikuri::Conversations::RateLimitedListener.new(renderer, fps: 15)
+conv     = convs.open(id: entry.id, transport:, listener:)
+```
+
 ## Install
 
 ```ruby
