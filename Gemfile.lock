@@ -1,7 +1,7 @@
 GIT
   remote: https://codeberg.org/mvysny/pikuri.git
-  revision: 4baa2076711e3cdfab3a5c60eb51f041f11d6738
-  ref: 4baa2076711e3cdfab3a5c60eb51f041f11d6738
+  revision: c893d6a3ffc6ea1645db065e70a51fbc2de6aab2
+  ref: c893d6a3ffc6ea1645db065e70a51fbc2de6aab2
   specs:
     pikuri-core (0.1.0)
       faraday (~> 2.9)
@@ -21,7 +21,6 @@ GIT
     pikuri-vectordb (0.1.0)
       listen (~> 3.9)
       pikuri-core (= 0.1.0)
-      pikuri-subagents (= 0.1.0)
     pikuri-web (0.1.0)
       faraday (~> 2.9)
       nokogiri (~> 1.19)

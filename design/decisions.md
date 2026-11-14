@@ -606,8 +606,8 @@ The `skill` **tool** is the open half. Tools reach a child by name:
 `SubAgentTool` filters `parent.tools` by `persona.tool_names`, so a persona
 naming `skill` would get it, and `SkillTool#for_sub_agent` already rebuilds
 it over `Skill::Activation::Sealed` for exactly that case. Nothing has ever
-asked — all four bundled personas (`RESEARCHER`, `FILE_MINER`,
-`GIT_REPO_RESEARCHER`, `LIBRARIAN`) name narrow toolsets and no `skill`. The
+asked — both bundled personas (`RESEARCHER`, `FILE_MINER`) name narrow
+toolsets and no `skill`. The
 mechanism is *prepared*, never *active*, and the question of whether it
 should be has been answered by omission. This entry answers it deliberately.
 
@@ -634,11 +634,10 @@ three other legs.
   written against a general harness and say so: `SkillTool::DESCRIPTION`
   tells the model the loaded skill "may reference helper scripts and files in
   its base directory — use the `read` tool." That is dead advice for
-  `RESEARCHER` (three network-read tools, no workspace) and worse than dead
-  for `LIBRARIAN` (two corpus tools) — it spends context and invites a call
-  that can only fail. Skills also bind to *ecosystems* rather than tasks:
-  `writing-rdoc` fires on `**/*.rb`, which tells an agent whose job is
-  retrieval from a vector corpus nothing it can act on.
+  `RESEARCHER` (three network-read tools, no workspace) — it spends context
+  and invites a call that can only fail. Skills also bind to *ecosystems*
+  rather than tasks: `writing-rdoc` fires on `**/*.rb`, which tells an agent
+  whose job is reading the web nothing it can act on.
 - **Determinism.** A child reachable by the parent's promotions has a surface
   that depends on which files the parent happened to read — two identical
   `agent(name: 'file_miner', task: …)` calls in one session would see

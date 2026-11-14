@@ -458,8 +458,9 @@ build — deferred until the v1 API shape settles:
   memory; a high "noise score" flags degradation cheaply as an eval
   tool). Both later.
 - **`@private` wiring** lives in the future federation/assistant gem, not
-  here — same precedent as `LIBRARIAN` / `GIT_REPO_RESEARCHER`: the
-  capability gem ships the pieces, the federation gem wires the agent.
+  here — the capability gem ships the pieces, the federation gem wires the
+  agent, as pikuri-vectordb ships corpus tools and no persona
+  (`pikuri:D_corpus_trust_declaration`).
 
 ### Open follow-ups
 
