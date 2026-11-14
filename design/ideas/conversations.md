@@ -2,7 +2,8 @@
 
 Status: **shape settled; built: `HistoryFile`, `Store`, the scheduler (`Conversations`,
 `Conversation`), the `Throttle` and the `Probe` with its `Detector`, moved here from core
-(pikuri `76663ef`, `0e5882f`). Not built: the titler.** pikuri has done its half: an `Agent` is one conversation, resumed through
+(pikuri `76663ef`, `0e5882f`), and the `Titler`. What's left is the hosts moving onto the gem,
+and graduation (see *Done when*).** pikuri has done its half: an `Agent` is one conversation, resumed through
 `Agent.new(history:)` (`pikuri:D_agent_is_one_conversation`); `History` is in-memory only; every
 agent owns its `Interloper`; and `Agent.new(around_request:)` replaced `ServerPermits`, which is
 deleted — the throttle is ours to build. Grew out of pikuri's early-cancel fix
@@ -63,7 +64,7 @@ joins them in one `on_turn_end` line.
 | `History`, the value | pikuri-core | stays | `export_history` / `Agent.new(history:)` speak it |
 | its JSON, `save(dir)` / `load(dir)`, `Attachment#stored_name` | dropped from pikuri (`5c87269`) | `Conversations::HistoryFile` — **built** (`D_history_file`) | storing is the host's; a deployment that never resumes shouldn't carry a format |
 | the folder of conversations: ids, `meta.json`, list, retitle, delete, upload stash | webui `Store`, Puri `Store` | `Conversations::Store` — **built** | two copies of one format; a bin holds one conversation |
-| the titler | webui, Puri `Core::Titler` | `Conversations::Titler` | side calls on the shared executor, through the throttle |
+| the titler | webui, Puri `Core::Titler` | `Conversations::Titler`, fired by a `Conversation` opened `untitled: true` — **built** | the same class in both hosts; when to fire and what to drop after a delete are scheduling |
 | replay (`History` → display events) | webui `HistoryReplay`, Puri `Replay` | core, `History#events` (`Q_replay`) | needs neither concurrency nor many conversations |
 
 ## What the callers need
@@ -92,7 +93,7 @@ does, not of what it needs.
 | Errors reach the UI with their class (`EmptyTurnError`, `UnsupportedAttachmentError`, other) | wants it | ✓ | ✓ | — | `TurnEnded` event |
 | Turn thread named per conversation; per-turn thread priority | ✓ (`D_puma_thread_dump`) | | ✓ (−3, `R_gvl_main_loop`) | — | `Conversations` |
 | Shutdown without waiting / with a timeout | ✓ no wait | quits | cancel+join | — | `Conversations#shutdown` |
-| Side LLM calls (titler) on the shared executor, throttled | ✓ | | ✓ | — | `Titler` on `Conversations#executor` |
+| Side LLM calls (titler) off the turn, throttled | ✓ | | ✓ | — | `Titler` on a thread of the conversation's own |
 | Throttle covers sub-agents, the titler, the MCP Thinker | ✓ | ✓ | ✓ | — | `Agent.new(around_request:)`, passed on |
 | Status snapshot read under the host's own lock | ✓ (`status_data`) | | | — | `Conversation#status` |
 | Lock order host lock → gem lock → `Interloper` lock | ✓ | | ✓ | — | the gem never calls out under its lock |
@@ -188,7 +189,8 @@ conv.submit('also, ripe?')                              # => :injected
 | `open(id:, transport:, listener:, history: nil, boot: true)` → `Conversation` | a conversation. `listener` hears the agent's events and the conversation's, fixed for its life. `boot: false` leaves it in `:new` until the first `submit` (Puri) |
 | `[](id)`, `each` | lookup |
 | `limit`, `around_request` | not on the list: `Throttle.limit(server, permits)` and `Throttle` itself, process-wide (see Settled) |
-| `executor` | dropped (see Settled); `Q_titler` decides whether side work needs one |
+| `executor` | dropped (see Settled): the titler runs on a thread of the conversation's own like everything else |
+| `new(titler:)`, `open(untitled:)` | a `Titler` for the list; `untitled: true` for a conversation that still wants a name (a fresh one, or a resumed one still carrying its start stamp — the host asks `Store#stamp_titled?`) |
 | `shutdown(timeout: 0)` | cancel every turn; running turns unwind, run `on_turn_end`, close their agents; waits at most `timeout`, never on a host lock. `0` returns at once (webui's Puma `:state` hook) |
 
 **`Conversation`** — every method is thread-safe, returns at once, never calls out under the
@@ -249,14 +251,23 @@ write. Webui's shape, as the reference host: a `Store::Entry` value, `find` thro
 an unreadable envelope listed as `supported: false`, the upload `stash`. From Puri: `history`, and
 `extra:` keys on `meta.json` (its `last_question`, `asked_at`).
 
-**`Titler`**: not yet ported; webui's and Puri's to be compared first.
+**`Titler`** (built): webui's class, which Puri had ported verbatim — prompt, `<opener>` wrapper,
+word and character caps, the `</think>` strip, the reasoning canary — plus `around_request:
+Throttle` and a cancel token. A conversation opened `untitled: true` asks it once, from the first
+`role: user, kind: user` message with text, after the first turn whose history has one ends —
+completed, cancelled or failed — on a thread `title <id>`, and reports `Titled(title:)`. A title
+landing once the conversation is closing is dropped, and `close` cancels its request. A failure
+is logged and not retried; reopening the conversation `untitled: true` asks again.
 
 ## How each host reads
 
 - **webui**: `Runner` and `claim_running`/`finish_turn` go; `Registry` keeps conversations;
   `on_turn_end` persists through `Store` (idle still means saved); `discard!` is `close` →
-  `:busy` → 409; `status_data` is `conversation.status`; the titler is the gem's, on
-  `convs.executor` (`titler-first-turn-permit.md`); `ServerPermits.limit` is `Throttle.limit`. Its
+  `:busy` → 409; `status_data` is `conversation.status`; the titler is the gem's, fired after the
+  first turn (closing `titler-first-turn-permit.md` and its `Q_titler_restore`: a restored
+  stamp-titled conversation is opened `untitled: true` and titled at its next turn end, so one
+  only read is never titled); its listener lands `Titled` through `Store#retitle` and its own
+  entry; `ServerPermits.limit` is `Throttle.limit`. Its
   `Conversations::Store` and `Store::Conversation` go — mind its own `Conversations` module
   beside `Pikuri::Conversations`. Must also drop `Listener::RateLimited` (removed from pikuri in
   613103e).
@@ -268,8 +279,10 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
   agent"; `on_turn_end` saves through `Store` (its unreadable envelopes now list as unsupported
   rather than log-and-skip); injection replaces queueing, so its `TurnListener` must render
   `UserTurn(mid_loop: true)` as a block; cancel drops via `discard_pending`; `core.close` becomes
-  `shutdown(timeout:)` instead of a thread kill. Its dummy backend (`turns:` strategy) stays
-  outside the gem — the GTK specs keep their own fake.
+  `shutdown(timeout:)` instead of a thread kill. Its `Core::Titler` goes for the gem's, and its
+  title now arrives after the first answer rather than while it streams — `D_titler_model`'s
+  "beside the answer" is superseded and needs rewriting. Its dummy backend (`turns:` strategy)
+  stays outside the gem — the GTK specs keep their own fake.
 - **bins**: unchanged in shape, slightly simpler — `run_loop(message)` returns the answer, a
   model switch is `agent.transport =`; with no probe in core, a bin's cap and modalities are what
   its transport states — otherwise `ctx=8.4k` with no denominator, and an attachment the model
@@ -317,6 +330,16 @@ an unreadable envelope listed as `supported: false`, the upload `stash`. From Pu
   before the first turn; at a turn's start the full `/props`, which may cold-load the model and
   so waits for a turn that uses it. A failed answer is retried after 60 s, not every turn. A
   model picked with `switch_model` learns its inputs only at its first turn.
+- **A title is asked for after the first turn, not beside it** (was `Q_titler`). Beside it, on
+  a server with one slot, the title's request wins the permit and the answer waits for it —
+  measured at ~2 s in pikuri-webui's `titler-first-turn-permit.md`; after it, the turn's
+  requests are done before the title asks, so the race is gone rather than rarer. The cost is
+  cosmetic: the start stamp shows until the first answer is in. Puri took the delay on purpose
+  (`puri:D_titler_model`) to show the title while the answer streams; one rule for every host
+  wins over that.
+- **The gem fires the title, the host stores it.** A `Conversation` can't tell a stamp-titled
+  conversation from a named one without the `Store` it never references, so the host says so
+  with `open(untitled:)`, and lands `Event::Titled` through `Store#retitle`.
 - **Naming**: the gem `pikuri-conversations`; `Conversations` / `Conversation`, not
   `SessionList` / `Session` (an HTTP session) nor `pikuri-host` (it hosts nothing by itself).
 
@@ -366,8 +389,6 @@ Built against pikuri `3aed7e2` with no pikuri change:
   15 fps timer alive. A conversation-level listener swap is cheap (the gem owns the forwarder).
 - `Q_confirmer_token` — pikuri-code's `Confirmer` should watch the cancel token as Puri's does, so
   `cancel` needs no host hook; a pikuri-code change, not the gem's.
-- `Q_titler` — webui's and Puri's titlers side by side: prompt, when it fires (first turn end?),
-  how it reports back.
 - `Q_book` — the chapter: lost cancels, stranded injections, a lock-order inversion around a
   synchronous core.
 

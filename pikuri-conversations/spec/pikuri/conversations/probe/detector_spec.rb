@@ -125,7 +125,7 @@ RSpec.describe Pikuri::Conversations::Probe::Detector do
   end
 
   # The object a text-only model reports, measured on llama.cpp b10438 with
-  # --no-mmproj-auto (design/decisions.md D_refuse_unsupported_attachments).
+  # --no-mmproj-auto (pikuri:D_refuse_unsupported_attachments).
   describe 'modalities' do
     it 'reads the top-level modalities object, symbol-keyed' do
       stubs.get(url) do

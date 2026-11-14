@@ -20,7 +20,8 @@ module Pikuri
   #
   # {Conversation} is one live conversation and its turn state; {Throttle}
   # bounds the requests in flight against each server, sized from what {Probe}
-  # learns at a turn's start; {HistoryFile} is the stored format of an
+  # learns at a turn's start; {Titler} names a conversation after its first
+  # turn; {HistoryFile} is the stored format of an
   # {Pikuri::Agent::History}; {Store} keeps one folder per conversation. A list
   # never touches a store: the host joins them in +on_turn_end+.
   #
@@ -47,10 +48,12 @@ module Pikuri
     # @param streaming [Boolean] the agents' +streaming:+
     # @param priority [Integer] the turn threads' +Thread#priority+; a GUI host
     #   lowers it to keep its main loop responsive
-    def initialize(system_prompt:, configure: nil, on_turn_end: nil, streaming: true, priority: 0)
+    # @param titler [Titler, nil] names the conversations opened +untitled: true+
+    def initialize(system_prompt:, configure: nil, on_turn_end: nil, streaming: true, priority: 0, titler: nil)
       @system_prompt = system_prompt
       @configure = configure
       @on_turn_end = on_turn_end
+      @titler = titler
       @streaming = streaming
       @priority = priority
       @lock = Mutex.new
@@ -66,11 +69,15 @@ module Pikuri
     #   and the conversation's {Event}s
     # @param history [Pikuri::Agent::History, nil] a conversation to resume
     # @param boot [Boolean]
+    # @param untitled [Boolean] whether it still wants a name — a resumed one
+    #   still carrying its start stamp included: the list's {Titler} names it
+    #   once a turn has ended ({Event::Titled}). Ignored without a titler.
     # @return [Conversation]
     # @raise [ArgumentError] if a conversation with +id+ is open
-    def open(id:, transport:, listener:, history: nil, boot: true)
+    def open(id:, transport:, listener:, history: nil, boot: true, untitled: false)
       conv = Conversation.new(id:, transport:, listener:, history:, build: method(:build_agent),
-                              on_turn_end: @on_turn_end, on_closed: method(:forget), priority: @priority)
+                              on_turn_end: @on_turn_end, on_closed: method(:forget), priority: @priority,
+                              titler: untitled ? @titler : nil)
       @lock.synchronize do
         raise ArgumentError, "conversation #{id.inspect} is already open" if @conversations.key?(id)
 

@@ -68,7 +68,9 @@ module Pikuri
       #   {Conversations#initialize}
       # @param on_closed [#call, nil] +(conversation)+, once the agent is released
       # @param priority [Integer] the turn threads' +Thread#priority+
-      def initialize(id:, transport:, listener:, history:, build:, on_turn_end:, on_closed:, priority:)
+      # @param titler [Titler, nil] names this conversation once a turn has
+      #   ended; +nil+ when it needs no name
+      def initialize(id:, transport:, listener:, history:, build:, on_turn_end:, on_closed:, priority:, titler: nil)
         @id = id
         @listener = listener
         @transport = transport
@@ -77,6 +79,8 @@ module Pikuri
         @on_turn_end = on_turn_end
         @on_closed = on_closed
         @priority = priority
+        @titler = titler
+        @title_cancellable = Pikuri::Agent::Control::Cancellable.new
 
         @lock = Mutex.new
         @released = ConditionVariable.new
@@ -227,10 +231,12 @@ module Pikuri
 
             @closing = true
             @cancellable.cancel!
+            @title_cancellable.cancel!
             next :closing
           end
           agent = @agent
           @state = :closed
+          @title_cancellable.cancel!
           :released
         end
         return result unless result == :released
@@ -494,7 +500,8 @@ module Pikuri
             [:failed, e]
           end
 
-          save unless locked { @closing }
+          history = save unless locked { @closing }
+          title(history) if history
 
           restart = locked do
             if @closing
@@ -542,13 +549,47 @@ module Pikuri
 
       # Snapshot the history and hand it to +on_turn_end+, on the turn's
       # thread: the conversation goes idle only once the host has saved.
+      #
+      # @return [Pikuri::Agent::History, nil] the snapshot; +nil+ when taking it
+      #   raised
       def save
         history = @agent.export_history
         locked { @history = history }
-        @on_turn_end&.call(self, history)
-      rescue StandardError => e
-        # A host hook that raises must not strand the conversation in :running.
-        LOGGER.error("conversation #{@id}: on_turn_end raised #{e.class}: #{e.message}")
+        begin
+          @on_turn_end&.call(self, history)
+        rescue StandardError => e
+          # A host hook that raises must not strand the conversation in :running.
+          LOGGER.error("conversation #{@id}: on_turn_end raised #{e.class}: #{e.message}")
+        end
+        history
+      end
+
+      # Ask the {Titler} for a name, once, on a thread of its own: after the
+      # turn rather than beside it, so the title never takes the permit a small
+      # server's only slot the turn is waiting for. A turn whose history holds
+      # no user text yet (a bare turn delivering a skill) leaves it for the
+      # next.
+      def title(history)
+        opener = history.messages.find do |m|
+          m.role.to_s == 'user' && m.kind == 'user' && !m.content.to_s.strip.empty?
+        end&.content
+        titler = locked do
+          next nil if @titler.nil? || opener.nil? || closed?
+
+          @titler.tap { @titler = nil }
+        end
+        return unless titler
+
+        spawn("title #{@id}") do
+          name = titler.title_for(opener, cancellable: @title_cancellable)
+          locked { @effects << Event::Titled.new(title: name) if name && !closed? }
+        rescue Pikuri::Agent::Control::Cancellable::Cancelled
+          nil
+        rescue StandardError => e
+          # A failed title leaves the name the conversation has; the next
+          # opening of the conversation asks again.
+          LOGGER.error("conversation #{@id}: titling failed: #{e.class}: #{e.message}")
+        end
       end
 
       # +Interloper#on_change+: fires on whichever thread changed the count.

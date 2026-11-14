@@ -53,7 +53,7 @@ pikuri's gems from its repo at one pinned commit; the `Rakefile` fans out `rake 
 - `pikuri-tasks` — in-memory per-agent task list + four `task_*` tools.
 - `pikuri-memory` — durable cross-conversation memory backed by mem0 + `bin/pikuri-memory`.
 - `pikuri-extractors` — office/EPUB/RTF/PDF → Markdown for pikuri's `Extractor` registry via a one-shot networkless docker container.
-- `pikuri-conversations` — host many live conversations (`Conversations`, `Conversation`: an agent each, turns on own threads; `Throttle`, requests in flight per server) and store them: `HistoryFile`, the stored form of pikuri's in-memory `History`, and `Store`, a folder per conversation.
+- `pikuri-conversations` — host many live conversations (`Conversations`, `Conversation`: an agent each, turns on own threads; `Throttle`, requests in flight per server; `Titler`) and store them: `HistoryFile`, the stored form of pikuri's in-memory `History`, and `Store`, a folder per conversation.
 - `book/` — book 2, "the workshop"; `book/README.md` is the ToC and the single source of truth for chapter order.
 - `version.rb` — the workshop's lockstep version and the pikuri release it requires; read by gemspecs only.
 

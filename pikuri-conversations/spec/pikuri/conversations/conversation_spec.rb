@@ -400,6 +400,77 @@ RSpec.describe Pikuri::Conversations::Conversation do
     end
   end
 
+  context 'titling' do
+    let(:titling) { Queue.new }
+    let(:titler_gate) do
+      g = Pikuri::Testing::Gate.new
+      q = titling
+      g.define_singleton_method(:await) do
+        q << true
+        super()
+      end
+      g
+    end
+    let(:titler) do
+      Pikuri::Conversations::Titler.new(
+        transport: Pikuri::Testing.fake_transport(model: 'titler', gate: titler_gate) { |llm| llm.reply('Keeping An Avocado') }
+      )
+    end
+    let(:convs) do
+      Pikuri::Conversations.new(system_prompt: 'test', streaming: false, titler:,
+                                on_turn_end: ->(conv, history) { saved << [conv.id, history] })
+    end
+
+    def chat(*replies)
+      Pikuri::Testing.fake_transport { |llm| replies.each { llm.reply(_1) } }
+    end
+
+    it 'names an untitled conversation once its first turn has ended, once' do
+      conv = open(chat('Keep it cool.', 'Yes.'), untitled: true)
+      conv.submit('how do I keep an avocado?')
+      assert_equal 'Keeping An Avocado', recorder.await(Event::Titled).title
+      ended = recorder.events.index { _1.is_a?(Event::TurnEnded) }
+      assert_operator ended, :<, recorder.events.index { _1.is_a?(Event::Titled) }
+
+      conv.submit('and ripe?')
+      recorder.await(Event::TurnEnded, nth: 2)
+      sleep 0.05
+      assert_equal 1, recorder.all(Event::Titled).size
+    end
+
+    it 'titles a resumed conversation from its own opener' do
+      resumed = Pikuri::Agent::History.new(
+        messages: [Pikuri::Agent::History::Message.new(id: Pikuri::Agent::History.mint_id, role: 'user',
+                                                       content: 'how do I keep an avocado?')]
+      )
+      conv = open(chat('Cool it.'), history: resumed, untitled: true)
+      conv.submit('remind me')
+      assert_equal 'Keeping An Avocado', recorder.await(Event::Titled).title
+    end
+
+    it 'leaves a conversation that has a name alone' do
+      conv = open(chat('Keep it cool.'))
+      conv.submit('how do I keep an avocado?')
+      recorder.await(Event::TurnEnded)
+      sleep 0.05
+      assert_empty recorder.all(Event::Titled)
+    end
+
+    it 'drops a title that lands after the conversation closed' do
+      titler_gate.block!
+      conv = open(chat('Keep it cool.'), untitled: true)
+      conv.submit('how do I keep an avocado?')
+      titling.pop
+      assert_equal :closed, conv.close
+      titler_gate.release!
+      recorder.await(Event::Closed)
+      sleep 0.05
+      assert_empty recorder.all(Event::Titled)
+    ensure
+      titler_gate.release!
+    end
+  end
+
   context 'when the agent fails to boot' do
     let(:attempts) { [] }
     let(:configure) do

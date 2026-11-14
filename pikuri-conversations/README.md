@@ -51,7 +51,17 @@ Pikuri::Conversations::Throttle.limit('http://localhost:8080', 1)   # llama-serv
 titler = Pikuri::Agent.new(transport:, system_prompt:, around_request: Pikuri::Conversations::Throttle)
 ```
 
-Coming: a titler.
+- `Pikuri::Conversations::Titler` — names a conversation from its opening message. Give the
+  list one and open a conversation `untitled: true`; once its first turn has ended, the
+  conversation reports `Event::Titled` and you store it:
+
+```ruby
+titler = Pikuri::Conversations::Titler.new(transport: thinking_off_transport, params_declared: true)
+convs  = Pikuri::Conversations.new(system_prompt:, titler:)
+conv   = convs.open(id: entry.id, transport:, listener:, untitled: store.stamp_titled?(entry))
+# in the listener:
+#   in Pikuri::Conversations::Event::Titled(title:) then entry = store.retitle(entry, title)
+```
 
 ## Install
 
