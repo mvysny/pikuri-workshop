@@ -125,8 +125,8 @@ module Pikuri
       #   @return [Symbol] +:completed+, +:cancelled+ or +:failed+
       # @!attribute [r] error
       #   @return [StandardError, nil] what the turn raised, for +:failed+ —
-      #     +Pikuri::Agent::EmptyTurnError+, +Pikuri::Agent::UnsupportedAttachmentError+,
-      #     a +RubyLLM::Error+, anything a tool let escape
+      #     +Pikuri::Agent::UnsupportedAttachmentError+, a +RubyLLM::Error+,
+      #     anything a tool let escape
       # @!attribute [r] restarting
       #   @return [Boolean] whether a bare turn follows at once, to deliver what
       #     was injected too late for this one
