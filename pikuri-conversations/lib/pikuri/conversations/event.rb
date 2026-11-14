@@ -138,7 +138,8 @@ module Pikuri
       # The {Titler} named a conversation opened +untitled: true+. Store it
       # yourself — +Store#retitle+ — since the conversation never touches a
       # store. Comes at most once, after the first turn whose history holds a
-      # user message, and never once the conversation is closing.
+      # user message, never once the conversation is closing, and always
+      # before {Closed}.
       #
       # @!attribute [r] title
       #   @return [String] one sanitized line of at most {Titler::MAX_WORDS} words
@@ -148,7 +149,7 @@ module Pikuri
       end
 
       # The conversation is closed and its agent released; it takes no more
-      # messages.
+      # messages. The last event: nothing reaches the listener after it.
       Closed = Data.define do
         # @return [String]
         def to_s = 'Conversation closed'

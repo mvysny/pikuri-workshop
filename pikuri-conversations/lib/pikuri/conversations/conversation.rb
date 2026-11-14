@@ -99,6 +99,8 @@ module Pikuri
         @boot_generation = 0
         @closing = false
         @agent_released = false
+        # A Titled past its closed? check is being heard; Closed waits for it.
+        @title_emitting = false
       end
 
       # Send a user message: starts a turn when idle, joins the running one
@@ -162,9 +164,11 @@ module Pikuri
       # Drop every message waiting for the agent. Their count is
       # {Status#pending}, and {Event::PendingChanged} reports each change.
       #
-      # @return [Array<Pikuri::Agent::Control::Interloper::Item>] what was dropped
+      # @return [Array<Pikuri::Agent::Control::Interloper::Item>] what was
+      #   dropped; empty once closing, so no event follows {Event::Closed}
       def discard_pending
         locked do
+          next [] if closed?
           next @agent.interloper.drain! if @agent
 
           taken = @waiting.dup
@@ -287,10 +291,14 @@ module Pikuri
         locked { @trifecta }
       end
 
-      # Block until the agent is released after a {#close}.
+      # Block until a {#close} has run its course: the agent released and
+      # {Event::Closed}, the last event, heard by the listener. A title request
+      # still in flight may outlive it, but emits nothing more; {#wait_settled}
+      # waits that out too.
       #
       # @param timeout [Numeric] seconds
-      # @return [Boolean] whether it was released in time
+      # @return [Boolean] whether it closed in time — true means nothing more
+      #   reaches the listener
       def wait_closed(timeout)
         wait_until(timeout) { @agent_released }
       end
@@ -634,7 +642,7 @@ module Pikuri
 
         spawn("title #{@id}") do
           name = titler.title_for(opener, cancellable: @title_cancellable)
-          locked { @effects << Event::Titled.new(title: name) if name && !closed? }
+          emit_title(name) if name
         rescue Pikuri::Agent::Control::Cancellable::Cancelled
           nil
         rescue StandardError => e
@@ -657,18 +665,40 @@ module Pikuri
         end
       end
 
+      # Emit {Event::Titled} unless the conversation is closing. Marked while it
+      # is heard, so {#release} holds {Event::Closed} back until it is.
+      def emit_title(name)
+        return unless @lock.synchronize { !closed? && (@title_emitting = true) }
+
+        begin
+          emit(Event::Titled.new(title: name))
+        ensure
+          @lock.synchronize do
+            @title_emitting = false
+            @changed.broadcast
+          end
+        end
+      end
+
       # Close +agent+ off the caller's thread — an MCP teardown may take
-      # seconds — then report {Event::Closed}.
+      # seconds — then report {Event::Closed}, the last event.
       def release(agent)
         spawn("close #{@id}") do
           agent&.close
         ensure
-          @lock.synchronize do
-            @agent_released = true
-            @changed.broadcast
+          begin
+            # Not a join on the title thread: its HTTP call outlives a cancel,
+            # and Closed would wait for the model's whole answer.
+            @lock.synchronize { @changed.wait(@lock) while @title_emitting }
+            emit(Event::Closed.new)
+            @on_closed&.call(self)
+          ensure
+            # Only now, so a waiter wakes once nothing more reaches the listener.
+            @lock.synchronize do
+              @agent_released = true
+              @changed.broadcast
+            end
           end
-          emit(Event::Closed.new)
-          @on_closed&.call(self)
         end
       end
 

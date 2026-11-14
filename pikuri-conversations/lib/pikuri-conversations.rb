@@ -123,9 +123,11 @@ module Pikuri
     #   convs.shutdown                # returns at once — a Puma +:state+ hook
     #   convs.shutdown(timeout: 5)    # waits up to 5 s in all, the saves included
     #
-    # @param timeout [Numeric] seconds to wait for the agents to be released
-    # @return [Boolean] whether every agent was released in time — false means
-    #   a turn may still be saving
+    # @param timeout [Numeric] seconds to wait for every conversation's
+    #   {Event::Closed} to be heard
+    # @return [Boolean] whether every conversation closed in time — true means
+    #   no event reaches a listener afterwards, false that a turn may still be
+    #   saving
     def shutdown(timeout: 0)
       convs = to_a
       convs.each { |c| c.close(force: true) }

@@ -373,6 +373,28 @@ RSpec.describe Pikuri::Conversations::Conversation do
       assert_equal :closed, conv.status.state
     end
 
+    it 'returns from shutdown only once the listener has heard Closed' do
+      hearing = Queue.new
+      hold = Queue.new
+      recorder.define_singleton_method(:on_event) do |event|
+        super(event)
+        next unless event.is_a?(Event::Closed)
+
+        hearing << true
+        hold.pop
+      end
+      open(Pikuri::Testing.fake_transport)
+      recorder.await(Event::Ready)
+
+      shutdown = Thread.new { convs.shutdown(timeout: 5) }
+      hearing.pop
+      refute shutdown.join(0.2), 'shutdown returned while Closed was still being heard'
+      hold << true
+      assert shutdown.value
+    ensure
+      hold << true
+    end
+
     it 'closes an idle conversation at once' do
       conv = open(Pikuri::Testing.fake_transport)
       recorder.await(Event::Ready)
@@ -735,6 +757,30 @@ RSpec.describe Pikuri::Conversations::Conversation do
       assert_empty recorder.all(Event::Titled)
     ensure
       titler_gate.release!
+    end
+
+    it 'hears out a title that passed before the close, ahead of Closed and of shutdown returning' do
+      hearing = Queue.new
+      hold = Queue.new
+      recorder.define_singleton_method(:on_event) do |event|
+        super(event)
+        next unless event.is_a?(Event::Titled)
+
+        hearing << true
+        hold.pop
+      end
+      open(chat('Keep it cool.'), untitled: true).submit('how do I keep an avocado?')
+      hearing.pop
+      recorder.await(Event::TurnEnded)
+
+      shutdown = Thread.new { convs.shutdown(timeout: 5) }
+      refute shutdown.join(0.2), 'shutdown returned while Titled was still being heard'
+      hold << true
+      assert shutdown.value
+      assert_equal [Event::Titled, Event::Closed],
+                   recorder.events.map(&:class).select { [Event::Titled, Event::Closed].include?(_1) }
+    ensure
+      hold << true
     end
   end
 
