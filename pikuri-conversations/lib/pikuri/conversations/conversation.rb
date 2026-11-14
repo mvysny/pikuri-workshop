@@ -226,17 +226,20 @@ module Pikuri
         end
       end
 
-      # Retire the conversation and release its agent. Once closing, the turn
-      # in flight, if any, ends without +on_turn_end+ — so a host deleting the
-      # conversation from disk never races a save.
+      # Retire the conversation and release its agent.
       #
       # Refused while a turn runs, or while a boot has a message waiting to
       # become one. A boot nothing waits on closes: it would lose nothing.
       #
+      # A turn +force+ cuts short still ends with +on_turn_end+, as any
+      # cancelled turn does, so a quitting host keeps what was said. A host
+      # deleting the conversation needs no guard against that late save:
+      # {Store#delete} wins over it.
+      #
       # @param force [Boolean] cancel a running turn or boot and close once it
       #   unwinds, rather than refuse
       # @return [Symbol] +:closed+, +:closing+ (a turn or boot was under way;
-      #   {Event::Closed} follows once it unwinds) or +:busy+
+      #   {Event::Closed} follows once it unwinds and has saved) or +:busy+
       def close(force: false)
         agent = nil
         result = locked do
@@ -549,7 +552,7 @@ module Pikuri
             [:failed, e]
           end
 
-          history = save unless locked { @closing }
+          history = save
           title(history) if history
 
           restart = locked do

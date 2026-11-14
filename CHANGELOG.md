@@ -16,6 +16,9 @@ All notable changes to the workshop gems. pikuri's own changes are in
 - `Pikuri::Conversations::Store#history` answers nil for a conversation never saved, so a host passes it straight to `Conversations#open(history:)` without checking for `history.json` first.
 - `Pikuri::Conversations::Conversation#close` closes a booting conversation no message waits on, answering `:closing`, so a host deleting it no longer needs `force: true`.
 - `Pikuri::Conversations::Conversation#boot` is public, so a host whose listener reads the conversation back opens it with `boot: false` and boots it once it holds it.
+- `Pikuri::Conversations::Conversation#close(force: true)` and `Conversations#shutdown` now run `on_turn_end` for the turn they cut short, so a quit keeps what was said; `shutdown(timeout:)` waits for those saves.
+- `Pikuri::Conversations::Store#delete` is final: a later `save`, `stash` or `retitle` of that conversation writes nothing, so a host deleting a conversation whose turn is still unwinding needs no guard of its own.
+- New `Pikuri::Conversations::Status#busy?`: a turn runs, or a boot has a message waiting — what a host shows as "working", including after a boot cancelled before its turn.
 - `Pikuri::Conversations::Probe::Detector` never dials a `.invalid` host, so a host's specs on `Pikuri::Testing.fake_transport` no longer need `Throttle.limit('http://fake.invalid', nil)` or a stubbed `Detector`.
 - `Pikuri::Conversations::Conversation#wait_settled(timeout)` returns once no boot, turn or title of the conversation is in flight and every event they emit has reached the listener, so a host's specs need not poll for thread names.
 - **Breaking:** `Pikuri::Conversations::Conversation#inject_system` is gone: `submit(text, system: [skill])` puts reference blocks ahead of the message in one turn, whatever state the conversation is in, and `submit(system: [skill])` delivers them alone.

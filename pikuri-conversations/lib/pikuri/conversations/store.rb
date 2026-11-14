@@ -4,6 +4,7 @@ require 'fileutils'
 require 'json'
 require 'pathname'
 require 'securerandom'
+require 'set'
 require 'time'
 
 module Pikuri
@@ -55,17 +56,16 @@ module Pikuri
     #
     # == Thread-safety
     #
-    # Thread-safe in the narrow sense that is all this object can promise: it
-    # holds no mutable state past its constructor arguments. The consistency
-    # of the *folder* rests elsewhere —
+    # Thread-safe. The writes take one lock, and a {#delete} wins over every
+    # write after it: {#save}, {#stash} and {#retitle} of a deleted
+    # conversation write nothing. So a host may delete a conversation whose
+    # turn is still unwinding — the turn-end save lands as a no-op rather than
+    # bringing the folder back — with no lock of its own around the two.
     #
-    # - one conversation's directory has one writer at a time, which the host
-    #   guarantees (one agent per conversation, saving between its turns), not
-    #   anything in this class;
-    # - both files are written temp-file-and-rename, which is the whole of what
-    #   a reader in another process gets — there is no cross-process lock;
-    # - {#list} needs no coordination with a concurrent save or delete, because
-    #   +row+ takes a read's own +ENOENT+ as the answer.
+    # The lock is this object's: another process, or another +Store+ on the
+    # same root, shares only temp-file-and-rename, so its reader never sees a
+    # half-written file. {#list} takes no lock, because +row+ takes a read's
+    # own +ENOENT+ as the answer.
     #
     # Cross-call sequences are *not* atomic: {#find} then {#delete} has a gap,
     # and a caller must tolerate the conversation having vanished inside it.
@@ -142,6 +142,9 @@ module Pikuri
       def initialize(root:, shell:)
         @root = Pathname(root)
         @shell = shell
+        @lock = Mutex.new
+        # Ids {#delete} took, which every later write skips.
+        @deleted = Set.new
         mkdir_private(@root)
       end
 
@@ -256,17 +259,22 @@ module Pikuri
       # @param updated_at [Time] last-activity stamp
       # @param extra [Hash{String => Object}] host-owned envelope keys, written
       #   beside the store's own; JSON-safe values
-      # @return [Pathname] the conversation's directory
+      # @return [Pathname, nil] the conversation's directory; nil when the
+      #   conversation was deleted, and nothing was written
       # @raise [ArgumentError] when +extra+ reuses one of {RESERVED_KEYS}
       # @raise [SystemCallError] when a write fails
       def save(entry, history, model:, server:, updated_at: Time.now, extra: {})
         clash = extra.keys.map(&:to_s) & RESERVED_KEYS
         raise ArgumentError, "extra: reuses the store's own key(s) #{clash.join(', ')}" unless clash.empty?
 
-        mkdir_private(entry.dir)
-        HistoryFile.save(history, entry.dir)
-        write_meta(entry, model: model, server: server, updated_at: updated_at, extra: extra)
-        entry.dir
+        @lock.synchronize do
+          next nil if @deleted.include?(entry.id)
+
+          mkdir_private(entry.dir)
+          HistoryFile.save(history, entry.dir)
+          write_meta(entry, model: model, server: server, updated_at: updated_at, extra: extra)
+          entry.dir
+        end
       end
 
       # Write a message's images into the conversation's +attachments/+
@@ -283,8 +291,7 @@ module Pikuri
       # until +meta.json+ lands.
       #
       # A process killed mid-turn leaves the images with nothing referencing
-      # them — an orphan {HistoryFile.save} itself accepts. A delete racing
-      # the message is the caller's to clean up, by deleting again.
+      # them — an orphan {HistoryFile.save} itself accepts.
       #
       # @param entry [Entry]
       # @param attachments [Array<Pikuri::Attachment>]
@@ -293,18 +300,22 @@ module Pikuri
       def stash(entry, attachments)
         return if attachments.empty?
 
-        mkdir_private(entry.dir)
-        root = entry.dir / HistoryFile::ATTACHMENTS_DIR
-        root.mkpath
-        attachments.each do |attachment|
-          path = root / HistoryFile.stored_name(attachment)
-          next if path.exist?
+        @lock.synchronize do
+          next if @deleted.include?(entry.id)
 
-          # A name of its own, not atomic_write's fixed one: two tabs sending
-          # the same image at once would otherwise write through one temp file.
-          tmp = root / ".#{path.basename}.#{SecureRandom.hex(4)}.tmp"
-          tmp.binwrite(attachment.bytes)
-          tmp.rename(path.to_path)
+          mkdir_private(entry.dir)
+          root = entry.dir / HistoryFile::ATTACHMENTS_DIR
+          root.mkpath
+          attachments.each do |attachment|
+            path = root / HistoryFile.stored_name(attachment)
+            next if path.exist?
+
+            # A name of its own, not atomic_write's fixed one: two tabs sending
+            # the same image at once would otherwise write through one temp file.
+            tmp = root / ".#{path.basename}.#{SecureRandom.hex(4)}.tmp"
+            tmp.binwrite(attachment.bytes)
+            tmp.rename(path.to_path)
+          end
         end
         nil
       end
@@ -358,11 +369,15 @@ module Pikuri
       #   to whoever produced it
       # @return [Entry] the same conversation, retitled
       # @raise [SystemCallError] like {#save}, when the write itself fails; a
-      #   folder deleted underneath is the caller's to tolerate
+      #   folder deleted underneath by another process is the caller's to tolerate
       def retitle(entry, title)
-        path = entry.dir / META_FILE
-        meta = load_meta(path)
-        atomic_write(path, "#{JSON.pretty_generate(meta.merge('title' => title))}\n") if meta.is_a?(Hash)
+        @lock.synchronize do
+          next if @deleted.include?(entry.id)
+
+          path = entry.dir / META_FILE
+          meta = load_meta(path)
+          atomic_write(path, "#{JSON.pretty_generate(meta.merge('title' => title))}\n") if meta.is_a?(Hash)
+        end
         entry.with(title: title)
       end
 
@@ -370,6 +385,10 @@ module Pikuri
       # +attachments/+.
       #
       #   store.delete(store.find(params['id']))   # => true
+      #
+      # Final for this store: every later {#save}, {#stash} or {#retitle} of
+      # the conversation writes nothing — a minted one never saved included,
+      # whose first turn may still be running.
       #
       # +meta.json+ is unlinked *before* the folder, inverting {#save}'s
       # commit point: a removal that dies half-way then leaves a conversation
@@ -385,11 +404,15 @@ module Pikuri
       # @raise [ArgumentError] when the entry does not live under the root
       def delete(entry)
         raise ArgumentError, "#{entry.id} is not under #{@root}" unless entry.dir.parent == @root
-        return false unless entry.dir.exist?
 
-        FileUtils.rm_f((entry.dir / META_FILE).to_path)
-        FileUtils.rm_r(entry.dir.to_path)
-        true
+        @lock.synchronize do
+          @deleted << entry.id
+          next false unless entry.dir.exist?
+
+          FileUtils.rm_f((entry.dir / META_FILE).to_path)
+          FileUtils.rm_r(entry.dir.to_path)
+          true
+        end
       end
 
       private

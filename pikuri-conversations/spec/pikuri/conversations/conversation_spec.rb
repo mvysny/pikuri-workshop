@@ -336,7 +336,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
   end
 
   context 'closing' do
-    it 'refuses while a turn runs, and with force closes without saving' do
+    it 'refuses while a turn runs, and with force cancels it, saves it, then closes' do
       conv = open(Pikuri::Testing.fake_transport(gate:) { |llm| llm.reply('late') })
       recorder.await(Event::Ready)
       gate.block!
@@ -350,9 +350,27 @@ RSpec.describe Pikuri::Conversations::Conversation do
       gate.release!
 
       recorder.await(Event::Closed)
-      assert saved.empty?
+      # Pushed before the agent's release began, so present by Closed.
+      refute saved.empty?, 'the cut turn was not saved before Closed'
+      _, history = saved.pop
+      assert_equal 'hi', history.messages.first.content
       assert_equal :closed, conv.status.state
       assert_nil convs['c1']
+    end
+
+    it 'saves a running turn on shutdown before releasing its agent' do
+      conv = open(Pikuri::Testing.fake_transport(gate:) { |llm| llm.reply('late') })
+      recorder.await(Event::Ready)
+      gate.block!
+      conv.submit('hi')
+      parked.pop
+
+      refute convs.shutdown(timeout: 0)
+      gate.release!
+
+      assert convs.shutdown(timeout: 5)
+      assert_equal 1, saved.size
+      assert_equal :closed, conv.status.state
     end
 
     it 'closes an idle conversation at once' do
@@ -401,6 +419,20 @@ RSpec.describe Pikuri::Conversations::Conversation do
         assert_equal :busy, conv.close
         probe_gate << true
         assert_equal :completed, recorder.await(Event::TurnEnded).outcome
+      end
+
+      it 'is busy while a message waits on the boot, and not once a cancel ends it' do
+        conv = open(transport)
+        refute conv.status.busy?
+        conv.submit('hello')
+        assert conv.status.busy?
+
+        conv.cancel
+        probe_gate << true
+        recorder.await(Event::Ready)
+        refute conv.status.busy?
+        assert_equal 1, conv.status.pending
+        assert_empty recorder.all(Event::TurnEnded)
       end
     end
 

@@ -200,12 +200,12 @@ gem's lock.
 |---|---|
 | `submit(text = nil, attachments: [], system: [])` | `:new`: boot, queue it → `:started`. `:booting`: queued → `:started`. `:idle`: start a turn → `:started`. `:running`: inject → `:injected`. Blank: a bare turn delivering pending injections, `:ignored` when none are (always while running). `:closed` → `:discarded`. Raises `UnsupportedAttachmentError` synchronously when the next model's modalities — stated, or learnt by the `Probe` — refuse one |
 | `submit(text, system: [block])` | reference blocks ahead of the message, in one step (tui/pikuri-code `/skill rest`); with no text, a bare turn delivers them |
-| `cancel` | `:booting`: cancels construction (the token reaches MCP synthesis). `:running`: `cancel!`. Undelivered injections **stay** (webui's `D_interloper_mid_loop_input`) — the host decides: a blank `submit` re-sends them (tui), `discard_pending` drops them (Puri) |
+| `cancel` | `:booting`: cancels construction (the token reaches MCP synthesis). `:running`: `cancel!`. Undelivered injections **stay** (webui's `D_interloper_mid_loop_input`) — the host decides: a blank `submit` re-sends them (tui), `discard_pending` takes them (Puri shows what it took) |
 | `discard_pending` | take-and-clear of the undelivered `Interloper::Item`s; their count is `status.pending`. No snapshot: pikuri dropped `Interloper#peek`, as no host read it |
 | `switch_model(transport)` | last-wins; re-picking the current model clears the pending one. Applied at the next turn's start through `run_loop(transport:)`. → `:selected` / `:discarded` |
 | `clear` | `:idle` → close the agent and build a fresh one, extensions and all (`pikuri:D_agent_is_one_conversation`) → `:cleared`; running → `:busy` |
-| `close(force: false)` | idle or `:new` → close the agent (off-thread), `:closed`. Booting or running → `:busy`, or with `force` cancel, `:closing`, close once it unwinds. Once closing, `on_turn_end` is **not** called — a delete never races a save. `Closed` follows the agent's release; `wait_closed(timeout)` blocks for it |
-| `status` → `Status` | frozen snapshot: `state`, `pending` count, `model` (what the agent is on), `next_model` (pending or current) — each a transport with what the `Probe` learnt filled in, so its `modalities` / `context_window` ride along. Readable under the host's lock |
+| `close(force: false)` | idle or `:new` → close the agent (off-thread), `:closed`. Booting or running → `:busy`, or with `force` cancel, `:closing`, close once it unwinds. The cut turn still runs `on_turn_end` — the gem can't keep a delete off a save it calls outside its lock, so `Store#delete` wins over every later write instead. `Closed` follows the save and the agent's release; `wait_closed(timeout)` blocks for it |
+| `status` → `Status` | frozen snapshot: `state`, `pending` count, `busy?` (running, or booting with a message waiting — a host's "working", re-read on every event), `model` (what the agent is on), `next_model` (pending or current) — each a transport with what the `Probe` learnt filled in, so its `modalities` / `context_window` ride along. Readable under the host's lock |
 | `history` | the last snapshot — from `open`, or the last `on_turn_end` |
 | `trifecta` | `nil` until booted |
 | `id`, `listener` | as opened |
@@ -231,8 +231,8 @@ message) is an ordinary turn, not a `UserTurn(mid_loop: true)`.
 4. `agent.run_loop(user_message:, attachments:, transport: Probe.facts(transport))` — a picked
    model switches, newly learnt facts are adopted silently — rescuing `Cancelled` and
    `StandardError` into an outcome.
-5. Unless closing: `on_turn_end.(conv, agent.export_history)` — on the worker, off the lock,
-   before going idle, for every outcome.
+5. `on_turn_end.(conv, agent.export_history)` — on the worker, off the lock, before going idle,
+   for every outcome, a turn a forced close cut short included.
 6. Under the lock: completed **and** `interloper.pending?` and not closing → stay `:running`,
    reset, loop as a bare turn; else `:idle` (or `:closed`). Then emit `TurnEnded`.
 
@@ -278,7 +278,7 @@ is logged and not retried; reopening the conversation `untitled: true` asks agai
 - **Puri**: `Conversation`'s `@turn`/`@waiting` go; `boot: false` keeps "readable before an
   agent"; `on_turn_end` saves through `Store` (its unreadable envelopes now list as unsupported
   rather than log-and-skip); injection replaces queueing, so its `TurnListener` must render
-  `UserTurn(mid_loop: true)` as a block; cancel drops via `discard_pending`; `core.close` becomes
+  `UserTurn(mid_loop: true)` as a block; cancel takes the pending messages via `discard_pending` and shows them; `core.close` becomes
   `shutdown(timeout:)` instead of a thread kill. Its `Core::Titler` goes for the gem's, and its
   title now arrives after the first answer rather than while it streams — `D_titler_model`'s
   "beside the answer" is superseded and needs rewriting. Its dummy backend (`turns:` strategy)

@@ -46,9 +46,9 @@ module Pikuri
     #   +Agent.new+ block: tools, extensions, more listeners. The conversation's
     #   cancel token, history, listener and {Throttle} are wired already.
     # @param on_turn_end [#call, nil] +(conversation, history)+ after every turn
-    #   — completed, cancelled or failed — on the turn's thread, before the
-    #   conversation goes idle, so "idle" means "saved". Not called once the
-    #   conversation is closing.
+    #   — completed, cancelled or failed, one a forced close cut short included
+    #   — on the turn's thread, before the conversation goes idle, so "idle"
+    #   means "saved". +conversation.status.model+ is the model the turn ran on.
     # @param streaming [Boolean] the agents' +streaming:+
     # @param priority [Integer] the turn threads' +Thread#priority+; a GUI host
     #   lowers it to keep its main loop responsive
@@ -118,13 +118,14 @@ module Pikuri
     end
 
     # Close every conversation, cancelling running turns; each turn unwinds on
-    # its own thread and releases its agent.
+    # its own thread, saves through +on_turn_end+ and releases its agent.
     #
     #   convs.shutdown                # returns at once — a Puma +:state+ hook
-    #   convs.shutdown(timeout: 5)    # waits up to 5 s in all
+    #   convs.shutdown(timeout: 5)    # waits up to 5 s in all, the saves included
     #
     # @param timeout [Numeric] seconds to wait for the agents to be released
-    # @return [Boolean] whether every agent was released in time
+    # @return [Boolean] whether every agent was released in time — false means
+    #   a turn may still be saving
     def shutdown(timeout: 0)
       convs = to_a
       convs.each { |c| c.close(force: true) }

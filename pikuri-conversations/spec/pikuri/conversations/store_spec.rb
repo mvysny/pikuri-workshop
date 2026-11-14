@@ -444,6 +444,27 @@ RSpec.describe Pikuri::Conversations::Store do
       refute store.delete(store.create(at: at))
     end
 
+    # A turn still unwinding when the user deleted its conversation saves last.
+    it 'wins over every later write, so a late save brings nothing back' do
+      entry = saved
+
+      store.delete(entry)
+      assert_nil save(entry, hello)
+      store.stash(entry, [Pikuri::Attachment.new(mime: 'image/png', filename: 'x.png', bytes: png)])
+      assert_equal 'Renamed', store.retitle(entry, 'Renamed').title
+
+      refute entry.dir.exist?
+      assert_empty store.list
+    end
+
+    it 'wins over the first save of a conversation whose first turn is still running' do
+      entry = store.create(at: at)
+
+      refute store.delete(entry)
+      assert_nil save(entry, hello)
+      refute entry.dir.exist?
+    end
+
     it 'refuses an entry from outside the root rather than removing it' do
       outside = described_class::Entry.new(id: 'elsewhere', dir: @root.parent / 'elsewhere', title: 'x',
                                            created_at: at, supported: true)
