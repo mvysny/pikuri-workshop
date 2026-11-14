@@ -267,7 +267,7 @@ saying "I could not really answer that":
    indexes **fully qualified** names and scores queries with
    Jaro-Winkler against a 0.7 threshold, so a bare `Confirmer` scores
    0.455 against `Pikuri::Workspace::Confirmer` and is never returned —
-   while 19 unrelated things that share some letters are. jdtls's index
+   while 18 unrelated things that share some letters are. jdtls's index
    holds **types only**, so a Java method name returns 0 hits and a class
    matched on a substring. Feed either straight into a position-based
    call and you have navigated confidently to the wrong symbol.
@@ -290,12 +290,12 @@ Here is trap 3, live, and how pikuri renders it — note the last line,
 which is the whole point:
 
 ```
-workspaceSymbol "Confirmer" — 19 symbols
+workspaceSymbol "Confirmer" — 18 symbols
 
   pikuri-subagents/lib/pikuri/sub_agent/extension.rb:48  field @confirmer  @confirmer = confirmer
   pikuri-workspace/lib/pikuri/workspace/extension.rb:110  field @confirmer  @confirmer = confirmer
-  pikuri-workspace/lib/pikuri/workspace/confirmer.rb:189  method confirm?  def confirm?(request:, cancellable:)
-  … (16 further rows elided here; the real observation shows all 19)
+  pikuri-core/lib/pikuri/agent/extension.rb:43  method configure  def configure(c); end
+  … (15 further rows elided here; the real observation shows all 18)
 
 Notes:
 - no symbol is named "Confirmer" here; the full list follows.

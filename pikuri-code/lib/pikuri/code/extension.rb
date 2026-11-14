@@ -155,16 +155,13 @@ module Pikuri
       # and host-driven flips.
       #
       # The flag outlives this agent — a host's "/clear" closes the agent and
-      # builds the next on the same flag — and +ReadOnly+ has no unsubscribe,
-      # so the bridge goes quiet on close rather than reporting the next
-      # conversation's flips through a closed agent's listeners.
+      # builds the next on the same flag — so the bridge unsubscribes on close.
       #
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
       def bridge_plan_mode(c)
-        live = true
-        c.on_close { live = false }
-        @read_only.on_change { |active| c.emit_event(PlanModeChanged.new(active: active)) if live }
+        bridge = @read_only.on_change { |active| c.emit_event(PlanModeChanged.new(active: active)) }
+        c.on_close { @read_only.remove_on_change(bridge) }
       end
     end
   end
