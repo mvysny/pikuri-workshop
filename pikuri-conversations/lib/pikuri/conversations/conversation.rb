@@ -16,7 +16,7 @@ module Pikuri
     #
     # The states: +:new → :booting → :idle ⇄ :running → :closed+. A conversation
     # opened with +boot: false+ stays +:new+, readable through {#history}, until
-    # the first message.
+    # {#boot} or the first message.
     #
     # == Implementation details
     #
@@ -288,11 +288,12 @@ module Pikuri
         end
       end
 
-      # Start the boot of a +:new+ conversation; {Conversations#open} calls it
-      # for +boot: true+.
+      # Start the boot of a +:new+ conversation; any other state ignores it.
+      # {Conversations#open} calls it for +boot: true+; a host whose listener
+      # reads the conversation back opens with +boot: false+ and calls it once
+      # it holds the conversation.
       #
       # @return [void]
-      # @api private
       def boot
         locked { start_boot if @state == :new }
         nil

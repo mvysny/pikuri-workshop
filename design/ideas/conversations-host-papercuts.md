@@ -14,15 +14,6 @@ away: the boot thread would still install an agent built from the old history, s
 needs the boot to learn it was superseded (a generation counter it checks before installing,
 say) and a fresh boot started behind it.
 
-## The first events arrive before `open` returns
-
-`Conversations#open` calls `conv.boot` before returning, and `Booting` is emitted on the
-caller's thread during that call. A listener that reads the conversation back (a status bar
-calling `conv.status`) has no conversation yet: pikuri-webui's runner guards a `nil` and
-broadcasts once more after `open`. Either document it on `open` ("your listener may hear
-`Booting` before this returns"), or let the listener reach the conversation — `Booting` and
-`Ready` carrying it, or `open` assigning before `boot`.
-
 ## Hosts' specs need two things the gem could ship
 
 - **The probe dials `Testing.fake_transport`'s server** unless its key is sized:

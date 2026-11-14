@@ -65,7 +65,15 @@ module Pikuri
     end
 
     # Open a conversation, booting its agent on a thread of its own unless
-    # +boot: false+, which leaves it +:new+ until the first message.
+    # +boot: false+, which leaves it +:new+ until {Conversation#boot} or the
+    # first message.
+    #
+    # The listener hears events before this returns: {Event::Booting} on the
+    # caller's thread, then the boot's own from its thread. A listener that
+    # reads the conversation back boots it once the host holds it:
+    #
+    #   @live = convs.open(id:, transport:, listener: self, history:, boot: false)
+    #   @live.boot
     #
     # @param id [String] unique among the open conversations
     # @param transport [Pikuri::Agent::ChatTransport] the model it starts on

@@ -208,6 +208,17 @@ RSpec.describe Pikuri::Conversations::Conversation do
     refute_nil conv.trifecta
   end
 
+  it 'boots on #boot after opening with boot: false, and only once' do
+    conv = open(Pikuri::Testing.fake_transport, boot: false)
+    assert_empty recorder.events
+
+    conv.boot
+    recorder.await(Event::Ready)
+    conv.boot
+    assert_equal :idle, conv.status.state
+    assert_equal 1, recorder.all(Event::Booting).size
+  end
+
   it 'applies a model switch at the next turn, last pick wins' do
     first = Pikuri::Testing.fake_transport(model: 'a') { |llm| llm.reply('from a') }
     second = Pikuri::Testing.fake_transport(model: 'b') { |llm| llm.reply('from b') }
