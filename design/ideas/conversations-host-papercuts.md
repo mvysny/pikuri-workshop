@@ -1,8 +1,7 @@
 # pikuri-conversations: papercuts from the first host migration
 
-Status: **collected from pikuri-webui's move onto the gem (2026-11-14); the first five are
-fixed, these are what is left.** Each
-is small, and each cost the host a workaround or a paragraph. The bigger find from the same
+Status: **collected from the hosts' moves onto the gem (2026-11-14); fixed ones are deleted,
+these are what is left.** Each is small, and each cost the host a workaround or a paragraph. The bigger find from the same
 migration has its own file: `injection-overtakes-turn-message.md`.
 
 ## `clear` answers `:busy` while the agent boots
@@ -17,7 +16,7 @@ say) and a fresh boot started behind it.
 
 ## From pikuri-tui's move onto the gem (2026-11-14)
 
-Three more, from moving pikuri-tui's three shells (`Chat` / `Code` / `Computer::App`) off their
+From moving pikuri-tui's three shells (`Chat` / `Code` / `Computer::App`) off their
 own turn loop.
 
 ### `open` takes one listener, but a host has several panes
@@ -36,14 +35,6 @@ cross the delta stream from other threads (a `PendingChanged` from the UI thread
 copy of the removed `Listener::RateLimited` needs a lock, and its `flush_pending_on_non_delta:
 false` drops streamed text whenever such an event lands. pikuri-tui's copy drops a delta only at
 its own bookend.
-
-### `Booting` doesn't say why — `Q_booting_reason`
-
-A host that starts its transcript over when a new agent boots (the only signal a `/clear` has
-landed, ordered with the stream, is that agent's `Booting`) also wipes it on the *first* boot
-(harmless) and on a *retry after `BootFailed`* — where it erases the error line the user just
-read. pikuri-tui accepts that. Options: `Booting(reason: :open | :clear | :retry)`, or a
-`Cleared` event `clear` emits before `Booting`.
 
 ### No way to send a skill and a message as one turn — `Q_system_with_message`
 

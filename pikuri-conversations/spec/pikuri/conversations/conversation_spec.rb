@@ -359,6 +359,20 @@ RSpec.describe Pikuri::Conversations::Conversation do
     recorder.await(Event::Ready, nth: 2)
     assert_nil conv.history
     assert_equal :idle, conv.status.state
+    restarts = recorder.events.map(&:class).select { [Event::Cleared, Event::Booting].include?(_1) }
+    assert_equal [Event::Booting, Event::Cleared, Event::Booting], restarts
+  end
+
+  it 'reports a clear with no agent to replace, though nothing boots' do
+    resumed = Pikuri::Agent::History.new(
+      messages: [Pikuri::Agent::History::Message.new(id: Pikuri::Agent::History.mint_id, role: 'user', content: 'earlier')]
+    )
+    conv = open(Pikuri::Testing.fake_transport, history: resumed, boot: false)
+
+    assert_equal :cleared, conv.clear
+    assert_equal [Event::Cleared], recorder.events.map(&:class)
+    assert_nil conv.history
+    assert_equal :new, conv.status.state
   end
 
   context 'the throttle' do
@@ -591,6 +605,9 @@ RSpec.describe Pikuri::Conversations::Conversation do
       assert_equal :started, conv.submit
       recorder.await(Event::TurnEnded)
       assert_equal %w[hello hi], contents(conv.history)
+      # A retry is a boot, not a fresh start: the error line stays on screen.
+      assert_equal 2, recorder.all(Event::Booting).size
+      assert_empty recorder.all(Event::Cleared)
     end
   end
 end

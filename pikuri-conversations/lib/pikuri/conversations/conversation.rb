@@ -189,7 +189,8 @@ module Pikuri
         end
       end
 
-      # Start over: close the agent and boot a fresh one with an empty history.
+      # Start over: close the agent and boot a fresh one with an empty history;
+      # {Event::Cleared} tells the listener, even when there was no agent yet.
       # Everything outside the history goes with the old agent too — a task
       # list, activated skills, an MCP server's state (+pikuri:D_agent_is_one_conversation+).
       #
@@ -206,6 +207,7 @@ module Pikuri
           @trifecta = nil
           @waiting.clear
           @history = nil
+          @effects << Event::Cleared.new
           @effects << Event::PendingChanged.new(count: 0) if dropped.positive?
           if old
             old.interloper.on_change = nil

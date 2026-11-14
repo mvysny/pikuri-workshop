@@ -15,7 +15,7 @@ module Pikuri
     #   end
     #
     # The agent's events narrate a turn from inside it; these narrate the
-    # conversation around the turns — booting, a turn starting and ending, the
+    # conversation around the turns — a clear, booting, a turn starting and ending, the
     # pending count, a model picked for later, the context window learnt. Never emitted under the
     # conversation's lock, so a listener may take its host's own lock, and may
     # call back into the conversation.
@@ -24,6 +24,16 @@ module Pikuri
     # +Terminal+ one prints any event it does not know by its +to_s+) shows
     # something legible.
     module Event
+      # The conversation started over: {Conversation#clear} dropped its history
+      # and pending messages. Ahead of that clear's +PendingChanged+ and
+      # +Booting+, and the only event a clear with no agent to replace emits —
+      # so a transcript starts over here, not on +Booting+, which a first boot
+      # and a retry after {BootFailed} emit too.
+      Cleared = Data.define do
+        # @return [String]
+        def to_s = 'Conversation cleared'
+      end
+
       # The agent is being built, on a thread of its own — an MCP connection
       # may take seconds.
       Booting = Data.define do
