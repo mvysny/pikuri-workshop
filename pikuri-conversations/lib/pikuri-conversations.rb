@@ -9,11 +9,14 @@ module Pikuri
   # its turns on threads of their own — and the folder they are saved in:
   #
   #   store = Pikuri::Conversations::Store.new(root: dir, shell: 'my-chat')
+  #   entries = {}   # id => Store::Entry; store.find sees only saved ones
   #   convs = Pikuri::Conversations.new(
   #     system_prompt: 'You are a helpful assistant.',
   #     configure: ->(c, conv) { c.add_tool(Pikuri::Tool::CALCULATOR) },
-  #     on_turn_end: ->(conv, history) { store.save(store.find(conv.id), history, model:, server:) }
+  #     on_turn_end: ->(conv, history) { store.save(entries[conv.id], history, model:, server:) }
   #   )
+  #   entry = store.find(id) || store.create   # resume, or start one
+  #   entries[entry.id] = entry
   #   conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
   #   conv.submit('how do I keep an avocado?')   # => :started; events reach +listener+
   #   convs.shutdown(timeout: 5)

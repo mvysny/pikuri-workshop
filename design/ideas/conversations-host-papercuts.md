@@ -4,20 +4,6 @@ Status: **collected from pikuri-webui's move onto the gem (2026-11-14); none sch
 is small, and each cost the host a workaround or a paragraph. The bigger find from the same
 migration has its own file: `injection-overtakes-turn-message.md`.
 
-## `Store#history` raises for a conversation never saved
-
-A minted entry with no turn yet is an ordinary state (`Store#create` mints no folder), but
-`store.history(entry)` raises `HistoryFile::Error` for it, so every host writes the same guard:
-
-```ruby
-return nil unless (entry.dir / 'history.json').file?
-store.history(entry)
-```
-
-and that guard knows `HistoryFile`'s file name. Options: `history(entry)` answers `nil` when
-nothing was saved (raising stays for a *broken* file), or a `Store#saved?(entry)`. The first
-reads better at the call site — `convs.open(..., history: store.history(entry))` would just work.
-
 ## `close` answers `:busy` while the agent boots
 
 A host deleting a conversation calls `close` and refuses the delete on `:busy`. But boot

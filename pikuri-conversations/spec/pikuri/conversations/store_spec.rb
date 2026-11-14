@@ -315,6 +315,26 @@ RSpec.describe Pikuri::Conversations::Store do
   end
 
   context '#history' do
+    it 'answers nil for a conversation minted and never saved' do
+      assert_nil store.history(store.create(at: at))
+    end
+
+    it 'answers nil for a save interrupted before its envelope, as #list skips it' do
+      entry = store.create(at: at)
+      entry.dir.mkpath
+      Pikuri::Conversations::HistoryFile.save(hello, entry.dir)
+
+      assert_nil store.history(entry)
+    end
+
+    it 'refuses a committed conversation that lost its history.json' do
+      entry = store.create(at: at)
+      save(entry, hello)
+      (entry.dir / 'history.json').delete
+
+      assert_raises(Pikuri::Conversations::HistoryFile::Error) { store.history(store.find(entry.id)) }
+    end
+
     it 'refuses a broken history.json loudly' do
       entry = store.create(at: at)
       save(entry, hello)

@@ -212,13 +212,26 @@ module Pikuri
         list.find { |entry| entry.id == id }
       end
 
-      # The stored conversation, ready for +Agent.new(history:)+.
+      # The stored conversation, ready for +Agent.new(history:)+; nil for one
+      # never saved.
       #
-      # @param entry [Entry] from {#list} or {#find}
-      # @return [Pikuri::Agent::History]
-      # @raise [HistoryFile::Error] for a missing or broken +history.json+, or
-      #   an attachment that fails confinement or its digest
-      def history(entry) = HistoryFile.load(entry.dir)
+      #   convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
+      #
+      # "Never saved" is no +meta.json+, {#save}'s commit point and {#list}'s
+      # test: a minted entry answers nil, and so does a save interrupted
+      # before its envelope. A committed folder without its +history.json+ is
+      # damage, and raises.
+      #
+      # @param entry [Entry] from {#create}, {#list} or {#find}
+      # @return [Pikuri::Agent::History, nil]
+      # @raise [HistoryFile::Error] for a committed conversation whose
+      #   +history.json+ is missing or broken, or an attachment that fails
+      #   confinement or its digest
+      def history(entry)
+        return nil unless (entry.dir / META_FILE).file?
+
+        HistoryFile.load(entry.dir)
+      end
 
       # Commit a conversation to disk — the directory, the history, the envelope.
       #
