@@ -78,7 +78,8 @@ module Pikuri
     # @param id [String] unique among the open conversations
     # @param transport [Pikuri::Agent::ChatTransport] the model it starts on
     # @param listener [Pikuri::Agent::Listener::Base] hears the agent's events
-    #   and the conversation's {Event}s
+    #   and the conversation's {Event}s; a +Pikuri::Agent::ListenerList+ hands
+    #   them to several, one per pane
     # @param history [Pikuri::Agent::History, nil] a conversation to resume
     # @param boot [Boolean]
     # @param untitled [Boolean] whether it still wants a name — a resumed one
