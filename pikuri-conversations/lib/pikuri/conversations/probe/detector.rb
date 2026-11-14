@@ -4,6 +4,7 @@ require 'ruby_llm'
 require 'faraday'
 require 'json'
 require 'cgi'
+require 'uri'
 
 module Pikuri
   class Conversations
@@ -72,8 +73,8 @@ module Pikuri
             super
           end
 
-          # Nothing learned: not an +:openai+ transport, no base URL, or a failed
-          # probe.
+          # Nothing learned: not an +:openai+ transport, no base URL to dial, or
+          # a failed probe.
           #
           # @return [Props]
           NONE = new(n_ctx: nil, total_slots: nil)
@@ -158,14 +159,31 @@ module Pikuri
         # Derive the +/props+ URL from the OpenAI-compatible base (+/props+ is at
         # the host root, so a trailing +/v1+ is stripped).
         #
+        #   Detector.props_url('http://localhost:8080/v1')   # => "http://localhost:8080/props"
+        #   Detector.props_url('http://fake.invalid/v1')     # => nil
+        #
+        # A +.invalid+ host is never dialed: RFC 6761 reserves the name so no
+        # resolver answers it, and +Pikuri::Testing.fake_transport+'s server is
+        # one — so a host's specs probe nothing and wait on no DNS.
+        #
         # @param openai_base [String, nil]
-        # @return [String, nil] the +/props+ URL, or +nil+ when the base is blank
+        # @return [String, nil] the +/props+ URL, or +nil+ for a blank base or a
+        #   +.invalid+ host
         def self.props_url(openai_base)
           base = openai_base.to_s.strip.chomp('/')
-          return nil if base.empty?
+          return nil if base.empty? || invalid_host?(base)
 
           "#{base.delete_suffix('/v1')}/props"
         end
+
+        # @param base [String]
+        # @return [Boolean]
+        def self.invalid_host?(base)
+          URI(base).host.to_s.downcase.chomp('.').match?(/(\A|\.)invalid\z/)
+        rescue URI::InvalidURIError
+          false
+        end
+        private_class_method :invalid_host?
 
         # @param probe_url [String] full URL to llama.cpp +/props+
         # @param model_id [String, nil] the chat model id, used to follow a

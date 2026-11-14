@@ -60,6 +60,15 @@ RSpec.describe Pikuri::Conversations::Probe::Detector do
       assert_equal '', buf.string
     end
 
+    it 'never dials a .invalid host, the fake transport\'s server among them' do
+      base = Pikuri::Testing.fake_transport(modalities: nil).api_base
+      assert_equal none, described_class.detect(transport, openai_base: base)
+      assert_nil described_class.detect_modalities(transport, openai_base: base)
+      assert_nil described_class.props_url('http://INVALID./v1')
+      assert_equal 'http://invalid.example.com/props', described_class.props_url('http://invalid.example.com')
+      assert_equal '', buf.string
+    end
+
     it 'strips a trailing /v1 to reach /props at the host root' do
       stubs.get(url) do
         [200, { 'content-type' => 'application/json' },

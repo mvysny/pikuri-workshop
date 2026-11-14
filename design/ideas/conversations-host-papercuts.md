@@ -14,14 +14,9 @@ away: the boot thread would still install an agent built from the old history, s
 needs the boot to learn it was superseded (a generation counter it checks before installing,
 say) and a fresh boot started behind it.
 
-## Hosts' specs need two things the gem could ship
+## Hosts' specs need a way to wait for a turn to finish
 
-- **The probe dials `Testing.fake_transport`'s server** unless its key is sized:
-  `fake.invalid` states its cap and modalities, but `probe` also wants `Throttle.sized?`. Every
-  host's `spec_helper` grows `Throttle.limit('http://fake.invalid', nil)` plus the `reset!`
-  pair, or its specs wait on DNS. A `Probe` that skips a server whose transport states both
-  facts — or the gem's own spec helper, required by hosts — would remove it.
-- **Waiting for a turn to finish** is the other: with no executor to swap for an inline one,
+- **Waiting for a turn to finish**: with no executor to swap for an inline one,
   pikuri-webui polls until the state is not `running`/`booting` *and* no thread named
   `turn <id>` / `boot <id>` / `title <id>` is alive (the state check alone passes before the
   `TurnEnded` listener has run). It cannot cover the title: the turn spawns `title <id>` on its
