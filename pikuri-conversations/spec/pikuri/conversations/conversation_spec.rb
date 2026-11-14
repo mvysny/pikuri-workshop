@@ -395,6 +395,48 @@ RSpec.describe Pikuri::Conversations::Conversation do
       hold << true
     end
 
+    it 'closes once when the TurnEnded listener closes, Closed after TurnEnded' do
+      box = []
+      recorder.define_singleton_method(:on_event) do |event|
+        super(event)
+        box.first.close if event.is_a?(Event::TurnEnded)
+      end
+      conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('ok') })
+      box << conv
+      conv.submit('hi')
+
+      assert conv.wait_closed(5)
+      assert conv.wait_settled(5)
+      assert_equal [Event::TurnEnded, Event::Closed],
+                   recorder.events.map(&:class).select { [Event::TurnEnded, Event::Closed].include?(_1) }
+    end
+
+    it "holds Closed back for an event another thread's call is still delivering" do
+      hearing = Queue.new
+      hold = Queue.new
+      recorder.define_singleton_method(:on_event) do |event|
+        super(event)
+        next unless event.is_a?(Event::ModelPending)
+
+        hearing << true
+        hold.pop
+      end
+      conv = open(Pikuri::Testing.fake_transport(model: 'a'))
+      recorder.await(Event::Ready)
+
+      switcher = Thread.new { conv.switch_model(Pikuri::Testing.fake_transport(model: 'b')) }
+      hearing.pop
+      shutdown = Thread.new { convs.shutdown(timeout: 5) }
+      refute shutdown.join(0.2), 'shutdown returned while ModelPending was still being heard'
+      hold << true
+      assert shutdown.value
+      assert_equal :selected, switcher.value
+      assert_equal [Event::ModelPending, Event::Closed],
+                   recorder.events.map(&:class).select { [Event::ModelPending, Event::Closed].include?(_1) }
+    ensure
+      hold << true
+    end
+
     it 'closes an idle conversation at once' do
       conv = open(Pikuri::Testing.fake_transport)
       recorder.await(Event::Ready)

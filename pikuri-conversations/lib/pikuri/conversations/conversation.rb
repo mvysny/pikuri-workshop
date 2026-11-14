@@ -99,8 +99,8 @@ module Pikuri
         @boot_generation = 0
         @closing = false
         @agent_released = false
-        # A Titled past its closed? check is being heard; Closed waits for it.
-        @title_emitting = false
+        # Calls of #locked whose events are being heard; Closed waits for zero.
+        @emitting = 0
       end
 
       # Send a user message: starts a turn when idle, joins the running one
@@ -296,6 +296,9 @@ module Pikuri
       # still in flight may outlive it, but emits nothing more; {#wait_settled}
       # waits that out too.
       #
+      # Never call it from the listener: +Closed+ waits for the event being
+      # heard, so the wait runs out its whole +timeout+.
+      #
       # @param timeout [Numeric] seconds
       # @return [Boolean] whether it closed in time — true means nothing more
       #   reaches the listener
@@ -345,18 +348,32 @@ module Pikuri
       # Run the block under the lock, then emit the events it queued in
       # +@effects+ and start the threads it queued in +@spawns+ — both outside
       # the lock, which is the class's one rule.
+      #
+      # Events are counted in +@emitting+ from the critical section that
+      # queued them until the listener has heard them, so {#release} holds
+      # {Event::Closed} back for an event that passed its +closed?+ check
+      # before a close on another thread.
       def locked
         effects = []
         spawns = []
         result = @lock.synchronize do
           @effects = effects
           @spawns = spawns
-          yield
+          yield.tap { @emitting += 1 unless effects.empty? }
         ensure
           @effects = nil
           @spawns = nil
         end
-        effects.each { |e| emit(e) }
+        unless effects.empty?
+          begin
+            effects.each { |e| emit(e) }
+          ensure
+            @lock.synchronize do
+              @emitting -= 1
+              @changed.broadcast
+            end
+          end
+        end
         spawns.each { |name, task| spawn(name, &task) }
         result
       end
@@ -537,6 +554,7 @@ module Pikuri
       def run_turns(message, attachments)
         Thread.current.name = "turn #{@id}"
         Thread.current.priority = @priority
+        closing = false
         loop do
           transport = locked do
             if @next_transport
@@ -564,25 +582,26 @@ module Pikuri
           title(history) if history
 
           restart = locked do
-            if @closing
+            closing = @closing
+            again = !closing && outcome == :completed && @agent.interloper.pending?
+            if closing
               @state = :closed
-              next false
-            end
-            if outcome == :completed && @agent.interloper.pending?
+            elsif again
               @cancellable.reset!
-              next true
+            else
+              @state = :idle
             end
-            @state = :idle
-            false
+            @effects << Event::TurnEnded.new(outcome:, error:, restarting: again)
+            again
           end
-          emit(Event::TurnEnded.new(outcome:, error:, restarting: restart))
           break unless restart
 
           message = nil
           attachments = []
         end
-        agent = locked { @state == :closed ? @agent : nil }
-        release(agent) if agent
+        # Only a close this thread finished: once :idle, a close from the
+        # TurnEnded listener or another thread has released the agent itself.
+        release(@agent) if closing
       end
 
       # Learn the turn's model before its first request: size its server's
@@ -642,7 +661,7 @@ module Pikuri
 
         spawn("title #{@id}") do
           name = titler.title_for(opener, cancellable: @title_cancellable)
-          emit_title(name) if name
+          locked { @effects << Event::Titled.new(title: name) if name && !closed? }
         rescue Pikuri::Agent::Control::Cancellable::Cancelled
           nil
         rescue StandardError => e
@@ -665,21 +684,6 @@ module Pikuri
         end
       end
 
-      # Emit {Event::Titled} unless the conversation is closing. Marked while it
-      # is heard, so {#release} holds {Event::Closed} back until it is.
-      def emit_title(name)
-        return unless @lock.synchronize { !closed? && (@title_emitting = true) }
-
-        begin
-          emit(Event::Titled.new(title: name))
-        ensure
-          @lock.synchronize do
-            @title_emitting = false
-            @changed.broadcast
-          end
-        end
-      end
-
       # Close +agent+ off the caller's thread — an MCP teardown may take
       # seconds — then report {Event::Closed}, the last event.
       def release(agent)
@@ -687,9 +691,9 @@ module Pikuri
           agent&.close
         ensure
           begin
-            # Not a join on the title thread: its HTTP call outlives a cancel,
-            # and Closed would wait for the model's whole answer.
-            @lock.synchronize { @changed.wait(@lock) while @title_emitting }
+            # Waits for events being heard, not for the threads: a title's HTTP
+            # call outlives a cancel, and Closed would wait for its whole answer.
+            @lock.synchronize { @changed.wait(@lock) while @emitting.positive? }
             emit(Event::Closed.new)
             @on_closed&.call(self)
           ensure

@@ -35,20 +35,32 @@ Outside specs the harm is small: a quit as a title lands may cut the write off, 
 `Store#delete` ran). But a host can't treat "`shutdown` returned true" as "nothing more
 reaches my listener", which is what a spec's teardown and a process exit both assume.
 
+- **A close landing as a turn ends released the agent twice.** `run_turns` set `:idle`, let
+  the lock go, emitted `TurnEnded`, then released whenever it read `:closed`. A close in that
+  window, from the `TurnEnded` listener (a one-shot host) or another thread, had already
+  released: `TurnEnded … Closed Closed`, `on_closed` twice, `wait_closed` true before the
+  second. Found in review after the first fix.
+- **Any `locked` call's events could trail a close from another thread**: `switch_model`'s
+  `ModelPending`, `clear`'s `Cleared`, a boot's `Ready`. `locked` emits after the lock drops.
+
 ## Fix: `Closed` is the last event, and `wait_closed` returns after it
 
 Built, in `Conversation`; `shutdown`'s code is unchanged.
 
-1. **`Closed` waits only for a `Titled` being heard, not for the title thread.**
-   `emit_title` sets `@title_emitting` in the same critical section as its `closed?` check
-   and clears it after the listener returns; the close thread waits on `@changed` while it is
-   set. Joining the whole title thread was the first plan, but pikuri's `Cancellable` does
-   not interrupt an in-flight LLM HTTP call (only `Throttle`'s permit wait), so `Closed`
-   would have waited for the titler's whole answer, or a dead server's read timeout.
+1. **`Closed` waits for events being heard, not for threads.** `locked` counts itself in
+   `@emitting` in the critical section that queued its events and uncounts once the listener
+   has heard them; the close thread waits on `@changed` while the count is positive. `Titled`
+   and `TurnEnded` go through `locked` too. Joining the title thread was the first plan, but
+   pikuri's `Cancellable` does not interrupt an in-flight LLM HTTP call (only `Throttle`'s
+   permit wait), so `Closed` would have waited for the titler's whole answer, or a dead
+   server's read timeout. A listener calling `wait_closed` now waits out its timeout; said
+   in its yardoc.
 2. **`@agent_released` is set after `emit(Closed)` and `on_closed`**, in an `ensure` so a
    raising `on_closed` can't strand a waiter.
 3. **`discard_pending` answers `[]` once closing**, since it would otherwise emit
    `PendingChanged` on the host's thread after `Closed`.
+4. **`run_turns` releases only a close it finished itself** (it saw `@closing`), never on
+   reading `:closed` after the lock dropped.
 
 `wait_closed` now means "every event has reached the listener"; `shutdown` inherits that, and
 so does any host calling `wait_closed` directly. A title request still in flight may outlive
@@ -69,8 +81,9 @@ released, and `wait_closed` waits out its whole timeout. Not this bug; worth a s
 ## Done when
 
 - ~~Specs in `conversation_spec.rb`~~ — done: "returns from shutdown only once the listener
-  has heard Closed" and "hears out a title that passed before the close…". Both failed on the
-  old code every time; the spec file ran 25 times clean after the fix.
+  has heard Closed", "hears out a title that passed before the close…", "closes once when the
+  TurnEnded listener closes…" and "holds Closed back for an event another thread's call…".
+  Each failed on the code before its fix; the spec file ran 25 times clean after both.
 - Puri bumps its pin, and its `pikuri_core_spec.rb` runs 25 times clean.
 
 On graduation: the aside above becomes its own idea file; everything else already lives in
