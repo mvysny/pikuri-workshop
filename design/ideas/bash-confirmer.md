@@ -32,9 +32,9 @@ obey the same governing invariant (stated in "The invariant" below):
   OS-helper is one of the two agents that would use this note (the coding agent is the other, and the likelier winner — see
   below).
 - [`more-confirmers.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/more-confirmers.md) — the sibling
-  human-in-the-loop confirmer shapes (the author seat, the reason
-  channel, the ingest gate). That file is the **authorship / steering**
-  axis (*who* authors the payload); this note is the **fatigue +
+  confirmer questions still open (structured `Request` context, the
+  ingest gate). That file is the **what-to-show / where-to-gate**
+  axis; this note is the **fatigue +
   comprehension** axis (*how often* we ask, and *how well* the human
   understands what they're approving). Kept distinct on purpose.
 - {Pikuri::Code::Bash::PassiveCommandDetector} — the static allowlist
@@ -53,8 +53,8 @@ stopped reading, so the injected forty-first prompt gets rubber-stamped.
 The allowlist's whole job is to make prompts **rare and meaningful**.
 
 Bash sits at the **weak end** of the confirmer-strength spectrum
-([`more-confirmers.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/more-confirmers.md) §"The barrier is not
-uniform") on *two* compounding axes at once: it's both **high-frequency**
+(pikuri's [security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+§"The human gate, and why fatigue is the enemy") on *two* compounding axes at once: it's both **high-frequency**
 (the fatigue above) *and* **low-legibility** (a human often can't tell
 what a pipeline does), so even an un-fatigued bash approval is a weaker
 barrier than a rare, fully-legible one like email compose. That double
