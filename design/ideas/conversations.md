@@ -376,13 +376,14 @@ Built against pikuri `3aed7e2` with no pikuri change:
 
 ## Open questions
 
-- `Q_overflow` — pikuri's `context-budget.md` and `context-overflow-behavior.md` don't move
-  whole: their refusals (the per-turn budget line; core raises, the operator watches) become
-  pikuri `D_` entries first, and the open remainder moves here as one idea file — compaction as
-  a `Conversation` operation (close the agent, build a fresh one from a summarised `History`, so
-  `clear` with a seed history, between turns or on `TurnEnded(:failed)` from overflow), and the
-  late warning for legs no operator watches. Reactive compaction needs no cap; proactive
-  compaction and the warning take it from the probe.
+- `Q_overflow` — moved here 2026-11-15 as [`context-overflow.md`](context-overflow.md) and
+  [`context-budget.md`](context-budget.md). Compaction is *not* close-and-rebuild: pikuri core
+  swaps the messages in place via `Configurator#replace_compacted_history`, because a rebuild
+  drops session state and can lose MCP tools (`pikuri:D_compaction_in_place`). What is left for
+  a `Conversation` is the trigger: between turns, or reacting to `TurnEnded(:failed)` from
+  overflow. Reactive compaction needs no cap; proactive compaction and the late warning take it
+  from the probe. The per-turn budget-line refusal has no pikuri `D_` yet; it lives in
+  `context-budget.md`.
 - `Q_replay` — leaning to a pure `History#events` in core, usable with no agent; webui's
   `HistoryReplay` duplicates the dangling-call repair.
 - `Q_listener_swap` — listeners are fixed at `Agent.new`; webui keeps a detached conversation's
