@@ -133,14 +133,15 @@ module Pikuri
         #   linker, standard utilities, and the TLS/DNS/tz/hostname handshake.
         #   +/usr+ and +/opt+ arrive via {Workspace#readable} instead (added by
         #   {Pikuri::Code::ToolchainPaths.readable}).
-        # * +/tmp+ — bound to {Workspace::Filesystem#temp} when set (so the
-        #   LLM's reflexive +/tmp+ writes persist across bash calls), else
-        #   +--tmpfs+. The host's +/tmp+ is never exposed. Synthetic +/proc+
+        # * +/tmp+ — the scratch folder of a {Code::TmpAlias} filesystem (so the
+        #   LLM's reflexive +/tmp+ writes persist across bash calls and the file
+        #   tools read them at the same path), else +--tmpfs+. The host's +/tmp+
+        #   is never exposed. Synthetic +/proc+
         #   (+--unshare-pid+) and +/dev+ (null/zero/random/tty) round it out.
         # * +workspace.writable+ — +--bind+ (read+write, *persistent*).
         # * +workspace.readable+ — read-write *ephemeral overlay* (host dir the
         #   read-through lower, a per-session upper under
-        #   +<internal_temp>/overlay-<slug>/+ absorbs writes), so +gem install+
+        #   +<state dir>/overlay-<slug>/+ absorbs writes), so +gem install+
         #   / +bundle+ / +mvn+ / +gradle+ / +cargo+ / +pip+ succeed while the
         #   host toolchain stays untouched. Falls back to +--ro-bind+ without
         #   overlayfs-in-userns (Linux < 5.11), in which case a write into a
@@ -184,6 +185,12 @@ module Pikuri
         # sees uid 0 (measured). About 50 ms per command.
         #
         # == The environment
+        #
+        # {#env} adds the host's git identity (+GIT_AUTHOR_*+, +GIT_COMMITTER_*+,
+        # from +git config+ at the project root, +includeIf+ applied): the
+        # sandbox hides +~/.gitconfig+, and without them +git commit+ inside
+        # fails with "Author identity unknown". Mounting +~/.gitconfig+ instead
+        # would show the sandbox its credential helpers and +insteadOf+ tokens.
         #
         # Walled too, by {EnvWall}: {#env} unsets every inherited variable the
         # wall withholds, in the environment +bwrap+ *itself* is spawned with.
@@ -267,13 +274,12 @@ module Pikuri
           end
 
           # @param filesystem [Pikuri::Workspace::Filesystem] source of the
-          #   per-host readable/writable roots, the +chdir+ target, and the
-          #   parent of the per-session overlay state
-          #   ({Workspace::Filesystem#internal_temp}). Every +readable+ dir is
+          #   readable/writable roots and the +chdir+ target; a {Code::TmpAlias}
+          #   one also names the folder bound at +/tmp+. Every +readable+ dir is
           #   mounted as a read-write ephemeral overlay (or +--ro-bind+ without
           #   overlayfs-in-userns); see the class header.
           # @raise [RuntimeError] if +/+ is writable (pass {NONE} instead), if
-          #   +temp+ is set but +alias_tmp_to_temp+ isn't, if any path equals or
+          #   any path equals or
           #   contains a {DENIED_CONTAINER_SOCKETS} entry, or if +bwrap+ is
           #   missing / fails its basic probe. A *separate* overlayfs probe
           #   failure does NOT raise — it degrades to read-only binds.
@@ -288,8 +294,8 @@ module Pikuri
             @filesystem = filesystem
             @env_wall = EnvWall.new(pass: pass_env)
             @loopback_ports = loopback_ports.map { |port| Integer(port) }.uniq.sort.freeze
+            @tmp = filesystem.respond_to?(:tmp) ? filesystem.tmp : nil
             reject_unbounded_workspace!
-            reject_unaliased_temp!
             reject_container_socket_exposure!
             check_bwrap!
             @own_network = own_network && pasta_works?
@@ -312,16 +318,16 @@ module Pikuri
           end
 
           # The spawn delta with the environment walled: every inherited
-          # variable {EnvWall} withholds becomes +nil+ (unset), unless +delta+
-          # sets it itself. Reads +ENV+ per call, so it walls what the process
-          # holds now.
+          # variable {EnvWall} withholds becomes +nil+ (unset), and the git
+          # identity is added, unless +delta+ sets the name itself. Reads +ENV+
+          # per call, so it walls what the process holds now.
           #
           # @param delta [Hash{String => String, nil}] the caller's own
           #   environment changes; they win over the wall.
           # @return [Hash{String => String, nil}] the delta to spawn +bwrap+ with
           def env(delta)
-            withheld = @env_wall.withheld(ENV.to_h).reject { |name| delta.key?(name) }
-            withheld.to_h { |name| [name, nil] }.merge(delta)
+            withheld = @env_wall.withheld(ENV.to_h).to_h { |name| [name, nil] }
+            withheld.merge(git_identity).merge(delta)
           end
 
           # @return [Array<String>] the names of the inherited variables the
@@ -353,21 +359,39 @@ module Pikuri
                   'is the workspace. Pass Sandbox::NONE instead.'
           end
 
-          # A temp bind at +/tmp+ only pays off if the workspace also rewrites
-          # +/tmp/*+ in the file tools via +alias_tmp_to_temp+; otherwise the
-          # LLM writes via bash then hits "outside workspace" on every file-tool
-          # access to the same path. Fail at boot.
-          def reject_unaliased_temp!
-            return if @filesystem.temp.nil?
-            return if @filesystem.alias_tmp_to_temp
+          # +GIT_AUTHOR_*+ / +GIT_COMMITTER_*+ from +git config+ at the project
+          # root, resolved once; +{}+ when git is missing or either field is
+          # unset, so git inside falls back to its own error.
+          #
+          # @return [Hash{String => String}]
+          def git_identity
+            @git_identity ||= begin
+              name  = git_config('user.name')
+              email = git_config('user.email')
+              if name.to_s.empty? || email.to_s.empty?
+                {}
+              else
+                { 'GIT_AUTHOR_NAME' => name, 'GIT_AUTHOR_EMAIL' => email,
+                  'GIT_COMMITTER_NAME' => name, 'GIT_COMMITTER_EMAIL' => email }
+              end
+            end.freeze
+          end
 
-            raise 'Code::Bash::Sandbox::Bubblewrap: workspace has temp set ' \
-                  'but alias_tmp_to_temp is off. This sandbox binds ' \
-                  'workspace.temp at /tmp inside the subprocess, which ' \
-                  'requires the workspace to rewrite /tmp/* in the file ' \
-                  'tools so bash and file tools agree on one path. ' \
-                  'Construct the workspace with alias_tmp_to_temp: true, ' \
-                  'or pass Sandbox::NONE if you do not want the bind.'
+          def git_config(key)
+            root = @filesystem.project_root.to_s
+            result = Pikuri::Subprocess.spawn('git', '-C', root, 'config', key, chdir: root).wait
+            result.status.success? ? result.output.strip : nil
+          rescue Errno::ENOENT
+            nil
+          end
+
+          # This sandbox's own per-session folder for the overlay uppers and the
+          # forwarded +resolv.conf+; reaped at exit with the rest of
+          # {Pikuri::Paths.new_temp}.
+          #
+          # @return [Pathname]
+          def state_dir
+            @state_dir ||= Pikuri::Paths.new_temp
           end
 
           # A workspace root that equals or contains a container/VM control
@@ -457,14 +481,14 @@ module Pikuri
           end
 
           # The host's +resolv.conf+ with its nameservers swapped for
-          # {DNS_FORWARD}, written under the workspace's internal temp. Written
-          # on every {#wrap}, like the overlay dirs, so a wiped temp recovers.
+          # {DNS_FORWARD}, written under {#state_dir}. Written on every {#wrap},
+          # like the overlay dirs, so a wiped folder recovers.
           #
           # @return [String] the file's path
           def forwarded_resolv_conf
             host = File.exist?('/etc/resolv.conf') ? File.read('/etc/resolv.conf') : ''
             kept = host.lines.reject { |line| line.match?(/\A\s*nameserver\b/) }
-            path = @filesystem.internal_temp + 'resolv.conf'
+            path = state_dir + 'resolv.conf'
             File.write(path, ["nameserver #{DNS_FORWARD}\n", *kept].join)
             path.to_s
           end
@@ -512,19 +536,11 @@ module Pikuri
               mounted << p
             end
 
-            # 2. Synthetic /proc + /dev. /tmp is handled separately
-            #    below — when the workspace has a temp dir we bind it
-            #    at /tmp (so the LLM's reflexive /tmp writes persist
-            #    across bash calls); otherwise we fall back to tmpfs.
+            # 2. Synthetic /proc + /dev, and /tmp: the scratch folder, else a
+            #    tmpfs. Before the roots, so a root under /tmp binds over it.
             args.concat(['--proc', '/proc', '--dev', '/dev'])
-
-            if @filesystem.temp
-              args.concat(['--bind', @filesystem.temp.to_s, '/tmp'])
-              mounted << '/tmp'
-            else
-              args.concat(['--tmpfs', '/tmp'])
-              mounted << '/tmp'
-            end
+            args.concat(@tmp ? ['--bind', @tmp.to_s, '/tmp'] : ['--tmpfs', '/tmp'])
+            mounted << '/tmp'
 
             # 3. Workspace-derived mounts. Writable wins on overlap
             #    (writable ⊆ readable in the Workspace constructor;
@@ -557,13 +573,11 @@ module Pikuri
             args
           end
 
-          # Lazily mint +<workspace.internal_temp>/overlay-<slug>/{upper,work}+
-          # for +path+ and return the +bwrap+ fragment mounting an overlayfs at
-          # +path+ with the host's real +path+ as the read-only lower. The
-          # umbrella + its Finalizers-driven cleanup are owned by the workspace;
-          # touching {Workspace::Filesystem#internal_temp} here triggers the
-          # lazy mint. Called on every +wrap+: +mkdir_p+ is idempotent and is
-          # the cheapest recovery from a mid-session umbrella wipe.
+          # Lazily mint +<state_dir>/overlay-<slug>/{upper,work}+ for +path+ and
+          # return the +bwrap+ fragment mounting an overlayfs at +path+ with the
+          # host's real +path+ as the read-only lower. Called on every +wrap+:
+          # +mkdir_p+ is idempotent and is the cheapest recovery from a
+          # mid-session wipe.
           #
           # *Concurrency:* the +upper+/+work+ paths are not safe to mount from
           # two live overlays at once (+EBUSY+) — fine because {Bash} serializes
@@ -572,7 +586,7 @@ module Pikuri
           # second mount.
           def overlay_mount_args(path)
             slug = path.gsub(/[^A-Za-z0-9._-]/, '_').sub(/\A_+/, '')
-            overlay_dir = @filesystem.internal_temp + "overlay-#{slug}"
+            overlay_dir = state_dir + "overlay-#{slug}"
             upper = overlay_dir + 'upper'
             work  = overlay_dir + 'work'
             FileUtils.mkdir_p(upper)

@@ -8,8 +8,8 @@ module Pikuri
     # The +git_clone+ tool — shallow-clone a public git repository into the
     # workspace. +Code::GitClone.new(filesystem: fs)+ produces a tool whose
     # +execute+ closes over the filesystem and a lazily-minted
-    # {Bash::Sandbox::Bubblewrap}. Its home is
-    # {Pikuri::Code::GIT_REPO_RESEARCHER}: *one shallow clone + grep* beats
+    # {Bash::Sandbox::Bubblewrap}. Its home is {GitRepoResearcher}'s child
+    # agent: *one shallow clone + grep* beats
     # *N pages of HTML scraping* when the task is "dig through this repo's
     # source for how it does X".
     #
@@ -28,21 +28,17 @@ module Pikuri
     #    CVE-2024-32002 class.
     # 3. **Shallow clone.** +--depth 1+ (fewer ref-parsing edge cases).
     # 4. **Bubblewrap-sandboxed.** +git+ runs inside {Bash::Sandbox::Bubblewrap}
-    #    bound to the persona's fresh temp workspace — no host +~/.ssh+, no
+    #    bound to the child's throwaway folder — no host +~/.ssh+, no
     #    +~/.gitconfig+, no other projects' source, no container sockets. A
     #    clone-RCE's blast radius is the throwaway workspace.
     #
-    # The Bubblewrap instance is minted lazily on first +execute+, not at
-    # construction: the boot-time GitClone wired by +bin/pikuri-code+ lives in
-    # the sub-agent-only pool and never runs — it's replaced via
-    # {#with_workspace} when a +git_repo_researcher+ session starts, so eager
-    # construction would pay the +bwrap+ probe cost on every boot for nothing.
+    # The Bubblewrap instance is minted lazily on first +execute+, so a child
+    # that never clones never pays the +bwrap+ probe.
     #
-    # Sharing: +P_one_agent+ — an instance is bound to one session's temp
-    # workspace, which is the whole point (a clone-RCE's blast radius is *that*
-    # throwaway tree). +with_workspace+ mints the per-session copy. The lazy
-    # sandbox memo is unguarded, so a shared instance could also pay the +bwrap+
-    # probe twice.
+    # Sharing: +P_one_agent+ — an instance is bound to one child's throwaway
+    # folder, which is the whole point (a clone-RCE's blast radius is *that*
+    # tree). The lazy sandbox memo is unguarded, so a shared instance could
+    # also pay the +bwrap+ probe twice.
     class GitClone < Pikuri::Tool
       # URL schemes accepted. +https+ first (TLS) and +http+ as a
       # fallback for the rare public mirror. All other schemes are
@@ -73,8 +69,7 @@ module Pikuri
       #   (defaults to a lazily-minted {Bash::Sandbox::Bubblewrap}
       #   bound to +filesystem+). Pass {Bash::Sandbox::NONE} in tests
       #   that don't have +bwrap+ on +PATH+; production wiring leaves
-      #   it +nil+ so the Bubblewrap mint happens at the right moment
-      #   (after {#with_workspace} replaces the filesystem).
+      #   it +nil+ so the Bubblewrap is minted on the first clone.
       # @return [GitClone]
       def initialize(filesystem:, sandbox: nil)
         @filesystem = filesystem
@@ -96,20 +91,6 @@ module Pikuri
           # attacker reads. The cloned tree is then attacker-authored content.
           trifecta_legs: Pikuri::Tool::TrifectaLegs::ASSUMED
         )
-      end
-
-      # Produce a new {GitClone} bound to the session +workspace+'s bare
-      # {Pikuri::Workspace::Workspace#filesystem}. The +with_workspace+ protocol
-      # ({Pikuri::SubAgent::SubAgentTool}) hands rebuilt tools the composite,
-      # but GitClone's {Bash::Sandbox::Bubblewrap} needs the bare {Filesystem}'s
-      # +readable+/+writable+/+temp+, so it reads +workspace.filesystem+ here.
-      # The sandbox is NOT carried over — a fresh Bubblewrap is minted lazily
-      # from the new filesystem (its bind set depends on that filesystem).
-      #
-      # @param workspace [Pikuri::Workspace::Workspace]
-      # @return [GitClone]
-      def with_workspace(workspace)
-        self.class.new(filesystem: workspace.filesystem)
       end
 
       private

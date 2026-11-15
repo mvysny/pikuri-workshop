@@ -66,11 +66,9 @@ module Pikuri
       #   policy").
       # @param sandbox [Pikuri::Code::Bash::Sandbox] bash subprocess
       #   isolation; defaults to {Pikuri::Code::Bash::Sandbox::NONE}.
-      # @param read_only [Pikuri::Workspace::ReadOnly, nil] the shared
-      #   read-only flag; when present it is threaded into both
-      #   {Pikuri::Workspace::Extension} (gates Write/Edit) and
-      #   {Pikuri::Code::Extension} (wires plan mode), so one instance
-      #   drives the whole posture. +nil+ leaves plan mode unavailable.
+      # @param plan_mode [Pikuri::Code::PlanMode, nil] guards the file tools'
+      #   filesystem and is handed to {Pikuri::Code::Extension}, so one
+      #   instance drives the whole posture. +nil+ leaves plan mode unavailable.
       # @param memory [MachineMemory] the MACHINE.md reader.
       # @param system_info [SystemInfo] the boot-time machine facts.
       # @param file_index_backends [Array<Module>] file-index backends in
@@ -78,13 +76,13 @@ module Pikuri
       #   usable one backs the fileindex tools; if none is usable they are
       #   omitted.
       def initialize(filesystem:, confirmer:,
-                     sandbox: Pikuri::Code::Bash::Sandbox::NONE, read_only: nil,
+                     sandbox: Pikuri::Code::Bash::Sandbox::NONE, plan_mode: nil,
                      memory: MachineMemory.new, system_info: SystemInfo.new,
                      file_index_backends: FILE_INDEX_BACKENDS)
         @filesystem = filesystem
         @confirmer = confirmer
         @sandbox = sandbox
-        @read_only = read_only
+        @plan_mode = plan_mode
         @memory = memory
         @system_info = system_info
         @file_index_backends = file_index_backends
@@ -94,15 +92,15 @@ module Pikuri
       # @return [void]
       def configure(c)
         c.add_extension(Pikuri::Workspace::Extension.new(
-                          filesystem: @filesystem, confirmer: @confirmer, read_only: @read_only,
-                          confirm_all_writes: true
+                          filesystem: @plan_mode ? @plan_mode.guard(@filesystem) : @filesystem,
+                          confirmer: @confirmer, confirm_all_writes: true
                         ))
         c.add_extension(Pikuri::Code::Extension.new(
                           filesystem: @filesystem,
                           confirmer: @confirmer,
                           passive_detector: Pikuri::Code::Bash::PassiveCommandDetector.new(allow_git: true),
                           sandbox: @sandbox,
-                          read_only: @read_only
+                          plan_mode: @plan_mode
                         ))
 
         backend = @file_index_backends.find(&:available?)

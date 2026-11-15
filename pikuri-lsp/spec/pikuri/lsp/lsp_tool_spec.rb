@@ -367,13 +367,16 @@ describe Pikuri::Lsp::LspTool do
       end
     end
 
-    it 'sends the real file under a workspace that aliases /tmp to its playground' do
-      # bin/pikuri-code wires alias_tmp_to_temp whenever the sandbox is on, and
+    it 'sends the real file under a filesystem that aliases /tmp to a scratch folder' do
+      # bin/pikuri-code wires Code::TmpAlias whenever the sandbox is on, and
       # a spec root lives under /tmp — so resolving the *resolved* path a second
-      # time rewrote it into the agent's empty playground. The document the
+      # time rewrote it into the agent's empty scratch folder. The document the
       # server indexes has to be the one on disk.
       aliasing = lambda do |root|
-        Pikuri::Workspace::Filesystem.new(project_root: root, temp: true, alias_tmp_to_temp: true)
+        scratch = Pikuri::Paths.new_temp
+        Pikuri::Code::TmpAlias.new(
+          Pikuri::Workspace::Filesystem.new(project_root: root, writable: [scratch]), tmp: scratch
+        )
       end
       wired.call(files: { 'read.rb' => read_rb }, filesystem: aliasing) do |tool, fakes|
         fakes['ruby'].on('textDocument/hover') { |_params| { 'contents' => 'x' } }

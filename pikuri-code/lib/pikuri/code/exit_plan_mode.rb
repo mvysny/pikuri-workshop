@@ -3,7 +3,7 @@
 module Pikuri
   module Code
     # The +exit_plan_mode+ tool: presents the finished plan for approval and, on
-    # a yes, turns the shared {Pikuri::Workspace::ReadOnly} flag back off. The
+    # a yes, turns the shared {PlanMode} back off. The
     # plan is shown and the yes/no collected through the same
     # {Pikuri::Workspace::Confirmer} the +write+/+bash+ tools use, so
     # presentation + attacker-text sanitization live in one place. On approval
@@ -28,12 +28,11 @@ module Pikuri
         - Do not use this for pure research tasks — those never enter plan mode in the first place.
       DESC
 
-      # @param read_only [Pikuri::Workspace::ReadOnly] the shared
-      #   read-only flag to deactivate on approval.
+      # @param plan_mode [PlanMode] the shared flag to deactivate on approval.
       # @param confirmer [Pikuri::Workspace::Confirmer] consulted to
       #   present the plan and collect the approval.
       # @return [ExitPlanMode]
-      def initialize(read_only:, confirmer:)
+      def initialize(plan_mode:, confirmer:)
         super(
           name: 'exit_plan_mode',
           description: DESCRIPTION,
@@ -46,7 +45,7 @@ module Pikuri
           },
           wants_context: true,
           execute: ->(plan:, context:) {
-            ExitPlanMode.run(read_only: read_only, confirmer: confirmer, plan: plan,
+            ExitPlanMode.run(plan_mode: plan_mode, confirmer: confirmer, plan: plan,
                              cancellable: context.cancellable)
           },
           # No legs: flips a local mode flag (behind a confirmer, which grades
@@ -67,7 +66,7 @@ module Pikuri
       # Present +plan+ for approval; on yes deactivate plan mode, on no
       # keep it active. Returns the observation the model reacts to.
       #
-      # @param read_only [Pikuri::Workspace::ReadOnly]
+      # @param plan_mode [PlanMode]
       # @param confirmer [Pikuri::Workspace::Confirmer]
       # @param plan [String] the LLM-authored plan to show the user
       # @param cancellable [Pikuri::Agent::Control::Cancellable] the calling
@@ -76,8 +75,8 @@ module Pikuri
       # @return [Pikuri::Tool::Result] +"Plan mode off"+ / +"Plan not
       #   approved"+ once the user has answered, or
       #   {Pikuri::Tool::Result.error} when there was no plan mode to exit
-      def self.run(read_only:, confirmer:, plan:, cancellable:)
-        unless read_only.active?
+      def self.run(plan_mode:, confirmer:, plan:, cancellable:)
+        unless plan_mode.active?
           return Pikuri::Tool::Result.error('not in plan mode, so there is nothing to exit. ' \
                                             'Proceed with the work directly.')
         end
@@ -89,7 +88,7 @@ module Pikuri
 
         case confirmer.ask(request: request, cancellable: cancellable)
         in Pikuri::Workspace::Confirmer::Approved
-          read_only.deactivate!
+          plan_mode.deactivate!
           Pikuri::Tool::Result.new(
             content: 'Plan approved — you are no longer in plan mode. Implement the plan now.',
             summary: 'Plan mode off'

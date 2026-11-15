@@ -287,8 +287,8 @@ RSpec.describe Pikuri::Code::Bash do
       saved.nil? ? ENV.delete('GIT_CONFIG_COUNT') : ENV['GIT_CONFIG_COUNT'] = saved
     end
 
-    it 'subprocess_env carries the hardening keys alongside the bundler/identity deltas' do
-      env = described_class.send(:subprocess_env, filesystem)
+    it 'subprocess_env carries the hardening keys alongside the bundler delta' do
+      env = described_class.send(:subprocess_env)
 
       assert env.key?('GIT_CONFIG_COUNT')
       assert_includes env.values, 'core.fsmonitor'

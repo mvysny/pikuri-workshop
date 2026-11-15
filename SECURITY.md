@@ -23,7 +23,7 @@ wants, a coding agent, is the one it can't cover.
 
 | Model | Mechanism | Fits | Where it fails |
 |---|---|---|---|
-| **Trifecta-break** | sub-agent capability boundaries — `RESEARCHER` / `FILE_MINER` / `GIT_REPO_RESEARCHER` hold at most two of the three legs | chat, `minions`, web / file / repo recon | the *relay* leg: a sub-agent's reply carrying the injection up to a parent that *does* hold the third leg |
+| **Trifecta-break** | sub-agent capability boundaries — `RESEARCHER` / `FILE_MINER` / `git_repo_research`'s child hold at most two of the three legs | chat, `minions`, web / file / repo recon | the *relay* leg: a sub-agent's reply carrying the injection up to a parent that *does* hold the third leg |
 | **Blast-radius containment** | Workspace seam + Bubblewrap — `~/.ssh`, `~/.aws`, other projects don't resolve; bash sees only the workspace | coding, attended or not | the workspace is itself inside the radius — "leak *this* project's `.env`" still works |
 | **Human gate** | `Confirmer` prompts before an irreversible or egress-bearing action runs | coding **with a human present** | confirmation fatigue; worth zero when nobody's watching |
 | **Egress allowlist** *(planned)* | allow your package registries + git remote, deny the rest — cuts exfil at the network without removing `bash` | **unattended** coding | coarse: an allowlisted host is still open, and DNS exfil rides port 53 |
@@ -102,11 +102,11 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
 
 ## Prompt injection: what the workshop adds
 
-**`GIT_REPO_RESEARCHER`.** `git_clone` plus a `FILE_MINER`+web set, cloning (HTTPS-only,
-shallow) into a temp workspace *disjoint* from the parent's project root, so cloned bytes never
-land where the parent's `read` would find them. Same trifecta shape as `RESEARCHER`.
+**`git_repo_research`.** A child agent with `git_clone` plus a `FILE_MINER`+web set, cloning
+(HTTPS-only, shallow) into a temp folder *disjoint* from the parent's project root, so cloned
+bytes never land where the parent's `read` would find them. Same trifecta shape as `RESEARCHER`.
 `bin/pikuri-code` wires it beside `RESEARCHER` and `FILE_MINER`; the parent receives only the
-sub-agent's one-paragraph reply, never the raw untrusted bytes.
+child's one-paragraph reply, never the raw untrusted bytes.
 
 *The honest gap — the relay leg (not structural).* That reply is itself attacker-influenced
 content, and in `pikuri-code` it flows into a parent that holds `read` + `bash` + `fetch`. A

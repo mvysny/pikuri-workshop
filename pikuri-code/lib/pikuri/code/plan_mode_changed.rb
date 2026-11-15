@@ -4,8 +4,8 @@ module Pikuri
   module Code
     # Domain event emitted onto the listener stream whenever plan mode
     # transitions — model-driven ({EnterPlanMode} / {ExitPlanMode}) or
-    # host-driven. Wired by {Extension#configure} through the shared
-    # {Pikuri::Workspace::ReadOnly} flag's +on_change+. A pikuri-code *domain*
+    # host-driven. Wired by {Extension#configure} through
+    # {PlanMode#on_change}. A pikuri-code *domain*
     # event, not a core {Pikuri::Agent::Event} — the loop never reads plan
     # mode; listeners that don't care no-op on it (the demo
     # {Pikuri::Agent::Listener::Terminal} renders it generically via {#to_s}).

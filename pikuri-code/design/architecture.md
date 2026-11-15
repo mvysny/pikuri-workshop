@@ -68,7 +68,7 @@ the class YARD; the *design points* worth stating once:
 `workspace.readable` dirs (the toolchain caches from
 {Pikuri::Code::ToolchainPaths}) are mounted as **read-write ephemeral
 overlays**: the host dir is the read-through lower, a per-session upper
-under `<internal_temp>/overlay-<slug>/` absorbs writes. So
+under `<state dir>/overlay-<slug>/` absorbs writes. So
 `gem install` / `bundle` / `mvn` / `gradle` / `cargo` / `pip` succeed
 against `/usr`, `~/.rbenv`, `~/.gradle/caches`, … while the host's real
 toolchain stays untouched. Writes survive across bash calls within one
@@ -116,9 +116,8 @@ is the file-tool-side counterpart.)
 
 Each `Bubblewrap` instance must own its overlay upper/workdir
 exclusively — overlayfs returns `EBUSY` on a shared upper. The bundled
-wiring guarantees it: one {Pikuri::Workspace::Filesystem} mints one
-umbrella ({Pikuri::Workspace::Filesystem}`#internal_temp`) feeding one
-`Bubblewrap`, and `Bash` runs `bash -c` synchronously
+wiring guarantees it: each `Bubblewrap` mints its own state dir
+({Pikuri::Paths.new_temp}) for its uppers, and `Bash` runs `bash -c` synchronously
 ({Pikuri::Subprocess}`#wait`) while sub-agents block their parent's
 loop — so two `bwrap` invocations from one pikuri process never overlap
 in time. Two pikuri-code *processes* are independent (each its own

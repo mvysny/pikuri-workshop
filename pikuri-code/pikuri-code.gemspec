@@ -48,11 +48,4 @@ Gem::Specification.new do |spec|
   # +Pikuri::Workspace::Filesystem+ + +Pikuri::Workspace::Confirmer+ live
   # in pikuri-workspace; +Pikuri::Code::Bash+ takes both via constructor.
   spec.add_dependency 'pikuri-workspace', Pikuri::Workshop::PIKURI
-
-  # +Pikuri::SubAgent::Persona+ — the record type the bundled
-  # +GIT_REPO_RESEARCHER+ persona is an instance of. Its +tool_names+
-  # also name the web tools, resolved against whatever the host wires,
-  # so pikuri-web is the host's dependency, not this gem's. Pinned like
-  # pikuri-core.
-  spec.add_dependency 'pikuri-subagents', Pikuri::Workshop::PIKURI
 end

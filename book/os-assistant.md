@@ -367,7 +367,7 @@ agent = Pikuri::Agent.new(
     filesystem: filesystem,   # AllowAll(project_root: Dir.pwd)
     confirmer:  confirmer,    # the *human* confirmer
     sandbox:    sandbox,      # FullFsNoNet
-    read_only:  read_only     # the shared plan-mode flag, below
+    plan_mode:  plan_mode     # the shared plan-mode flag, below
   )
 end
 ```
@@ -380,7 +380,7 @@ re-derive any of that — and neither will the TUI or web client that
 wire the same object later.
 
 The one piece the host keeps a handle on is **plan mode**: a shared
-`Workspace::ReadOnly` flag, threaded into both the file tools and
+`Code::PlanMode` flag, which guards the file tools' filesystem and drives
 `Code::Extension`. Flipping it on (the REPL's `/plan`) makes `write`
 and `edit` refuse — research and design without touching anything —
 and `/impl` flips it back. It gates only `write` and `edit`; `bash`

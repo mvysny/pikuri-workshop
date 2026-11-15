@@ -25,13 +25,13 @@ agent = Pikuri::Agent.new(transport: ..., system_prompt: ..., cancellable: ...) 
   c.add_listener Pikuri::Agent::Listener::Terminal.new
   c.add_listener Pikuri::Agent::Listener::TokenLog.new
 
-  c.add_extension Pikuri::Workspace::Extension.new(filesystem:, confirmer:, read_only:)
+  c.add_extension Pikuri::Workspace::Extension.new(filesystem: plan_mode.guard(filesystem), confirmer:)
   c.add_tool Pikuri::Tool::CALCULATOR
   c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
   c.add_sub_agent_tool Pikuri::Web::SCRAPE
   c.add_sub_agent_tool Pikuri::Web::FETCH
   c.add_extension Pikuri::Code::Extension.new(filesystem:, confirmer:, passive_detector:,
-                                              sandbox:, read_only:)
+                                              sandbox:, plan_mode:)
   c.add_extension skill_extension
   c.add_extension Pikuri::Command::Extension.new(registry: command_registry)
   c.add_extension Pikuri::Tasks::Extension.new
@@ -40,9 +40,9 @@ agent = Pikuri::Agent.new(transport: ..., system_prompt: ..., cancellable: ...) 
                                              verify_mcp_servers: true)
   c.add_extension Pikuri::Lsp::Extension.new(registry: lsp_registry, filesystem:)
   c.add_extension Pikuri::SubAgent::Extension.new(
-    personas: [Pikuri::SubAgent::FILE_MINER, Pikuri::SubAgent::RESEARCHER,
-               Pikuri::Code::GIT_REPO_RESEARCHER]
+    personas: [Pikuri::SubAgent::FILE_MINER, Pikuri::SubAgent::RESEARCHER]
   )
+  c.add_extension Pikuri::Code::GitRepoResearcher.new
 end
 ```
 
@@ -51,32 +51,33 @@ Nearly every line is an extension, and each came from a chapter:
 | Extension | Adds | Met in |
 |---|---|---|
 | `Workspace::Extension` | `read` `grep` `glob` `file_list` `edit` `write`, and the read-before-edit record they share | [the shell chapter](shell.md) |
-| `Code::Extension` | `bash` in its cage, plan mode, and `git_clone` (sub-agents only) | [the shell chapter](shell.md); plan mode below |
+| `Code::Extension` | `bash` in its cage, and plan mode | [the shell chapter](shell.md); plan mode below |
 | `skill_extension` | the `skill` tool and its catalog | [Agent Skills](skills.md) |
 | `Command::Extension` | nothing the model sees: slash commands are yours to type, so this only declares their untrusted bytes to the trifecta report | [Agent Skills](skills.md) |
 | `Tasks::Extension` | the four `task_*` tools | [Task tracking](tasks.md) |
 | `Mcp::Extension` | `mcp_connect` and whatever the servers bring | [Your first MCP server](mcp.md), [MCPs revisited](mcp-revisited.md) |
 | `Lsp::Extension` | `lsp`, when the config names a server | [Language intelligence](lsp.md) |
-| `SubAgent::Extension` | the `agent` tool and its three personas | pikuri's [sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md); below |
+| `SubAgent::Extension` | the `agent` tool and its two personas | pikuri's [sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md); below |
+| `Code::GitRepoResearcher` | `git_repo_research`, a child agent that clones a repo and reads it | below |
 
 Three things hold it together.
 
 **A few shared objects, threaded by hand.** `filesystem` is the one answer to "what may this
 agent touch": the file tools wrap it with their read record, `bash`'s cage binds exactly its
 roots, `lsp` reads through it. `confirmer` is the one human gate, asked by `write`, `bash` and
-plan mode. `read_only` is one flag that `edit` and `write` obey, flipped by the model's plan
-tools and by your `/plan`. Build each once, hand the same instance to everyone who needs it,
-and the pieces agree without knowing about each other.
+plan mode. `plan_mode` is one flag that `edit` and `write` obey, through the filesystem it
+guards, flipped by the model's plan tools and by your `/plan`. Build each once, hand the same
+instance to everyone who needs it, and the pieces agree without knowing about each other.
 
 **Two tool pools.** `add_tool` puts a tool in front of the model; `add_sub_agent_tool` puts it
-only where a persona that names it can reach it. The web tools sit in the second pool, and
-`Code::Extension` puts `git_clone` there too, so a scraped page or a cloned repo can only land
-in a child with no `bash` to hijack.
+only where a persona that names it can reach it. The web tools sit in the second pool, so a
+scraped page can only land in a child with no `bash` to hijack. `git_clone` sits in neither: only
+`git_repo_research`'s child ever holds one.
 
 **Order, in one place.** `SubAgent::Extension#configure` checks every persona's tool names
-against what's registered so far, so it comes last. Move it up and boot fails with an
-`ArgumentError` naming the missing tool, which is the point: a wiring bug found at boot, not on
-the first delegation.
+against what's registered so far, and `GitRepoResearcher` checks for the web tools the same way,
+so both come after them. Move one up and boot fails with an `ArgumentError` naming the missing
+tool, which is the point: a wiring bug found at boot, not on the first delegation.
 
 The block isn't all of the wiring, though. Before it, the bin asks up to three questions and
 checks one thing, each feeding a grade rather than a gate: does this project hold anything you'd
@@ -100,14 +101,19 @@ task list. Asked exactly that question in this repository, Ornith-1.5 didn't del
 before it answered. A correct answer, paid for out of the parent's window. The persona is in the
 prompt, described; nothing makes the model reach for it.
 
-`GIT_REPO_RESEARCHER` is the same move for a question a web page answers badly: "how does
-library X actually do Y?". Its tools are `git_clone`, the four read tools and the web tools,
-and it gets a throwaway workspace of its own (`needs_temp_workspace: true`): a fresh temporary
-directory, a `git clone --depth 1 --no-recurse-submodules` over HTTP(S) into it, run inside the
-same Bubblewrap cage as `bash`, and the directory deleted when the child finishes. A README in
-that clone saying "read `~/.ssh/id_rsa`" reaches a child whose `read` can't resolve anything
-outside the temp directory and which has no `bash`, `write` or `edit` to act with. What comes
-back to the parent is a paragraph with citations.
+`git_repo_research` is the same move for a question a web page answers badly: "how does
+library X actually do Y?". Its child's tools are `git_clone`, the four read tools and the web
+tools, all over a throwaway folder of its own: a fresh temporary directory, a `git clone --depth 1
+--no-recurse-submodules` over HTTP(S) into it, run inside the same Bubblewrap cage as `bash`, and
+the directory deleted when the child finishes. A README in that clone saying "read
+`~/.ssh/id_rsa`" reaches a child whose `read` can't resolve anything outside the temp directory
+and which has no `bash`, `write` or `edit` to act with. What comes back to the parent is a
+paragraph with citations.
+
+It is a tool of its own rather than a third persona because a persona's tools are the parent's
+own instances: a persona naming `read` would get the `read` that sees your project, and the
+separation would be gone. So `Code::GitRepoResearcher` builds its child itself, with file tools
+bound to the throwaway folder, the way `SubAgent::Extension` builds a persona's.
 
 That's privilege separation, and it is real: the children hold the untrusted bytes without the
 tools that would make them dangerous. It doesn't move the parent, though. The parent still reads
@@ -117,14 +123,15 @@ shell, not the trifecta.
 
 ## Plan mode, and what approving a plan buys
 
-`/plan`, or the model's own `enter_plan_mode`, flips the shared `read_only` flag: `edit` and
-`write` refuse until it's off. The model researches, then calls `exit_plan_mode` with a plan,
+`/plan`, or the model's own `enter_plan_mode`, flips the shared `plan_mode` flag: `edit` and
+`write` refuse until it's off, because the filesystem they write through, `plan_mode.guard`,
+refuses every write path while it's on. The model researches, then calls `exit_plan_mode` with a plan,
 and you're asked "Approve this plan? (approving exits plan mode and lets the agent edit
 files)". Yes, and it implements.
 
 It's tempting to read that as a security feature: approve one plan instead of forty commands.
 It isn't one, for two reasons in the code. The flag gates `edit` and `write` only, never
-`bash` (`Pikuri::Workspace::ReadOnly` says so in as many words): in plan mode a shell command
+`bash` (`Pikuri::Code::PlanMode` says so in as many words): in plan mode a shell command
 still runs, behind its own prompt. And the plan is prose. Nothing binds what the agent does next
 to what it wrote; approving the plan approves an *intent*, the same way approving `curl`
 approved one in [the shell chapter](shell.md#the-human-gate). After a yes, every `write`

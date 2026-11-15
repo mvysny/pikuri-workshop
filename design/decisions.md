@@ -718,8 +718,9 @@ three namespaces, is **host built-in > command > skill**.
   `on_user_message` would not fire (`pikuri-memory` hangs its per-turn
   prefetch there, so a memory layer would never see `/wh`); on Anthropic a
   `:system` block is hoisted and therefore *sticky*, turning a one-shot
-  request into standing instructions; and a `:system`-only turn has to worry
-  about `EmptyTurnError`, which an ordinary user turn does not.
+  request into standing instructions; and a `:system`-only turn renders as
+  no messages at all on Anthropic, which answers it with a 400, which an
+  ordinary user turn never hits.
 - **A `Pikuri::Slash::Menu` façade merging both registries.** Rejected for
   now: the merge is five lines of presentation over two arrays that already
   carry `name` + `description`, and the halves *dispatch* differently, so a
@@ -1484,8 +1485,8 @@ visibly*, as a build missing `FOO_HOME`, whose name is on screen.
 - **Filtering unwalled children too.** That is `d97eb67`'s theatre: a bare
   MCP server or `--no-sandbox` bash reads `~/.aws/credentials` directly.
 - **Withholding the caller's own delta.** `BundlerEnv` restorations, git
-  hardening and `Filesystem#env` are pikuri's deliberate settings, not
-  ambient inheritance, so they win over the wall.
+  hardening and the git identity `Bubblewrap#env` adds are deliberate settings,
+  not ambient inheritance, so they win over the wall.
 
 **Consequences.** A sandbox now answers `#env(delta)` and
 `#withheld_env_names`, so a host's own sandbox must add both. A build that

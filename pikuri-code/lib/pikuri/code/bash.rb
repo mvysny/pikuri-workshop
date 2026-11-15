@@ -180,7 +180,7 @@ module Pikuri
           name: 'bash',
           description: DESCRIPTION.sub(
             "# Git\n",
-            "#{Bash.send(:withheld_env_note, sandbox, filesystem)}#{Bash.send(:loopback_note, sandbox)}# Git\n"
+            "#{Bash.send(:withheld_env_note, sandbox)}#{Bash.send(:loopback_note, sandbox)}# Git\n"
           ),
           parameters: Parameters.build { |p|
             p.required_string :command,
@@ -265,7 +265,7 @@ module Pikuri
           'bash', '-c', command
         ])
         result = Pikuri::Subprocess.spawn(*argv, chdir: filesystem.project_root.to_s,
-                                                 env: sandbox.env(subprocess_env(filesystem))).wait
+                                                 env: sandbox.env(subprocess_env)).wait
 
         output = truncate(result.output)
         exit_code = result.status.exitstatus
@@ -306,17 +306,14 @@ module Pikuri
       private_class_method :compose_request
 
       # Environment for the bash subprocess: the de-bundlerized base
-      # ({Pikuri::BundlerEnv.clean_delta}), then git hardening
-      # ({.git_hardening_delta}), then the filesystem's git identity
-      # ({Pikuri::Workspace::Filesystem#env}). The three deltas touch disjoint
-      # keys (bundler vars / +GIT_CONFIG_*+ / +GIT_AUTHOR_*+ +
-      # +GIT_COMMITTER_*+), so merge order is immaterial.
+      # ({Pikuri::BundlerEnv.clean_delta}) plus git hardening
+      # ({.git_hardening_delta}); disjoint keys, so merge order is immaterial.
+      # The sandbox adds its own on top (+#env+).
       #
-      # @param filesystem [Pikuri::Workspace::Filesystem]
       # @return [Hash{String=>(String,nil)}] +env:+ delta for
       #   {Pikuri::Subprocess.spawn} (a +nil+ value unsets the key).
-      def self.subprocess_env(filesystem)
-        Pikuri::BundlerEnv.clean_delta.merge(git_hardening_delta).merge(filesystem.env)
+      def self.subprocess_env
+        Pikuri::BundlerEnv.clean_delta.merge(git_hardening_delta)
       end
       private_class_method :subprocess_env
 
@@ -326,20 +323,18 @@ module Pikuri
       # when nothing is withheld ({Sandbox::NONE}, {Sandbox::FullFsNoNet}).
       #
       # @param sandbox [Code::Bash::Sandbox]
-      # @param filesystem [Pikuri::Workspace::Filesystem]
       # @return [Array<String>] sorted names; values never leave the sandbox
-      def self.withheld_env_names(sandbox:, filesystem:)
-        sandbox.withheld_env_names - subprocess_env(filesystem).keys
+      def self.withheld_env_names(sandbox:)
+        sandbox.withheld_env_names - subprocess_env.keys
       end
 
       # The description's bullet naming {.withheld_env_names}, so the model can
       # tell the user which variable a failing build lacks.
       #
       # @param sandbox [Code::Bash::Sandbox]
-      # @param filesystem [Pikuri::Workspace::Filesystem]
       # @return [String] a bullet line ending in a newline, or +""+
-      def self.withheld_env_note(sandbox, filesystem)
-        names = withheld_env_names(sandbox: sandbox, filesystem: filesystem)
+      def self.withheld_env_note(sandbox)
+        names = withheld_env_names(sandbox: sandbox)
         return '' if names.empty?
 
         listed = names.first(MAX_WITHHELD_LISTED).join(', ')

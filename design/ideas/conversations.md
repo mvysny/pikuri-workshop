@@ -90,7 +90,7 @@ does, not of what it needs.
 | Saved conversations: list, open, retitle, delete; images on disk before the turn | ✓ | — | ✓ | — | `Store` |
 | Delete: atomically refuse if busy (409), else retire; no save after | ✓ | — | cancel then delete | — | `Conversation#close`, then `Store#delete` |
 | Clear refused while running | — | ✓ | — | pikuri-code | `Conversation#clear` |
-| Errors reach the UI with their class (`EmptyTurnError`, `UnsupportedAttachmentError`, other) | wants it | ✓ | ✓ | — | `TurnEnded` event |
+| Errors reach the UI with their class (`UnsupportedAttachmentError`, other) | wants it | ✓ | ✓ | — | `TurnEnded` event |
 | Turn thread named per conversation; per-turn thread priority | ✓ (`D_puma_thread_dump`) | | ✓ (−3, `R_gvl_main_loop`) | — | `Conversations` |
 | Shutdown without waiting / with a timeout | ✓ no wait | quits | cancel+join | — | `Conversations#shutdown` |
 | Side LLM calls (titler) off the turn, throttled | ✓ | | ✓ | — | `Titler` on a thread of the conversation's own |
@@ -136,7 +136,7 @@ agent.run_loop('and now?', transport: other)  # a switch, or the same model's ne
 | `context_window_cap`, `modalities` | — | **dropped — done** (`76663ef`): `transport.context_window` / `transport.modalities` |
 | `model`, `system_prompt`, `last_assistant_content` | — | **dropped**: no non-spec callers, or `run_loop`'s return |
 
-Errors unchanged: `Cancellable::Cancelled`, `EmptyTurnError`, `UnsupportedAttachmentError` (from the
+Errors unchanged: `Cancellable::Cancelled`, `UnsupportedAttachmentError` (from the
 transport's stated modalities; unknown goes out).
 
 **The throttle seam is `Agent.new(around_request:)`** (shipped, `pikuri:D_llm_request_throttle`):

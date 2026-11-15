@@ -1,65 +1,106 @@
 # frozen_string_literal: true
 
+require 'tmpdir'
 require 'pikuri/testing'
 
-require 'pikuri-web'
-
-RSpec.describe Pikuri::Code::GIT_REPO_RESEARCHER do
-  it 'is a Persona record named "git_repo_researcher"' do
-    assert_kind_of Pikuri::SubAgent::Persona, described_class
-    assert_equal 'git_repo_researcher', described_class.name
+RSpec.describe Pikuri::Code::GitRepoResearcher do
+  def web_tools
+    %w[web_search web_scrape fetch].map do |name|
+      Pikuri::Tool.new(name: name, description: 'x',
+                       parameters: Pikuri::Tool::Parameters.build { |_p| },
+                       execute: ->(**) { '' },
+                       trifecta_legs: Pikuri::Tool::TrifectaLegs.new(
+                         private: false, untrusted: :hard, egress_payload_review: :unreviewed
+                       ))
+    end
   end
 
-  it 'declares clone-and-dig tool_names — git_clone + fs reads + web reads, no shell/mutation/recursion' do
-    assert_equal %w[git_clone file_list read grep glob web_search web_scrape fetch],
-                 described_class.tool_names
-  end
+  describe '#configure' do
+    let(:c) { Pikuri::Testing.configurator }
 
-  it 'loads its system prompt from pikuri-code/prompts/persona-git-repo-researcher.txt' do
-    refute_predicate described_class.system_prompt, :empty?
-    assert_match(/git_repo_researcher sub-agent/i, described_class.system_prompt)
-  end
-
-  it 'signals needs_temp_workspace so SubAgentTool mints a fresh Filesystem at spawn' do
-    assert_equal true, described_class.needs_temp_workspace
-  end
-
-  describe 'integration with Pikuri::SubAgent::Extension' do
-    let(:root)       { Pathname.new(Dir.mktmpdir('pikuri-grr-spec-')).realpath }
-    let(:filesystem) { Pikuri::Workspace::Filesystem.new(project_root: root) }
-    let(:workspace)  { Pikuri::Workspace::Workspace.new(filesystem: filesystem) }
-
-    after { FileUtils.rm_rf(root) }
-
-    let(:tools) do
-      [
-        Pikuri::Code::GitClone.new(filesystem: filesystem, sandbox: Pikuri::Code::Bash::Sandbox::NONE),
-        Pikuri::Workspace::Read.new(workspace: workspace),
-        Pikuri::Workspace::Search::Grep.new(workspace: workspace),
-        Pikuri::Workspace::Search::Glob.new(workspace: workspace),
-        Pikuri::Workspace::FileList.new(workspace: workspace),
-        Pikuri::Web::Search.build,
-        Pikuri::Web::SCRAPE,
-        Pikuri::Web::FETCH
-      ]
+    it 'registers git_repo_research when the web tools are there' do
+      web_tools.each { |t| c.add_sub_agent_tool(t) }
+      described_class.new.configure(c)
+      assert_includes c.tools.map(&:name), 'git_repo_research'
     end
 
-    let(:configurator) { Pikuri::Testing.configurator }
+    it 'raises, naming the missing web tool, when one is not registered yet' do
+      web_tools.drop(1).each { |t| c.add_sub_agent_tool(t) }
+      err = assert_raises(ArgumentError) { described_class.new.configure(c) }
+      assert_match(/web_search/, err.message)
+    end
+  end
 
-    it 'configures cleanly when every persona tool is registered' do
-      tools.each { |t| configurator.add_tool(t) }
-      ext = Pikuri::SubAgent::Extension.new(personas: [described_class])
-      ext.configure(configurator)
-      assert_equal ['git_repo_researcher'], ext.personas.keys
+  describe 'a call' do
+    let(:project) { Pathname.new(Dir.mktmpdir('pikuri-grr-project-')).realpath }
+    let(:secret)  { project + 'secret.txt' }
+    let(:events)  { [] }
+    let(:spy) do
+      out = events
+      Class.new do
+        define_method(:on_event) { |e| out << e }
+        def for_sub_agent(**) = self
+      end.new
     end
 
-    it "raises Extension#configure when one of the persona's tools is missing" do
-      # git_clone deliberately missing — the persona's distinguishing tool.
-      tools.drop(1).each { |t| configurator.add_tool(t) }
-      ext = Pikuri::SubAgent::Extension.new(personas: [described_class])
-
-      err = assert_raises(ArgumentError) { ext.configure(configurator) }
-      assert_match(/git_clone/, err.message)
+    before do
+      File.write(secret, 'TOP SECRET')
+      @minted = []
+      minted = @minted
+      @new_temp = Pikuri::Paths.method(:new_temp)
+      original = @new_temp
+      Pikuri::Paths.define_singleton_method(:new_temp) { original.call.tap { minted << _1 } }
     end
+
+    after do
+      original = @new_temp
+      Pikuri::Paths.define_singleton_method(:new_temp) { original.call }
+      FileUtils.remove_entry(project)
+    end
+
+    def run_parent(transport)
+      agent = Pikuri::Agent.new(transport: transport, system_prompt: 'test') do |c|
+        c.add_listener spy
+        web_tools.each { |t| c.add_sub_agent_tool(t) }
+        c.add_extension described_class.new
+      end
+      agent.run_loop(user_message: 'go')
+      agent.close
+    end
+
+    it "answers with the child's reply, from a folder that cannot see the parent's project" do
+      path = secret.to_s
+      transport = Pikuri::Testing.fake_transport do |llm|
+        llm.tool_call('git_repo_research', task: 'look around')   # parent
+        llm.tool_call('read', path: path)                         # child
+        llm.reply('child answer')                                 # child
+        llm.reply('done')                                         # parent
+      end
+      run_parent(transport)
+
+      results = events.grep(Pikuri::Agent::Event::ToolResult)
+      read = results.find { _1.name == 'read' }
+      refute_includes read.content, 'TOP SECRET'
+      assert_equal 'child answer', results.find { _1.name == 'git_repo_research' }.content
+    end
+
+    it 'deletes its folder once the call returns' do
+      transport = Pikuri::Testing.fake_transport do |llm|
+        llm.tool_call('git_repo_research', task: 'look around')
+        llm.reply('child answer')
+        llm.reply('done')
+      end
+      run_parent(transport)
+
+      assert_equal 1, @minted.size
+      refute_predicate @minted.first, :exist?
+    end
+  end
+
+  it "draws its child's tools as one node behind an unreviewed channel" do
+    contribution = described_class.new.trifecta_contribution(web_tools)
+    node = contribution.children.first
+    assert_equal 'git_repo_research', node.label
+    assert_equal %w[fetch file_list git_clone glob grep read web_scrape web_search], node.tool_legs.keys.sort
   end
 end

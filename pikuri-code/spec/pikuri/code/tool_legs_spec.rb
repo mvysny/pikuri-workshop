@@ -10,9 +10,9 @@ RSpec.describe 'pikuri-code tool trifecta legs (bash aside)' do
   end
 
   it 'gives the plan-mode toggles no legs — they flip a local flag' do
-    read_only = Pikuri::Workspace::ReadOnly.new
-    [Pikuri::Code::EnterPlanMode.new(read_only: read_only),
-     Pikuri::Code::ExitPlanMode.new(read_only: read_only,
+    plan_mode = Pikuri::Code::PlanMode.new
+    [Pikuri::Code::EnterPlanMode.new(plan_mode: plan_mode),
+     Pikuri::Code::ExitPlanMode.new(plan_mode: plan_mode,
                                     confirmer: Pikuri::Workspace::Confirmer::AUTO_APPROVE)].each do |tool|
       assert_equal Pikuri::Tool::TrifectaLegs::NONE, tool.trifecta_legs, tool.name
     end

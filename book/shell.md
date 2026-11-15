@@ -77,8 +77,9 @@ pikuri-code [:untrusted_hard, :egress]
 
 The first eight lines are this chapter: the four file-reading tools, `edit` and `write`, and
 `bash`. The rest of the list belongs to later chapters: the plan-mode tools, the `task_*`
-tools, and three sub-agents (`file_miner`, `researcher`, `git_repo_researcher`) you met in
-pikuri's book. A `skill` tool, an `lsp` tool and MCP tools appear only when you have something
+tools, two sub-agents (`file_miner`, `researcher`) you met in pikuri's book, and a third,
+`git_repo_research`, that [the coding agent chapter](code.md#sub-agents-untrusted-bytes-away-from-the-shell)
+covers. A `skill` tool, an `lsp` tool and MCP tools appear only when you have something
 for them: skills in `~/.claude/skills`, a language server in your config. An empty playground
 brings none of its own.
 
@@ -133,13 +134,13 @@ object that needs it.
 Here is the file-tools side, as `bin/pikuri-code` builds it (lightly trimmed):
 
 ```ruby
+scratch = Pikuri::Paths.new_temp
 filesystem = Pikuri::Workspace::Filesystem.new(
-  project_root:      project_root,
-  readable:          Pikuri::Code::ToolchainPaths.readable + skill_catalog.roots + extra_readable,
-  writable:          extra_writable,
-  temp:              true,
-  alias_tmp_to_temp: true   # only when the sandbox is on, see below
+  project_root: project_root,
+  readable:     Pikuri::Code::ToolchainPaths.readable + skill_catalog.roots + extra_readable,
+  writable:     extra_writable + [scratch]
 )
+filesystem = Pikuri::Code::TmpAlias.new(filesystem, tmp: scratch) if sandbox_enabled
 ```
 
 - **`project_root`** is the one anchor: readable and writable, the base for relative paths,
@@ -151,12 +152,13 @@ filesystem = Pikuri::Workspace::Filesystem.new(
   `~/.gradle/caches`, `~/.cargo/registry`, …). That's what lets the model `grep` the Ruby
   standard library or read a dependency's source. `--readable PATH` adds one, e.g. a local gem
   your `Gemfile` points at.
-- **`writable`** adds more writable roots. Empty by default; `--writable PATH` adds one, with
-  the same blast radius as the project.
-- **`temp`** makes a scratch directory under pikuri's cache, deleted at exit, for downloads and
-  unpacked junk. **`alias_tmp_to_temp`** goes with it: inside the cage that scratch directory
+- **`writable`** adds more writable roots. `--writable PATH` adds one, with the same blast
+  radius as the project. The bin always adds one of its own: **`scratch`**, a directory under
+  pikuri's cache, deleted at exit, for downloads and unpacked junk.
+- **`Code::TmpAlias`** goes with it when the cage is on: inside the cage that scratch directory
   *is* `/tmp`, so the file tools rewrite `/tmp/foo` to the same place. The model writes
-  `/tmp/foo` with `bash`, reads it back with `read`, and both mean the same file.
+  `/tmp/foo` with `bash`, reads it back with `read`, and both mean the same file. The cage
+  learns the scratch directory from the same object, so the two can't disagree.
 
 One more piece sits on top: the file tools share a **read record**. `edit`, and a `write` that
 overwrites an existing file, refuse a path the model hasn't `read` in this conversation. A
@@ -283,7 +285,7 @@ wrong guess costs a broken build you can see, not a key you can't. Only this cag
 `--no-sandbox` passes the environment whole, since a command that can read
 `~/.aws/credentials` gains nothing from a missing variable.
 
-### Three things it refuses to start with
+### Two things it refuses to start with
 
 Bubblewrap checks its workspace at construction and raises rather than run a cage that isn't
 one:
@@ -291,8 +293,6 @@ one:
 - **A workspace where `/` is writable**, which is what `--yolo`'s `AllowAll` workspace is.
   Containment is meaningless when the whole disk is in the box; pass `Sandbox::NONE` and say
   so.
-- **A scratch directory without `alias_tmp_to_temp`.** `bash` would write `/tmp/foo` and the
-  file tools would refuse the same path as outside the workspace.
 - **A root that exposes a container or VM control socket**, such as `/var/run/docker.sock`,
   containerd, podman, libvirt or LXD. Reaching one of those is one command from root on your
   host (`docker run --privileged -v /:/host …`), whatever else the cage holds.

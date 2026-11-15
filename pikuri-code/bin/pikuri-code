@@ -254,25 +254,23 @@ command_registry = Pikuri::Command::Registry.new(search_bases: bundle_bases)
 # no separate cwd. Readable additions: system toolchains (/usr, /opt,
 # mise/cargo/m2/…) so the LLM can grep Ruby stdlib, JDK sources,
 # dependency caches; skill catalog roots so the +read+ tool can load
-# skill sidecars. temp: true mints an ephemeral writable playground
-# under ~/.cache/pikuri (Dir.mktmpdir, removed at_exit) — exposed below
-# in the system prompt so the LLM knows where to put junk (downloads,
-# unzip targets, scratch artifacts).
+# skill sidecars. `scratch` is an ephemeral writable folder under
+# ~/.cache/pikuri (removed at exit) — exposed below in the system prompt
+# so the LLM knows where to put junk (downloads, unzip targets, scratch
+# artifacts).
 #
-# alias_tmp_to_temp: true is wired on when the bubblewrap sandbox is
-# enabled. It pairs with the sandbox's --bind <temp> /tmp: bash inside
-# the sandbox writes to /tmp/foo, then file tools (Read/Write/Edit/
-# Grep/Glob, which run on the host, not inside the sandbox) accept the
-# same /tmp/foo path because the workspace rewrites it to the temp's
-# host path before containment check. With the sandbox off, /tmp in
-# bash is the host's real /tmp — aliasing it would lie about what
-# `read('/tmp/foo')` actually opens, so the kwarg is left at false.
+# With the bubblewrap sandbox on, Code::TmpAlias makes /tmp mean scratch:
+# the sandbox binds it at /tmp, so bash writes /tmp/foo, and the file
+# tools (which run on the host, not inside the sandbox) accept the same
+# /tmp/foo. With the sandbox off, /tmp in bash is the host's real /tmp —
+# aliasing it would lie about what `read('/tmp/foo')` actually opens.
 #
 # --yolo swaps in +Filesystem::AllowAll+: every path resolves except
 # those under the credential denylist (~/.ssh, ~/.aws, …, /etc/shadow).
 # Intended for use inside a VM, which is then the security boundary;
 # the toolchain/skill readable list is moot since everything is
 # reachable anyway.
+scratch = Pikuri::Paths.new_temp
 filesystem = if yolo
               # --readable/--writable are moot under AllowAll (everything
               # short of the credential denylist resolves anyway); warn so
@@ -281,10 +279,8 @@ filesystem = if yolo
               warn '--readable/--writable ignored under --yolo (filesystem is ALLOW_ALL).' \
                 unless extra_readable.empty? && extra_writable.empty?
               Pikuri::Workspace::Filesystem::AllowAll.new(
-                project_root:      project_root,
-                temp:              true,
-                alias_tmp_to_temp: sandbox_enabled,
-                private:           private_repo
+                project_root: project_root,
+                private:      private_repo
               )
             else
               # User-supplied --readable/--writable extras ride the same
@@ -305,12 +301,11 @@ filesystem = if yolo
                                    skill_catalog.roots +
                                    command_registry.roots +
                                    extra_readable,
-                writable:          extra_writable,
-                temp:              true,
-                alias_tmp_to_temp: sandbox_enabled,
+                writable:          extra_writable + [scratch],
                 private:           private_repo
               )
             end
+filesystem = Pikuri::Code::TmpAlias.new(filesystem, tmp: scratch) if sandbox_enabled
 confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikuri::Workspace::Confirmer::AUTO_APPROVE
 
 # Bash auto-gates provably read-only commands on top of the human
@@ -420,30 +415,27 @@ end
 # scratch dir (bind-mounted to a persistent host dir under
 # ~/.cache/pikuri, and the workspace aliases /tmp/* in file tools to
 # match). Unsandboxed: /tmp is the host's real /tmp; nudge the LLM
-# toward the workspace's personal scratch dir to keep host /tmp clean.
+# toward the scratch dir to keep host /tmp clean.
 system_prompt += if sandbox_enabled
                    "\nScratch space: /tmp — persistent across all bash and tool calls; " \
                      'use for downloads, clones, unpacks. Cleared on exit.'
                  else
-                   "\nScratch space: #{filesystem.temp} — persistent across tool calls, " \
+                   "\nScratch space: #{scratch} — persistent across tool calls, " \
                      'cleared on exit. Prefer it over /tmp for downloads, clones, unpacks ' \
                      "(keeps the host's /tmp clean)."
                  end
 
 cancel_flag = Pikuri::Agent::Control::Cancellable.new
 
-# One read-only flag, shared by reference across the file-editing tools
-# (Edit/Write refuse to write while it is active) and
-# Pikuri::Code::Extension (which wires the enter/exit tools, the per-turn
-# reminder, and the PlanModeChanged event). The host keeps the reference
+# One plan-mode flag, shared by reference: its guard wraps the file tools'
+# filesystem (Edit/Write refuse to write while it is active), and
+# Pikuri::Code::Extension wires the enter/exit tools, the per-turn
+# reminder, and the PlanModeChanged event. The host keeps the reference
 # and the REPL flips it on the /plan and /impl slash commands below (a
 # future TUI would flip it from a key binding); the model can also
 # enter/exit via its own tools. It gates Write/Edit only, NOT bash —
-# see Pikuri::Workspace::ReadOnly. The refusal message is plan-mode's
-# (names exit_plan_mode), owned by Code::Extension.
-read_only = Pikuri::Workspace::ReadOnly.new(
-  message: Pikuri::Code::Extension::PLAN_MODE_READONLY_MESSAGE
-)
+# see Pikuri::Code::PlanMode.
+plan_mode = Pikuri::Code::PlanMode.new
 
 # MCP servers available to the assistant. Hand-edit this array to add
 # providers — id is what the LLM references via +mcp_connect("...")+.
@@ -565,13 +557,12 @@ build_conversation = lambda do |mcp_catalog|
     # the read-before-edit gate works across them. The extension owns
     # that composite; Bash and the sandbox take the raw `filesystem`
     # below (they govern the subprocess fs view, not the read record).
-    # It also threads the shared read-only flag into edit/write, so they
-    # refuse while it is active — the same flag Code::Extension's plan
-    # tools (and the /plan, /impl slash commands) flip.
+    # Its filesystem is plan mode's guard, so edit/write refuse while it is
+    # active — the same flag Code::Extension's plan tools (and the /plan,
+    # /impl slash commands) flip.
     c.add_extension Pikuri::Workspace::Extension.new(
-      filesystem: filesystem,
-      confirmer: confirmer,
-      read_only: read_only
+      filesystem: plan_mode.guard(filesystem),
+      confirmer: confirmer
     )
     c.add_tool Pikuri::Tool::CALCULATOR
     c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
@@ -582,7 +573,7 @@ build_conversation = lambda do |mcp_catalog|
       confirmer: confirmer,
       passive_detector: code_passive_detector,
       sandbox: sandbox,
-      read_only: read_only
+      plan_mode: plan_mode
     )
     c.add_extension skill_extension
     # Declaration only: commands register no tool and render no prompt, so
@@ -621,10 +612,12 @@ build_conversation = lambda do |mcp_catalog|
     c.add_extension Pikuri::SubAgent::Extension.new(
       personas: [
         Pikuri::SubAgent::FILE_MINER,
-        Pikuri::SubAgent::RESEARCHER,
-        Pikuri::Code::GIT_REPO_RESEARCHER
+        Pikuri::SubAgent::RESEARCHER
       ]
     )
+    # A third, with a tool of its own: a child that clones a repo into a
+    # throwaway folder of its own and reads its source, never this project.
+    c.add_extension Pikuri::Code::GitRepoResearcher.new
   end
   [agent, skill_extension]
 end
@@ -670,7 +663,7 @@ begin
     names = command_registry.list.map { |cmd| "/#{cmd.name}#{cmd.refused? ? ' (unavailable)' : ''}" }
     puts "Loaded #{command_registry.list.size} command(s): #{names.sort.join(', ')}."
   end
-  withheld = Pikuri::Code::Bash.withheld_env_names(sandbox: sandbox, filesystem: filesystem)
+  withheld = Pikuri::Code::Bash.withheld_env_names(sandbox: sandbox)
   unless withheld.empty?
     puts "The sandbox withholds #{withheld.size} environment variable(s) from bash: " \
          "#{withheld.join(', ')}. To pass one, list it under sandbox_env: in #{examples_config_path}. " \
@@ -716,14 +709,14 @@ begin
     next if message.strip.empty?
 
     # Host built-ins, never sent to the LLM. /plan and /impl flip the shared
-    # read-only flag; Code::Extension emits a PlanModeChanged event on the
+    # plan-mode flag; Code::Extension emits a PlanModeChanged event on the
     # flip, which the Terminal listener renders (so no puts here), and
     # activate!/deactivate! are idempotent, so a repeat is a silent no-op.
     # /clear starts a new conversation on a new agent (build_conversation);
     # plan mode is the host's flag and stays as it is.
     case message.strip.downcase
-    when '/plan'  then read_only.activate!;   next
-    when '/impl'  then read_only.deactivate!; next
+    when '/plan'  then plan_mode.activate!;   next
+    when '/impl'  then plan_mode.deactivate!; next
     when '/clear'
       agent.close
       agent, skill_extension = cancellable_startup(cancel_flag) { build_conversation.call(mcp_catalog) }

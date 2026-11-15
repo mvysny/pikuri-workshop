@@ -40,9 +40,9 @@ RSpec.describe Pikuri::Os::Extension do
     obj.define_singleton_method(name, original)
   end
 
-  def configure!(c, read_only: nil, backends: [stub_backend(available: true)])
+  def configure!(c, plan_mode: nil, backends: [stub_backend(available: true)])
     ext = described_class.new(
-      filesystem: filesystem, confirmer: human, read_only: read_only,
+      filesystem: filesystem, confirmer: human, plan_mode: plan_mode,
       memory: memory, system_info: system_info, file_index_backends: backends
     )
     ext.configure(c)
@@ -126,14 +126,14 @@ RSpec.describe Pikuri::Os::Extension do
     end
   end
 
-  describe 'read-only / plan-mode propagation through the composite' do
-    # Os::Extension composes Workspace::Extension + Code::Extension, both
-    # of which take read_only:. A flag handed to Os::Extension must
+  describe 'plan-mode propagation through the composite' do
+    # Os::Extension guards Workspace::Extension's filesystem with the flag and
+    # hands it to Code::Extension. A flag handed to Os::Extension must
     # therefore light up the enter/exit tools transitively — this guards
     # against a refactor silently dropping that propagation.
-    it 'wires the enter/exit tools when a read-only flag is present' do
+    it 'wires the enter/exit tools when plan mode is present' do
       c = build_configurator
-      configure!(c, read_only: Pikuri::Workspace::ReadOnly.new)
+      configure!(c, plan_mode: Pikuri::Code::PlanMode.new)
 
       names = c.tools.map(&:name)
       assert_includes names, 'enter_plan_mode'
@@ -142,7 +142,7 @@ RSpec.describe Pikuri::Os::Extension do
 
     it 'omits the plan-mode tools when no flag is wired' do
       c = build_configurator
-      configure!(c) # read_only: nil
+      configure!(c) # plan_mode: nil
 
       names = c.tools.map(&:name)
       refute_includes names, 'enter_plan_mode'

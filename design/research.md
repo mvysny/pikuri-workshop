@@ -18,7 +18,7 @@ they are what the survey was for.
 The pikuri entry is the reference column; everything else carries its provenance.
 
 - **pikuri**: three seams. `Workspace::Filesystem` is one concrete class with explicit
-  `project_root:` / `readable:` / `writable:` / `temp:`, routing every coding tool's paths through
+  `project_root:` / `readable:` / `writable:`, routing every coding tool's paths through
   `#resolve_for_read` / `#resolve_for_write` and rejecting `..`-escapes and symlinks that resolve
   outside a declared root; `Filesystem::AllowAll` is the `--yolo` variant, same accessor surface
   but accepting any path *except* a hardcoded credential denylist (`~/.ssh`, `~/.aws`, `~/.gnupg`,

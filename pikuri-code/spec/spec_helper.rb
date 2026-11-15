@@ -5,6 +5,7 @@ require 'minitest'
 require 'minitest/assertions'
 
 require 'pikuri-code'
+require 'pikuri-subagents' # the dry run draws pikuri's personas beside this gem's tools
 
 # Silence Pikuri's default $stderr logging for the suite so production
 # log lines don't bleed into rspec output. Specs that exercise logging

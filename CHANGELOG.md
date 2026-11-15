@@ -5,7 +5,12 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
-- Fix `Pikuri::Code::Extension`'s plan-mode bridge leaking: it now unsubscribes from the shared `ReadOnly` flag on close, so a `/clear` no longer keeps the closed conversation in memory.
+- **Breaking:** `Pikuri::Code::Extension` and `Pikuri::Os::Extension` take `plan_mode:`, a new `Pikuri::Code::PlanMode`, instead of pikuri's dropped `Workspace::ReadOnly`; hand `Workspace::Extension` the filesystem `plan_mode.guard(filesystem)`, and `Code::Extension::PLAN_MODE_READONLY_MESSAGE` is now `PlanMode::REFUSAL`.
+- **Breaking:** `Pikuri::Code::GIT_REPO_RESEARCHER` is now `Pikuri::Code::GitRepoResearcher`, an extension adding the `git_repo_research` tool whose child agent works in a throwaway folder of its own, since pikuri dropped the sub-agent temp workspace; `Code::Extension` no longer registers `git_clone`, and `GitClone#with_workspace` is gone.
+- Add `Pikuri::Code::TmpAlias`, which makes the file tools read `/tmp` as a scratch folder that `Bash::Sandbox::Bubblewrap` binds at `/tmp`, replacing pikuri's dropped `Filesystem` `temp:` and `alias_tmp_to_temp:`; mint the folder with `Paths.new_temp` and list it as `writable:`.
+- `Bash::Sandbox::Bubblewrap#env` adds the host's git identity, which pikuri's dropped `Filesystem#env` supplied, and `Bash.withheld_env_names` no longer takes `filesystem:`.
+- pikuri-code no longer depends on pikuri-subagents.
+- Fix `Pikuri::Code::Extension`'s plan-mode bridge leaking: it now unsubscribes from the shared plan-mode flag on close, so a `/clear` no longer keeps the closed conversation in memory.
 - Add `Pikuri::Code::ProjectRoot`, moved from pikuri's `Workspace::ProjectRoot` (where it is gone): the VCS-marker climb that picks a coding agent's project root. Rename the constant where you call it.
 - `Pikuri::Lsp::Readiness#wait` yields each indexing task once when it starts and once when it ends, no longer every report, and `ServerProgress` is a plain domain event, since pikuri dropped `Agent::Event::Transient` (`pikuri:D_domain_events`).
 - **Breaking:** `Pikuri::Mcp::Extension.new(registry:, synthesize_descriptions:, verify_mcp_servers:)` is now `Pikuri::Mcp::Extension.new(catalog:)`, one per agent: build the catalog once per process with `Pikuri::Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)` and hand it to every agent (`D_mcp_catalog_and_connections`).

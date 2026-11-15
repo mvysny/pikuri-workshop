@@ -140,18 +140,14 @@ system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
 
 cancel_flag = Pikuri::Agent::Control::Cancellable.new
 
-# One read-only flag, shared by reference: Os::Extension threads it into
-# both the file tools (Edit/Write refuse while active) and
+# One plan-mode flag, shared by reference: Os::Extension guards the file
+# tools with it (Edit/Write refuse while active) and hands it to
 # Pikuri::Code::Extension (the enter/exit tools + per-turn reminder +
 # the PlanModeChanged event the Terminal listener renders). The host
 # keeps the reference so the REPL can flip it on the /plan and /impl
 # slash commands below (a future TUI from a key binding). It gates
-# Write/Edit only, NOT bash — see Pikuri::Workspace::ReadOnly. The
-# refusal message is plan-mode's (names exit_plan_mode), owned by
-# Code::Extension.
-read_only = Pikuri::Workspace::ReadOnly.new(
-  message: Pikuri::Code::Extension::PLAN_MODE_READONLY_MESSAGE
-)
+# Write/Edit only, NOT bash — see Pikuri::Code::PlanMode.
+plan_mode = Pikuri::Code::PlanMode.new
 
 # Trap SIGINT only during a turn (flips the Cancellable flag; the next
 # tool-call boundary raises Cancelled). Outside a turn the default handler
@@ -190,7 +186,7 @@ agent = Pikuri::Agent.new(
     filesystem: filesystem,
     confirmer: confirmer,
     sandbox: sandbox,
-    read_only: read_only
+    plan_mode: plan_mode
   )
   # --with-internet only: web access is quarantined in a RESEARCHER
   # sub-agent that holds the web tools but NO filesystem, reached via the
@@ -260,14 +256,14 @@ begin
     message = line.chomp
     next if message.strip.empty?
 
-    # Host-side plan-mode toggle. These flip the shared read-only flag
+    # Host-side plan-mode toggle. These flip the shared plan-mode flag
     # directly and are NOT sent to the LLM; Code::Extension emits a
     # PlanModeChanged event on the flip, which the Terminal listener
     # renders (so no puts here). activate!/deactivate! are idempotent,
     # so a repeat is a silent no-op.
     case message.strip.downcase
-    when '/plan' then read_only.activate!;   next
-    when '/impl' then read_only.deactivate!; next
+    when '/plan' then plan_mode.activate!;   next
+    when '/impl' then plan_mode.deactivate!; next
     end
 
     run_turn(agent, message)

@@ -85,20 +85,6 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
       assert_includes err.message, 'Sandbox::NONE'
     end
 
-    # Also fires before the bwrap probe — bwrap-availability-independent.
-    it 'refuses construction when temp is set but alias_tmp_to_temp is off' do
-      ws = Pikuri::Workspace::Filesystem.new(
-        project_root: root, temp: true, alias_tmp_to_temp: false
-      )
-      begin
-        err = assert_raises(RuntimeError) { described_class.new(filesystem: ws) }
-        assert_includes err.message, 'temp set'
-        assert_includes err.message, 'alias_tmp_to_temp'
-      ensure
-        FileUtils.remove_entry(ws.temp.to_s) if ws.temp&.exist?
-      end
-    end
-
     # Probe-scheduling and probe-failure tests: stub Subprocess.spawn
     # to give us deterministic exit codes regardless of whether the
     # host actually has bwrap (let alone a recent-enough kernel for
@@ -311,12 +297,10 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
           assert_equal overlay_dir.to_s, dest
           assert upper.end_with?('/upper'), "expected upper ending /upper, got #{upper}"
           assert work.end_with?('/work'),   "expected work ending /work, got #{work}"
-          # Upper + work live under the workspace umbrella so they get
-          # swept with the rest of internal_temp at process exit.
-          assert upper.start_with?(ws.internal_temp.to_s),
-                 "expected upper under #{ws.internal_temp}, got #{upper}"
-          assert work.start_with?(ws.internal_temp.to_s),
-                 "expected work under #{ws.internal_temp}, got #{work}"
+          # Upper + work live in the sandbox's own temp folder, reaped at exit.
+          cache = Pikuri::Paths.cache.to_s
+          assert upper.start_with?(cache), "expected upper under #{cache}, got #{upper}"
+          assert work.start_with?(cache),  "expected work under #{cache}, got #{work}"
           assert File.directory?(upper), "expected #{upper} to exist on disk"
           assert File.directory?(work),  "expected #{work} to exist on disk"
 
@@ -326,7 +310,6 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
                  "did not expect --ro-bind #{overlay_dir} alongside the overlay: #{argv.inspect}"
         ensure
           FileUtils.rm_rf(overlay_dir)
-          FileUtils.remove_entry(ws.internal_temp.to_s) if ws.internal_temp&.exist?
         end
       end
     end
@@ -365,27 +348,35 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
         assert_equal 'echo hi', argv[-1]
       end
 
-      it '#wrap binds workspace.temp at /tmp when temp: true (NOT --tmpfs /tmp)' do
-        ws = Pikuri::Workspace::Filesystem.new(
-          project_root: root, temp: true, alias_tmp_to_temp: true
+      it "#wrap binds a TmpAlias filesystem's scratch folder at /tmp (NOT --tmpfs /tmp)" do
+        scratch = Pathname.new(Dir.mktmpdir('pikuri-sb-scratch-')).realpath
+        ws = Pikuri::Code::TmpAlias.new(
+          Pikuri::Workspace::Filesystem.new(project_root: root, writable: [scratch]), tmp: scratch
         )
         begin
-          sandbox = described_class.new(filesystem: ws)
-          argv = sandbox.wrap(['true'])
+          argv = described_class.new(filesystem: ws).wrap(['true'])
 
-          # /tmp is bound to the workspace temp (persistent across bash calls).
-          assert argv.each_cons(3).any? { |a, b, c| a == '--bind' && b == ws.temp.to_s && c == '/tmp' },
-                 "expected --bind #{ws.temp} /tmp in #{argv.inspect}"
-          # The fallback tmpfs at /tmp is gone.
+          assert argv.each_cons(3).any? { |a, b, c| a == '--bind' && b == scratch.to_s && c == '/tmp' },
+                 "expected --bind #{scratch} /tmp in #{argv.inspect}"
           refute argv.each_cons(2).any? { |a, b| a == '--tmpfs' && b == '/tmp' },
-                 "did not expect --tmpfs /tmp when temp is set: #{argv.inspect}"
-          # The temp host path is ALSO bound at its host path so file tools
-          # and bash agree on a single canonical path.
-          assert argv.each_cons(3).any? { |a, b, c| a == '--bind' && b == ws.temp.to_s && c == ws.temp.to_s },
-                 "expected --bind #{ws.temp} #{ws.temp} in #{argv.inspect}"
+                 "did not expect --tmpfs /tmp with a scratch folder: #{argv.inspect}"
+          # Also bound at its host path, as a writable root.
+          assert argv.each_cons(3).any? { |a, b, c| a == '--bind' && b == scratch.to_s && c == scratch.to_s },
+                 "expected --bind #{scratch} #{scratch} in #{argv.inspect}"
         ensure
-          FileUtils.remove_entry(ws.temp.to_s) if ws.temp.exist?
+          FileUtils.remove_entry(scratch.to_s)
         end
+      end
+
+      it "#env hands bash the host's git identity, since ~/.gitconfig stays outside" do
+        Pikuri::Subprocess.spawn('git', 'init', '-q', chdir: root.to_s).wait
+        Pikuri::Subprocess.spawn('git', 'config', 'user.name', 'Ada', chdir: root.to_s).wait
+        Pikuri::Subprocess.spawn('git', 'config', 'user.email', 'ada@example.com', chdir: root.to_s).wait
+
+        env = described_class.new(filesystem: filesystem).env({})
+
+        assert_equal 'Ada', env['GIT_AUTHOR_NAME']
+        assert_equal 'ada@example.com', env['GIT_COMMITTER_EMAIL']
       end
 
       it '#wrap exposes the OS-runtime baseline (/etc/ssl, etc.) when present' do

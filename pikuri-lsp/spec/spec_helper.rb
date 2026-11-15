@@ -6,6 +6,7 @@ require 'minitest/assertions'
 
 require 'pikuri-lsp'
 require 'pikuri/lsp/testing' # opt-in scaffolding, not loaded by pikuri-lsp boot
+require 'pikuri-code' # Code::TmpAlias, the filesystem bin/pikuri-code hands the lsp tool
 
 # Absolute so a fixture reads the same from any working directory.
 FIXTURES = File.expand_path('fixtures', __dir__)

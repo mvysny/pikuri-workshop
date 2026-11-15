@@ -139,12 +139,10 @@ system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
 
 cancel_flag = Pikuri::Agent::Control::Cancellable.new
 
-# One read-only flag threaded into the file tools (Edit/Write refuse while
-# active) and Code::Extension (the /plan /impl toggle + PlanModeChanged
-# event). Gates Write/Edit only, NOT bash — see Pikuri::Workspace::ReadOnly.
-read_only = Pikuri::Workspace::ReadOnly.new(
-  message: Pikuri::Code::Extension::PLAN_MODE_READONLY_MESSAGE
-)
+# One plan-mode flag guarding the file tools (Edit/Write refuse while
+# active) and driving Code::Extension (the /plan /impl toggle + PlanModeChanged
+# event). Gates Write/Edit only, NOT bash — see Pikuri::Code::PlanMode.
+plan_mode = Pikuri::Code::PlanMode.new
 
 # Trap SIGINT only during a turn (flips the Cancellable; the next tool-call
 # boundary raises Cancelled). Outside a turn the default handler exits the REPL.
@@ -182,7 +180,7 @@ begin
       filesystem: filesystem,
       confirmer: confirmer,
       sandbox: sandbox,
-      read_only: read_only
+      plan_mode: plan_mode
     )
     # The mail + calendar surface: five read-only inbound tools plus both
     # human-gated outbound hand-offs (compose a message, create an event).
@@ -266,8 +264,8 @@ begin
     # PlanModeChanged on the flip, which the Terminal listener renders.
     # activate!/deactivate! are idempotent.
     case message.strip.downcase
-    when '/plan' then read_only.activate!;   next
-    when '/impl' then read_only.deactivate!; next
+    when '/plan' then plan_mode.activate!;   next
+    when '/impl' then plan_mode.deactivate!; next
     end
 
     run_turn(agent, message)

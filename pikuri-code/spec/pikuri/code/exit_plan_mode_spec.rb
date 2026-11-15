@@ -3,7 +3,7 @@
 RSpec.describe Pikuri::Code::ExitPlanMode do
   def never = Pikuri::Agent::Control::Cancellable::NEVER
 
-  let(:read_only) { Pikuri::Workspace::ReadOnly.new }
+  let(:plan_mode) { Pikuri::Code::PlanMode.new }
 
   # Inline confirmer double: records every request it sees and returns
   # successive elements of +answers+ — +true+ → Approved, +false+ → Rejected,
@@ -32,7 +32,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
 
   describe '#initialize' do
     it 'builds under the exit_plan_mode name and requires a plan' do
-      tool = described_class.new(read_only: read_only, confirmer: build_confirmer)
+      tool = described_class.new(plan_mode: plan_mode, confirmer: build_confirmer)
       assert_equal 'exit_plan_mode', tool.name
       assert_includes tool.parameters.to_openai[:required], 'plan'
     end
@@ -40,10 +40,10 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
 
   describe '#run' do
     it "hands the turn's cancellable to the confirmer, so a cancel reaches a parked prompt" do
-      read_only.activate!
+      plan_mode.activate!
       confirmer = build_confirmer(true)
       token = Pikuri::Agent::Control::Cancellable.new
-      described_class.new(read_only: read_only, confirmer: confirmer)
+      described_class.new(plan_mode: plan_mode, confirmer: confirmer)
                      .run({ 'plan' => 'do X' }, Pikuri::Tool::ExecuteContext.new(cancellable: token))
 
       assert_same token, confirmer.tokens.first
@@ -51,21 +51,21 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
   end
 
   describe '.run while in plan mode' do
-    before { read_only.activate! }
+    before { plan_mode.activate! }
 
     it 'exits plan mode and tells the model to proceed when approved' do
       confirmer = build_confirmer(true)
 
-      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, plan_mode: plan_mode, confirmer: confirmer, plan: 'do X').to_s
 
-      refute read_only.active?
+      refute plan_mode.active?
       assert_match(/no longer in plan mode/i, result)
     end
 
     it 'shows the plan to the user as the request detail' do
       confirmer = build_confirmer(true)
 
-      described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: "## Plan\n1. step")
+      described_class.run(cancellable: never, plan_mode: plan_mode, confirmer: confirmer, plan: "## Plan\n1. step")
 
       assert_equal "## Plan\n1. step", confirmer.requests.first.detail
     end
@@ -73,18 +73,18 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     it 'stays in plan mode and steers a refine when declined' do
       confirmer = build_confirmer(false)
 
-      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, plan_mode: plan_mode, confirmer: confirmer, plan: 'do X').to_s
 
-      assert read_only.active?
+      assert plan_mode.active?
       assert_match(/still in plan mode/i, result)
     end
 
     it 'stays in plan mode and quotes the user when redirected' do
       confirmer = build_confirmer(Pikuri::Workspace::Confirmer::Redirected.new(message: 'drop step 3'))
 
-      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, plan_mode: plan_mode, confirmer: confirmer, plan: 'do X').to_s
 
-      assert read_only.active?
+      assert plan_mode.active?
       assert_includes result, 'did not approve the plan and said: drop step 3'
       assert_match(/still in plan mode/i, result)
     end
@@ -94,7 +94,7 @@ RSpec.describe Pikuri::Code::ExitPlanMode do
     it 'returns a nothing-to-exit observation without consulting the confirmer' do
       confirmer = build_confirmer # raises if consulted
 
-      result = described_class.run(cancellable: never, read_only: read_only, confirmer: confirmer, plan: 'do X').to_s
+      result = described_class.run(cancellable: never, plan_mode: plan_mode, confirmer: confirmer, plan: 'do X').to_s
 
       assert_match(/nothing to exit/i, result)
       assert_empty confirmer.requests
