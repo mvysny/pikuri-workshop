@@ -76,9 +76,11 @@ window, and the asymmetry is the argument at any window size.)
 2. **Sub-agent personas.** A persona owns its toolset verbatim and costs
    the parent exactly one `agent` schema. That's *better* than gating,
    because the sub-agent's whole context is separate — the parent never
-   pays the observations either. `LIBRARIAN` is this pattern applied to
-   the "vectordb tools don't belong in a coding agent's list" case, and
-   it already ships.
+   pays the observations either. The "vectordb tools don't belong in a
+   coding agent's list" case is this pattern's to answer, though no
+   bundled persona does it: pikuri-vectordb ships corpus tools and no
+   persona, and the host that wants one wires it
+   (`pikuri:D_corpus_trust_declaration`).
 
 Which bounds the scope honestly: **this is a feature for a future
 general-purpose host** (a `pikuri-tui` that wires everything because it
