@@ -277,7 +277,7 @@ module Pikuri
           return nil
         end
 
-        # Lexical, not "does +resolve_for_read+ raise": an +AllowAll+ filesystem
+        # Lexical, not "does +resolve_for_read+ raise": a whole-disk filesystem
         # (the container wiring) resolves any path happily, and the boundary that
         # matters here is the server's own +rootUri+ — outside it a server answers
         # about a non-project file, which is a different lie.

@@ -49,7 +49,7 @@ describe Pikuri::Lsp::Renderer do
   # shape, where an out-of-root definition *is* actionable.
   unrestricted = lambda do |&block|
     Dir.mktmpdir do |tmp|
-      filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: File.realpath(tmp))
+      filesystem = Pikuri::Workspace::Filesystem.new(project_root: File.realpath(tmp), writable: ['/'])
       block.call(described_class.new(sources: Pikuri::Lsp::Sources.new(filesystem: filesystem)),
                  File.realpath(tmp))
     end

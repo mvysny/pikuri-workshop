@@ -5,7 +5,7 @@ require 'pikuri/testing'
 require 'pathname'
 
 RSpec.describe Pikuri::Os::Extension do
-  let(:filesystem) { Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd) }
+  let(:filesystem) { Pikuri::Code::WholeDisk.new(project_root: Dir.pwd) }
   let(:human) { Pikuri::Workspace::Confirmer::AutoApprove.new }
 
   # Deterministic stand-ins so the spec doesn't depend on inxi / a real

@@ -3,7 +3,7 @@
 The workshop's security posture in one page. [pikuri's
 `SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md) is the
 baseline: trust in pikuri itself and in your LLM provider, the lethal trifecta, the
-privilege-separated sub-agents, the credential floor. This page adds what the workshop's gems
+privilege-separated sub-agents. This page adds what the workshop's gems
 change, and they change the headline: pikuri keeps every agent to at most two trifecta legs,
 and a coding agent holds all three.
 
@@ -129,6 +129,16 @@ pass, so "pick reputable MCPs" is the first line. The Verifier checks only
 unchecked, and MCP tools mount on the parent, so "pick reputable MCPs" applies at every call
 too. That is why an MCP server is the instant trifecta: untrusted output, usually a credential
 or private data, and a process that reaches the network without the agent seeing it.
+
+**Credential floor under a whole-disk workspace.** `--yolo` opens the file tools to the whole
+disk with `Code::WholeDisk`, which still refuses a short list: `~/.ssh`, `~/.aws`, `~/.gnupg`,
+`~/.docker`, `~/.kube`, `~/.netrc`, `/etc/shadow` (and the `/root` variants). `read`, `write`
+and `edit` refuse them, `file_list` shows them as `[denied]`, and `grep` / `glob` leave them out,
+so `grep 'BEGIN PRIVATE KEY' ~` doesn't return the key `read` won't open. Symlinks resolve
+first, so a `decoy → ~/.ssh` planted in the project is caught. It is a floor, not a boundary:
+`bash` runs as you and reads `~/.ssh` anyway. That is why `pikuri-os` drops it (`denylist: []`):
+its network is cut, so nothing can carry a key out, and a list `bash` walks around would be
+for show.
 
 ## Non-goals (be explicit)
 

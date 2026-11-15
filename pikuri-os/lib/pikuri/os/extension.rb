@@ -60,7 +60,7 @@ module Pikuri
 
       # @param filesystem [Pikuri::Workspace::Filesystem] the host fs view
       #   for the file tools and bash (typically
-      #   {Pikuri::Workspace::Filesystem::AllowAll} for full-host access).
+      #   {Pikuri::Code::WholeDisk} for full-host access).
       # @param confirmer [Pikuri::Workspace::Confirmer] the *human*
       #   confirmer; Bash is auto-gated on top of it (see "Confirmation
       #   policy").

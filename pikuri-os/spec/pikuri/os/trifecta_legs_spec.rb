@@ -11,7 +11,7 @@ RSpec.describe 'file-index tool trifecta legs' do
     end
   end
 
-  it 'fixes both inbound legs — whole-machine reach is the AllowAll case by construction' do
+  it 'fixes both inbound legs — whole-machine reach is the whole-disk case by construction' do
     [Pikuri::Os::FileindexSearch.new(backend: backend),
      Pikuri::Os::FileindexRead.new(backend: backend)].each do |tool|
       assert tool.trifecta_legs.private, tool.name

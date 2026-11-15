@@ -79,7 +79,7 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
     # Fires before the bwrap probe, so this test is bwrap-availability-
     # independent.
     it 'refuses construction when the workspace lists / as writable' do
-      ws = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: root)
+      ws = Pikuri::Code::WholeDisk.new(project_root: root)
       err = assert_raises(RuntimeError) { described_class.new(filesystem: ws) }
       assert_includes err.message, "lists '/' as"
       assert_includes err.message, 'Sandbox::NONE'
@@ -700,8 +700,8 @@ RSpec.describe Pikuri::Code::Bash::Sandbox do
         end
       end
 
-      it 'does NOT reject a Filesystem::AllowAll workspace (unlike Bubblewrap)' do
-        ws = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: root)
+      it 'does NOT reject a WholeDisk workspace (unlike Bubblewrap)' do
+        ws = Pikuri::Code::WholeDisk.new(project_root: root)
         sandbox = build_with_stubbed_probe(ws)
         assert_kind_of described_class, sandbox
         argv = sandbox.wrap(['true'])

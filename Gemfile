@@ -19,7 +19,7 @@ gemspec path: 'pikuri-conversations'
 # The gems a workshop gemspec doesn't name are the demo binaries' and the
 # specs' choices: web tools, the PDF extractor, Thunderbird for
 # pikuri-computer, and vectordb for the shared Qdrant image pin.
-PIKURI_REF = '3862974531f24432ea312f56ce8051529ce9c645'
+PIKURI_REF = '2007e516bd3d925d0747e0440e43b5eb0b9d5f4c'
 git 'https://codeberg.org/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-pdf'

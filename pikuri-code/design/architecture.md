@@ -109,7 +109,7 @@ Prompt injection reaching the LLM can still:
 The overlay specifically prevents *cross-project* contamination via
 shared `$HOME` caches — nothing more. Users needing adversarial
 isolation run pikuri-code inside a VM: the VM is the outer
-boundary, `bwrap` the inner (a container would share the kernel). ({Pikuri::Workspace::Filesystem::AllowAll}
+boundary, `bwrap` the inner (a container would share the kernel). ({Pikuri::Code::WholeDisk}
 is the file-tool-side counterpart.)
 
 ### Concurrency: one umbrella, serialized bwrap

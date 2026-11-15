@@ -347,13 +347,13 @@ module Pikuri
           private
 
           # Refuse to construct when +/+ is in the writable set (typically
-          # {Workspace::Filesystem::AllowAll}) — filesystem containment is moot
+          # {WholeDisk}) — filesystem containment is moot
           # when the whole filesystem is the workspace.
           def reject_unbounded_workspace!
             return unless @filesystem.writable.include?(Pathname.new('/').realpath)
 
             raise "Code::Bash::Sandbox::Bubblewrap: workspace lists '/' as " \
-                  'writable (likely Workspace::Filesystem::AllowAll). ' \
+                  'writable (likely Code::WholeDisk). ' \
                   'Bubblewrap exists to contain the subprocess to a subset ' \
                   'of the filesystem, which is moot when the whole filesystem ' \
                   'is the workspace. Pass Sandbox::NONE instead.'
@@ -690,7 +690,7 @@ module Pikuri
           # @param filesystem [Pikuri::Workspace::Filesystem] used only for its
           #   +project_root+ (the +--chdir+ target); the bind set is the whole
           #   real root regardless, so the readable/writable lists are ignored.
-          #   Pairs naturally with {Workspace::Filesystem::AllowAll}, which
+          #   Pairs naturally with {WholeDisk}, which
           #   {Bubblewrap} rejects and this sandbox embraces.
           # @raise [RuntimeError] if +bwrap+ isn't on +PATH+, or if the kernel
           #   refuses an unprivileged user / network namespace (so the network

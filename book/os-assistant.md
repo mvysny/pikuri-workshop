@@ -173,11 +173,10 @@ the coding agent of the shell chapter — the file tools are opened all the way 
 to see exactly what `bash` sees:
 
 ```ruby
-filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [],
-                                                         private: true)
+filesystem = Pikuri::Code::WholeDisk.new(project_root: Dir.pwd, denylist: [], private: true)
 ```
 
-`AllowAll` normally keeps a credential floor: the file tools refuse
+`WholeDisk` normally keeps a credential floor: the file tools refuse
 `~/.ssh`, `~/.aws`, `/etc/shadow` and friends. This agent passes
 `denylist: []` to drop it. That looks alarming until you notice `bash`,
 running as you, could already `cat ~/.ssh/id_rsa` — and the passive-command
@@ -364,7 +363,7 @@ agent = Pikuri::Agent.new(
   c.add_listener Pikuri::Agent::Listener::Terminal.new
   c.add_tool Pikuri::Tool::CALCULATOR
   c.add_extension Pikuri::Os::Extension.new(
-    filesystem: filesystem,   # AllowAll(project_root: Dir.pwd)
+    filesystem: filesystem,   # WholeDisk(project_root: Dir.pwd)
     confirmer:  confirmer,    # the *human* confirmer
     sandbox:    sandbox,      # FullFsNoNet
     plan_mode:  plan_mode     # the shared plan-mode flag, below

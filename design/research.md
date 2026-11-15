@@ -20,8 +20,8 @@ The pikuri entry is the reference column; everything else carries its provenance
 - **pikuri**: three seams. `Workspace::Filesystem` is one concrete class with explicit
   `project_root:` / `readable:` / `writable:`, routing every coding tool's paths through
   `#resolve_for_read` / `#resolve_for_write` and rejecting `..`-escapes and symlinks that resolve
-  outside a declared root; `Filesystem::AllowAll` is the `--yolo` variant, same accessor surface
-  but accepting any path *except* a hardcoded credential denylist (`~/.ssh`, `~/.aws`, `~/.gnupg`,
+  outside a declared root; the workshop's `Code::WholeDisk` is the `--yolo` variant, same accessor surface
+  but accepting any path *except* a credential denylist (`~/.ssh`, `~/.aws`, `~/.gnupg`,
   `~/.kube`, `~/.docker`, `~/.netrc`, `/etc/shadow`, …). `Workspace::Confirmer` gates
   state-mutating tools through `#ask(request:, cancellable:)`, all presentation owned by the confirmer.
   `Code::Bash::Sandbox` is the third seam, governing the bash subprocess's filesystem view rather
@@ -178,7 +178,7 @@ overflow to a tempfile and returning the path — cross-cutting version in
 `design/ideas/security-open-questions.md`); sub-agent toolset narrowing, already shipped via
 personas (`pikuri:R_sub_agents`); opencode's `(permission-name, glob-pattern)` ruleset shape if `Confirmer`
 ever expands beyond binary approve/deny; PI's credential-dir deny-read defaults, partially shipped
-already as `Filesystem::AllowAll`'s denylist; and Gondolin's secret-placeholder pattern, which is a
+already as `Code::WholeDisk`'s denylist; and Gondolin's secret-placeholder pattern, which is a
 structural defense against exfil-via-injection rather than "an approval prompt the user is no longer
 reading" — heavyweight, needing an HTTP/TLS interceptor, and flagged as future thought. opencode's
 "this is UX, not security" framing is the honest baseline pikuri's `SECURITY.md` borrows under

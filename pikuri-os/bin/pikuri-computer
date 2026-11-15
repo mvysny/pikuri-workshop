@@ -109,8 +109,7 @@ end
 # private leg to the mailbox and the file index while read and bash — the
 # tools that actually hand the whole disk to the model — look leg-free,
 # which undersells the pool-amplification point this demo exists to make.
-filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [],
-                                                         private: true)
+filesystem = Pikuri::Code::WholeDisk.new(project_root: Dir.pwd, denylist: [], private: true)
 
 confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikuri::Workspace::Confirmer::AUTO_APPROVE
 

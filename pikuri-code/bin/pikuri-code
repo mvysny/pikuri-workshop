@@ -166,7 +166,7 @@ private_repo =
 # Gated on confirm_enabled unlike private_repo, and the asymmetry is the
 # failure direction: skipping this one over-warns, which is the declared bias,
 # while skipping that one fails silent. --yolo therefore lands on false for
-# free, which it must — Filesystem::AllowAll refuses the flag outright.
+# free, which it must — Code::WholeDisk refuses the flag outright.
 #
 # Asked only when the project actually ships a skill or a command: the catalog
 # grades a base only by the bundles it stored, so with none here the answer
@@ -265,23 +265,20 @@ command_registry = Pikuri::Command::Registry.new(search_bases: bundle_bases)
 # /tmp/foo. With the sandbox off, /tmp in bash is the host's real /tmp —
 # aliasing it would lie about what `read('/tmp/foo')` actually opens.
 #
-# --yolo swaps in +Filesystem::AllowAll+: every path resolves except
+# --yolo swaps in +Code::WholeDisk+: every path resolves except
 # those under the credential denylist (~/.ssh, ~/.aws, …, /etc/shadow).
 # Intended for use inside a VM, which is then the security boundary;
 # the toolchain/skill readable list is moot since everything is
 # reachable anyway.
 scratch = Pikuri::Paths.new_temp
 filesystem = if yolo
-              # --readable/--writable are moot under AllowAll (everything
+              # --readable/--writable are moot under WholeDisk (everything
               # short of the credential denylist resolves anyway); warn so
               # the user knows the flags did nothing rather than silently
               # accepting them.
-              warn '--readable/--writable ignored under --yolo (filesystem is ALLOW_ALL).' \
+              warn '--readable/--writable ignored under --yolo (the filesystem is the whole disk).' \
                 unless extra_readable.empty? && extra_writable.empty?
-              Pikuri::Workspace::Filesystem::AllowAll.new(
-                project_root: project_root,
-                private:      private_repo
-              )
+              Pikuri::Code::WholeDisk.new(project_root: project_root, private: private_repo)
             else
               # User-supplied --readable/--writable extras ride the same
               # lists as the toolchain paths, so they propagate to the
@@ -682,7 +679,7 @@ begin
   warnings = []
   warnings << 'Sandbox: DISABLED.' unless sandbox_enabled
   warnings << 'Confirmer: AUTO-APPROVE.' unless confirm_enabled
-  warnings << 'Filesystem: ALLOW_ALL (credential denylist only).' if yolo
+  warnings << 'Filesystem: the whole disk (credential denylist only).' if yolo
   unless warnings.empty?
     # The promise backed loudly rather than enforced: outside a VM a
     # prompt injection would run as you, on this machine.

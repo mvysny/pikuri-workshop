@@ -79,11 +79,13 @@ module Tripwires
       'walked-path denylist',
       'Every enumerating tool filters its own results against the denylist.',
       # The roster of files allowed to *perform* the walked-path filter
-      # outside pikuri-workspace, which owns the denylist.
+      # outside pikuri-workspace, which owns the hook, plus Code::WholeDisk,
+      # the one Filesystem that *answers* it from a denylist.
       -> {
         confined(/denied\?|denied_roots|reject_denied_lines/,
                  allowed: ['pikuri-lsp/lib/pikuri/lsp/sources.rb',
-                           'pikuri-lsp/lib/pikuri/lsp/renderer.rb'])
+                           'pikuri-lsp/lib/pikuri/lsp/renderer.rb',
+                           'pikuri-code/lib/pikuri/code/whole_disk.rb'])
       }
     ),
 

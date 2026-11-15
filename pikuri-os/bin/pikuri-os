@@ -97,7 +97,7 @@ end
 #
 # private: true is a property of what this binary IS, not a user call the
 # way it is for a coding agent over some checkout: the premise is operating
-# *your machine*, and AllowAll with an empty denylist reaches your home
+# *your machine*, and WholeDisk with an empty denylist reaches your home
 # directory, your keys, your browser profile. Same domain argument that
 # makes a mailbox private without anyone declaring it — and the file-index
 # tools already hardcode it on exactly that reasoning
@@ -109,8 +109,7 @@ end
 # --with-internet, both before and after). What changes is that the
 # advisory now names read and bash among the contributors, which is what a
 # reader would go and change.
-filesystem = Pikuri::Workspace::Filesystem::AllowAll.new(project_root: Dir.pwd, denylist: [],
-                                                         private: true)
+filesystem = Pikuri::Code::WholeDisk.new(project_root: Dir.pwd, denylist: [], private: true)
 
 confirmer = confirm_enabled ? Pikuri::Workspace::Confirmer::Terminal.new : Pikuri::Workspace::Confirmer::AUTO_APPROVE
 

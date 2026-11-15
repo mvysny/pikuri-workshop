@@ -290,7 +290,7 @@ wrong guess costs a broken build you can see, not a key you can't. Only this cag
 Bubblewrap checks its workspace at construction and raises rather than run a cage that isn't
 one:
 
-- **A workspace where `/` is writable**, which is what `--yolo`'s `AllowAll` workspace is.
+- **A workspace where `/` is writable**, which is what `--yolo`'s `WholeDisk` workspace is.
   Containment is meaningless when the whole disk is in the box; pass `Sandbox::NONE` and say
   so.
 - **A root that exposes a container or VM control socket**, such as `/var/run/docker.sock`,
@@ -422,7 +422,7 @@ Every one of those is a reason someone reaches for the off switches:
 
 - `--no-sandbox` drops the cage (`Sandbox::NONE`).
 - `--no-confirm` drops the gate (`AUTO_APPROVE`).
-- `--yolo` drops both and opens the file tools to the whole disk (`Filesystem::AllowAll`,
+- `--yolo` drops both and opens the file tools to the whole disk (`Code::WholeDisk`,
   which still refuses a short credential list: `~/.ssh`, `~/.aws`, `~/.gnupg`, …).
 
 With any of them, the banner tells you a layer is off. With `--yolo` on your laptop, the model

@@ -1,8 +1,8 @@
 # pikuri-code — AGENTS.md
 
 The coding-agent gem: the `bash` tool, its sandbox arms, plan mode, the `/tmp` alias, the
-`git_repo_research` tool, and `bin/pikuri-code`, the in-repo agent that wires the file stack, tasks,
-MCP and LSP together. Owns the sandbox seam; the tool contract and the loop are `pikuri-core`'s, the
+whole-disk `WholeDisk` filesystem, the `git_repo_research` tool, and `bin/pikuri-code`, the
+in-repo agent that wires the file stack, tasks, MCP and LSP together. Owns the sandbox seam; the tool contract and the loop are `pikuri-core`'s, the
 file and confirmation seams `pikuri-workspace`'s.
 
 ## Invariants

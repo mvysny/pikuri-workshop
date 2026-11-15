@@ -23,7 +23,7 @@ module Pikuri
     #    constant returned) always carry the line of code — "what does this library
     #    method do" is a top reason to want LSP at all — and carry a **path only
     #    when this workspace would read that file**, which is a per-wiring answer:
-    #    +AllowAll+ (the +--yolo+ and OS-agent wirings) opens a gem checkout
+    #    a whole-disk one (the +--yolo+ and OS-agent wirings) opens a gem checkout
     #    happily, a root-confined one refuses it, and quoting a path the +read+
     #    tool will reject is a dead-end citation. Every +file:+ URI takes a
     #    {#denied?} pass first — a result is a *walked* path, so nothing else stops

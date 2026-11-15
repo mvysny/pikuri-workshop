@@ -272,11 +272,11 @@ describe Pikuri::Lsp::LspTool do
     end
 
     it 'refuses a file outside the root even where the workspace would read it' do
-      # AllowAll — the container wiring — resolves any path happily, so the
+      # A whole-disk workspace (the container wiring) resolves any path, so the
       # out-of-root refusal cannot lean on resolve_for_read raising. The boundary
       # that matters is the server's own rootUri.
-      allow_all = ->(root) { Pikuri::Workspace::Filesystem::AllowAll.new(project_root: root) }
-      wired.call(files: { 'read.rb' => read_rb }, filesystem: allow_all) do |tool, fakes|
+      whole_disk = ->(root) { Pikuri::Workspace::Filesystem.new(project_root: root, writable: ['/']) }
+      wired.call(files: { 'read.rb' => read_rb }, filesystem: whole_disk) do |tool, fakes|
         Dir.mktmpdir do |other|
           File.write(File.join(other, 'elsewhere.rb'), "def call(path)\n")
 
@@ -772,10 +772,10 @@ describe Pikuri::Lsp::LspTool do
     end
 
     it 'renders the real path when this workspace would read the file' do
-      # AllowAll — the --yolo and OS-agent wirings — opens a gem checkout happily,
+      # A whole-disk workspace (the --yolo and OS-agent wirings) opens a gem checkout,
       # so suppressing the path would delete a capability the wiring granted.
-      allow_all = ->(root) { Pikuri::Workspace::Filesystem::AllowAll.new(project_root: root) }
-      wired.call(files: { 'read.rb' => read_rb }, filesystem: allow_all) do |tool, fakes|
+      whole_disk = ->(root) { Pikuri::Workspace::Filesystem.new(project_root: root, writable: ['/']) }
+      wired.call(files: { 'read.rb' => read_rb }, filesystem: whole_disk) do |tool, fakes|
         Dir.mktmpdir do |other|
           elsewhere = File.join(File.realpath(other), 'filesystem.rb')
           File.write(elsewhere, "def resolve_for_read(path)\n")

@@ -11,6 +11,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 - `Bash::Sandbox::Bubblewrap#env` adds the host's git identity, which pikuri's dropped `Filesystem#env` supplied, and `Bash.withheld_env_names` no longer takes `filesystem:`.
 - pikuri-code no longer depends on pikuri-subagents.
 - Fix `Pikuri::Code::Extension`'s plan-mode bridge leaking: it now unsubscribes from the shared plan-mode flag on close, so a `/clear` no longer keeps the closed conversation in memory.
+- Add `Pikuri::Code::WholeDisk`, moved from pikuri's `Workspace::Filesystem::AllowAll` (where it is gone) with the same arguments and credential denylist; rename the constant where you call it.
 - Add `Pikuri::Code::ProjectRoot`, moved from pikuri's `Workspace::ProjectRoot` (where it is gone): the VCS-marker climb that picks a coding agent's project root. Rename the constant where you call it.
 - `Pikuri::Lsp::Readiness#wait` yields each indexing task once when it starts and once when it ends, no longer every report, and `ServerProgress` is a plain domain event, since pikuri dropped `Agent::Event::Transient` (`pikuri:D_domain_events`).
 - **Breaking:** `Pikuri::Mcp::Extension.new(registry:, synthesize_descriptions:, verify_mcp_servers:)` is now `Pikuri::Mcp::Extension.new(catalog:)`, one per agent: build the catalog once per process with `Pikuri::Mcp::Catalog.build(registry, transport:, cancellable:, around_request:)` and hand it to every agent (`D_mcp_catalog_and_connections`).

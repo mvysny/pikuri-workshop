@@ -78,7 +78,7 @@ module Pikuri
             FileindexSearch.search(query: query, limit: limit, backend: backend)
           },
           # Private and hard untrusted, both fixed rather than derived: this searches
-          # the *whole machine's* file index, which is the AllowAll case by
+          # the *whole machine's* file index, which is the whole-disk case by
           # construction — a reachable set nobody can vouch for, holding whatever the
           # user keeps on disk.
           trifecta_legs: Pikuri::Tool::TrifectaLegs.new(private: true, untrusted: :hard, egress_payload_review: :no_egress)
