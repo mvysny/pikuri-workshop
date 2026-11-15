@@ -41,7 +41,7 @@ services:
       # Bind-mounted to the host cache (set by the supervisor) — the
       # container is ephemeral, the corpus lives on the host. Same
       # "ephemeral container, persistent host data" posture as
-      # ChromaServer.
+      # pikuri-vectordb's Server::Qdrant.
       - ${PIKURI_DATA_DIR:?PIKURI_DATA_DIR must be the host data dir}/qdrant:/qdrant/storage
 
   router-proxy:

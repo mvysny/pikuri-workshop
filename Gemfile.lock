@@ -1,7 +1,7 @@
 GIT
   remote: https://codeberg.org/mvysny/pikuri.git
-  revision: 2007e516bd3d925d0747e0440e43b5eb0b9d5f4c
-  ref: 2007e516bd3d925d0747e0440e43b5eb0b9d5f4c
+  revision: 50892662d800c95fe3664cc6df4867622eb36fd7
+  ref: 50892662d800c95fe3664cc6df4867622eb36fd7
   specs:
     pikuri-core (0.1.0)
       faraday (~> 2.9)
@@ -16,6 +16,9 @@ GIT
     pikuri-pdf (0.1.0)
       pdf-reader (~> 2.15)
       pikuri-core (= 0.1.0)
+    pikuri-rag (0.1.0)
+      pikuri-vectordb (= 0.1.0)
+      sqlite3 (~> 2.9)
     pikuri-subagents (0.1.0)
       pikuri-core (= 0.1.0)
       pikuri-workspace (= 0.1.0)
@@ -87,6 +90,12 @@ PATH
   remote: pikuri-skills
   specs:
     pikuri-skills (0.1.0)
+      pikuri-core (~> 0.1)
+
+PATH
+  remote: pikuri-stemmers
+  specs:
+    pikuri-stemmers (0.1.0)
       pikuri-core (~> 0.1)
 
 PATH
@@ -234,6 +243,8 @@ GEM
     ttfunk (1.8.0)
       bigdecimal (~> 3.1)
     uri (1.1.2)
+    voikko (0.2.0)
+      ffi (~> 1.17)
     yard (0.9.45)
     zeitwerk (2.8.3)
 
@@ -258,7 +269,9 @@ DEPENDENCIES
   pikuri-memory!
   pikuri-os!
   pikuri-pdf!
+  pikuri-rag!
   pikuri-skills!
+  pikuri-stemmers!
   pikuri-subagents!
   pikuri-tasks!
   pikuri-thunderbird!
@@ -267,6 +280,7 @@ DEPENDENCIES
   pikuri-workspace!
   rake (~> 13.0)
   rspec-core (~> 3.13)
+  voikko (~> 0.2)
   yard (~> 0.9.43)
 
 CHECKSUMS
@@ -327,7 +341,9 @@ CHECKSUMS
   pikuri-memory (0.1.0)
   pikuri-os (0.1.0)
   pikuri-pdf (0.1.0)
+  pikuri-rag (0.1.0)
   pikuri-skills (0.1.0)
+  pikuri-stemmers (0.1.0)
   pikuri-subagents (0.1.0)
   pikuri-tasks (0.1.0)
   pikuri-thunderbird (0.1.0)
@@ -367,6 +383,7 @@ CHECKSUMS
   timeout (0.6.1) sha256=78f57368a7e7bbadec56971f78a3f5ecbcfb59b7fcbb0a3ed6ddc08a5094accb
   ttfunk (1.8.0) sha256=a7cbc7e489cc46e979dde04d34b5b9e4f5c8f1ee5fc6b1a7be39b829919d20ca
   uri (1.1.2) sha256=89292e98eabbef6248b0a0ed5e7e398e152f83f17560023a6d94a7f492b169fb
+  voikko (0.2.0) sha256=798ed3b7029e578520b6c00a937209173a8ea913c55b8df9e907156ff3f519ad
   yard (0.9.45) sha256=52e211493f7cb8a3ebf7e104a25a1e73937a3103092545d34cb88fafebb3dc51
   zeitwerk (2.8.3) sha256=2c85125a8467ce069e20123d1e709a08955c9d29c118c25b46b7b7fafdbb92e5
 

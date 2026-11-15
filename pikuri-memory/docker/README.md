@@ -19,7 +19,7 @@ supervisor clones mem0, applies the patch, and drives compose through
   ids, port, dims). The one published port binds `127.0.0.1` only. The containers are **ephemeral**
   — all state is bind-mounted to the host under `PIKURI_DATA_DIR`
   (`~/.cache/pikuri/mem0/data/{qdrant,history}`), so the corpus survives
-  container recreation, same posture as Server::Chroma.
+  container recreation, same posture as pikuri-vectordb's Server::Qdrant.
 
 - **`qdrant-default-config.patch`** — applied to the pinned mem0 checkout
   before the image build. It swaps the server's `DEFAULT_CONFIG` vector

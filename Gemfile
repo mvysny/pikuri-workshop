@@ -12,17 +12,20 @@ gemspec path: 'pikuri-lsp'
 gemspec path: 'pikuri-code'
 gemspec path: 'pikuri-os'
 gemspec path: 'pikuri-conversations'
+gemspec path: 'pikuri-stemmers'
 
 # pikuri itself, "just" a dependency, pinned to one commit of its repo, so
 # the Gemfile says which pikuri this was built against. Move it by editing
 # PIKURI_REF to a commit that is already pushed, then `bundle install`.
 # The gems a workshop gemspec doesn't name are the demo binaries' and the
 # specs' choices: web tools, the PDF extractor, Thunderbird for
-# pikuri-computer, and vectordb for the shared Qdrant image pin.
-PIKURI_REF = '2007e516bd3d925d0747e0440e43b5eb0b9d5f4c'
+# pikuri-computer, vectordb for the shared Qdrant image pin, and rag for
+# pikuri-stemmers' spec through a real FTS5 index.
+PIKURI_REF = '50892662d800c95fe3664cc6df4867622eb36fd7'
 git 'https://codeberg.org/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-pdf'
+  gem 'pikuri-rag'
   gem 'pikuri-subagents'
   gem 'pikuri-thunderbird'
   gem 'pikuri-vectordb'
@@ -38,6 +41,12 @@ group :test do
   # Provides the minitest-style assertion methods (assert_equal, refute,
   # …) used throughout spec/.
   gem 'minitest', '~> 6.0'
+
+  # Finnish morphology (FFI to the distro's libvoikko) for pikuri-stemmers'
+  # specs: real Voikko::Analysis values, and the real dictionary where
+  # libvoikko1 + voikko-fi are installed. 0.2 brings Analysis#morphemes and
+  # Voikko#language.
+  gem 'voikko', '~> 0.2'
 end
 
 group :development do

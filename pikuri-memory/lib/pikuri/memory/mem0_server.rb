@@ -12,7 +12,7 @@ module Pikuri
     # --build+, heartbeat-poll, tear down); {Mem0Client} owns the HTTP
     # client, and {#client} returns one pre-pointed at the running server.
     # A host already running mem0 elsewhere skips this class and wires
-    # {Mem0Client.new(endpoint:)} directly (the +Server::Chroma+-shaped
+    # {Mem0Client.new(endpoint:)} directly (the +Server::Qdrant+-shaped
     # let-pikuri-manage-it vs bring-your-own choice).
     #
     #   Mem0Server.ensure_running(router_url: 'http://localhost:8080/v1',

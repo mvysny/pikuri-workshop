@@ -16,7 +16,7 @@ describe Pikuri::Memory::Mem0Server do
 
   # Stub the subprocess seam: capture every git/docker/socat invocation
   # (argv + env), return planned [exit, stdout] results in FIFO order.
-  # Mirrors pikuri-vectordb's chroma_server_spec. `terminated` records
+  # Mirrors pikuri-vectordb's qdrant_spec. `terminated` records
   # handles whose #terminate was called (the relay teardown path).
   let(:calls) { [] }
   let(:planned) { [] }

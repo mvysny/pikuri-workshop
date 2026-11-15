@@ -26,8 +26,9 @@ jobs:
         ruby: ['3.3', '3.4', '4.0']
     steps:
       - uses: actions/checkout@v5
-      # ripgrep backs the Grep tool some specs drive.
-      - run: sudo apt-get update && sudo apt-get install -y ripgrep
+      # ripgrep backs the Grep tool some specs drive; libvoikko + voikko-fi
+      # let pikuri-stemmers' specs check the real Finnish dictionary.
+      - run: sudo apt-get update && sudo apt-get install -y ripgrep libvoikko1 voikko-fi
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: ${{ matrix.ruby }}

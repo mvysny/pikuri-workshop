@@ -99,6 +99,10 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   project's build files to learn its classpath; a hostile `build.gradle` runs as you, on
   your host, outside any sandbox today. `pikuri-lsp` starts only the servers your config
   names, rooted at the workspace.
+- **Stemmers — C code in the pikuri process.** `pikuri-stemmers`' Finnish stemmer hands
+  libvoikko every word of your notes and of every search the model writes, unsandboxed. It
+  sees one word at a time, and SQLite already reads the same words in the same process, so
+  this adds little (`D_voikko_stemmer`).
 
 ## Prompt injection: what the workshop adds
 

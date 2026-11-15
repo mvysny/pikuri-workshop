@@ -1744,3 +1744,47 @@ showed `about:blank` while A's showed A's page; closing both left none.
 first call. A server that changes its tools while pikuri runs is refused until pikuri restarts
 and re-verifies it. Isolation is per *process*: an `HttpEntry` connection is a new MCP session,
 which isolates only what that server isolates per session — see `SECURITY.md`.
+
+---
+
+## D_voikko_stemmer — Why Voikko for Finnish, and why a gem of stemmers that requires no language library?
+
+**Context.** pikuri-rag stems in Ruby behind a `stemmer:` duck (`pikuri:D_ruby_stemming`), ships
+only `Stemmer::Identity`, and leaves languages here. Finnish inflects and compounds: unstemmed,
+`rag_search_keywords katu` misses *kadulla*, and *kone* misses *tietokoneella*.
+
+**Decision.** {Pikuri::Stemmers::Voikko} indexes dictionary forms through the MIT `voikko` gem,
+FFI to the distro's libvoikko and `voikko-fi`. Measured over the 28 catalogs in
+`/usr/share/locale/fi/` (16 319 tokens; libvoikko 4.3.3, voikko-fi 2.5): 30% of distinct words
+unknown, mostly English and names, and each answers itself so `porter` still stems it; 1.08 base
+forms per word; `porter` over base forms merges 4 lemma groups of 2 278, one wrongly (*tulos* /
+*tulo*); 41 000 words/s, so no cache. `index_stems` adds each compound part, cut by
+`Voikko::Analysis#morphemes` and analysed again.
+
+One gem for every language, not one per language: a stemmer takes an open handle of its library
+and never requires it, so no library is a runtime dependency (the specs take theirs from the root
+`Gemfile`), the host adds the one it uses, and the README names what each language installs. pikuri-stemmers stays MIT beside
+GPL-2 `voikko-fi`, and an English-only host installs no native binding.
+
+**Alternatives rejected.**
+
+- **Snowball** (`libstemmer0d`) strips suffixes instead of analysing: *kadulla* and *kadun*
+  become *kadu* while *katu* stays, and it is erratic on exactly the words Voikko does not know
+  (*nokian* → *nokia*, *nokia* → *nok*), so it is no fallback either. It stays the candidate for
+  a language with no dictionary, and Hunspell, which has none for Finnish, for Slovak and Czech.
+- **`WORDBASES` for the parts** gives roots rather than parts (*yritys* → *yrittää*) and drops
+  some (*versionhallintajärjestelmää* loses *hallinta*).
+- **A gem per language** (`pikuri-finnish`). Each would be one class and one README section; the
+  handle injection already keeps one language's library off another's host.
+- **A stemming container**, Voikko, Hunspell and Snowball behind JSON on stdio, run
+  `--network=none` like `pikuri-extractors`. Convenience, not security: a stemmer is C fed
+  untrusted text, but one word at a time, a far smaller surface than whole-file parsers, and
+  SQLite already tokenizes the same corpus in-process. Build it when provisioning dictionaries
+  across machines hurts, or once a stemmer reads more than a word.
+
+**Consequences.**
+
+- CI installs `libvoikko1` and `voikko-fi`; without them the real-dictionary specs skip.
+- A `voikko-fi` upgrade does not rebuild an index: it shifts a few words, and libvoikko exposes no
+  dictionary version for `#id` to record.
+- Unmeasured on a real corpus: how often `porter` merges Finnish lemmas wrongly.

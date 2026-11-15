@@ -257,7 +257,7 @@ store was dropped.
   lightness, and the lighter options are too young to clear that bar.
 - **Accept the weight.** pikuri talks to mem0 as a self-managed sidecar
   over a thin Faraday HTTP client — the exact pattern
-  `pikuri-vectordb`'s `Server::Chroma` already establishes. mem0 owns
+  `pikuri-vectordb`'s `Server::Qdrant` already establishes. mem0 owns
   embedding + extraction; pikuri never calls the embedder itself.
 - **Append-only, resolution at read.** The v1 write API collapses to one
   verb: `append(observation)`. "Supersede" is not a concept the *writer*

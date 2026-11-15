@@ -22,6 +22,7 @@ first; [the workshop's](book/README.md) picks up where it ends.
 | [`pikuri-tasks`](pikuri-tasks/README.md) | a per-agent task list for long multi-step work |
 | [`pikuri-memory`](pikuri-memory/README.md) | durable cross-conversation memory backed by mem0 |
 | [`pikuri-extractors`](pikuri-extractors/README.md) | office, EPUB and RTF documents to Markdown, in a networkless container |
+| [`pikuri-stemmers`](pikuri-stemmers/README.md) | keyword search in languages other than English: Finnish |
 
 Each depends on [`pikuri-core`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-core/README.md),
 and some on other pikuri gems; nothing in pikuri depends on the workshop.
