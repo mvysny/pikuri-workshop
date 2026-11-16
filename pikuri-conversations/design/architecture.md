@@ -4,7 +4,7 @@ How the gem's pieces compose: the threads, the one lock, and the flows a host se
 the code conforms.** Change this file first, then the code. Not here: why (the workshop's
 `design/decisions.md`, cited `D_`), one symbol's behaviour (its YARD header), what the stored
 files hold (`HistoryFile` and `Store`, `D_history_file`, `D_history_container`,
-`D_history_attachments`). Cap 12 KB.
+`D_history_attachments`).
 
 ## Wiring
 
