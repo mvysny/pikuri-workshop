@@ -4,8 +4,9 @@
 
 The power tools for [pikuri](https://codeberg.org/mvysny/pikuri), a small Ruby AI assistant:
 a shell, a coding agent, language servers, MCP servers, Agent Skills, durable memory and an
-OS assistant, each a gem you wire à la carte. They run code you didn't write, so each runs in
-a cage, and the book says what the cage buys and where it stops.
+OS assistant, plus what a chat app needs to host many conversations and save them. Each is a
+gem you wire à la carte. The tools that run code you didn't write run in a cage, and the book
+says what the cage buys and where it stops.
 
 ## Promises
 
