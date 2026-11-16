@@ -8,7 +8,7 @@ module Pikuri
   #
   #   require 'voikko'
   #   voikko = Voikko.new(language: 'fi')
-  #   Pikuri::Rag::Extension.new(backend: ..., source: '~/notes',
+  #   Pikuri::Rag::Extension.new(backend: ..., source: '~/notes', embedder: ...,
   #                              stemmer: Pikuri::Stemmers::Voikko.new(voikko))
   #
   # The contract is +Pikuri::Rag::Stemmer+'s duck: +#stems+, +#index_stems+,

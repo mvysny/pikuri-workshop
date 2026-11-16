@@ -28,7 +28,7 @@ require 'voikko'
 
 voikko = Voikko.new(language: 'fi')   # close it when you're done
 Pikuri::Rag::Extension.new(
-  backend: ..., source: '~/notes',
+  backend: ..., source: '~/notes', embedder: ...,
   stemmer: Pikuri::Stemmers::Voikko.new(voikko)
 )
 ```
