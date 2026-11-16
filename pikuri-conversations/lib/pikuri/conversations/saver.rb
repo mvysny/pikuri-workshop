@@ -13,7 +13,7 @@ module Pikuri
     #     def save(conversation, history) = @store.save(@entries[conversation.id], history, model:, server:)
     #   end
     #
-    #   convs = Pikuri::Conversations.new(initializer:, saver: Saving.new(store, entries))
+    #   conv = convs.open(id:, transport:, listener:, initializer:, saver: Saving.new(store, entries))
     module Saver
       # Runs on the turn's thread, before the conversation goes idle, so "idle"
       # means "saved". A raise is logged and the conversation goes idle anyway.

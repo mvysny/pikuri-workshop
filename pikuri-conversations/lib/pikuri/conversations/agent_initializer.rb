@@ -2,7 +2,7 @@
 
 module Pikuri
   class Conversations
-    # What a host tells {Conversations} about each conversation's agent: its
+    # What a host tells {Conversations} about a conversation's agent: its
     # system prompt and its tools. Include it and override:
     #
     #   class Chat
@@ -12,7 +12,7 @@ module Pikuri
     #     def configure(configurator, _conversation) = configurator.add_tool(Pikuri::Tool::CALCULATOR)
     #   end
     #
-    #   convs = Pikuri::Conversations.new(initializer: Chat.new)
+    #   conv = convs.open(id:, transport:, listener:, initializer: Chat.new)
     #
     # Called on the boot's thread, once per agent built — a conversation's
     # first boot, and again after every clear or failed boot.

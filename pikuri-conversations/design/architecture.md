@@ -14,11 +14,11 @@ files hold (`HistoryFile` and `Store`, `D_history_file`, `D_history_container`,
   hosts (pikuri-webui, pikuri-tui, Puri) to this gem to pikuri-core, never back.
 - **The list builds every agent.** `Conversations#build_agent` wires what the gem owns — the
   conversation's `Cancellable`, the `History` it resumes, its listener, `around_request:
-  Throttle` — then asks the host's `AgentInitializer` for the system prompt and hands it the
-  `Configurator` for tools and extensions.
+  Throttle` — then asks the conversation's `AgentInitializer`, given to `open`, for the system
+  prompt and hands it the `Configurator` for tools and extensions.
   A host never calls `Agent.new` for a conversation.
 - **The parts don't know each other.** `Conversations` and `Conversation` never reference
-  `Store` or `HistoryFile`: the host joins them in its `Saver`, and in its
+  `Store` or `HistoryFile`: the host joins them in each conversation's `Saver`, and in its
   listener, where `Event::Titled` meets `Store#retitle`. Whether a conversation still wants a
   name is the store's to know, so the host says so with `open(untitled:)`.
 - **`Throttle` and `Probe` are process-wide modules**, not a list's objects, keyed by server

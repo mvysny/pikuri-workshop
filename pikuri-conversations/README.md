@@ -40,8 +40,9 @@ class Chat
 end
 
 chat  = Chat.new(store)
-convs = Pikuri::Conversations.new(initializer: chat, saver: chat)
-conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
+convs = Pikuri::Conversations.new
+conv = convs.open(id: entry.id, transport:, listener:, initializer: chat, saver: chat,
+                  history: store.history(entry))
 conv.submit('how do I keep an avocado?')   # => :started — events reach your listener
 conv.submit('also, ripe?')                  # => :injected — the running turn reads it
 conv.cancel
@@ -66,8 +67,8 @@ reranker = Pikuri::VectorDb::Reranker::LlamaServer.new(server:, model:, around_r
 
 ```ruby
 titler = Pikuri::Conversations::Titler.new(transport: thinking_off_transport, params_declared: true)
-convs  = Pikuri::Conversations.new(initializer:, titler:)
-conv   = convs.open(id: entry.id, transport:, listener:, untitled: store.stamp_titled?(entry))
+convs  = Pikuri::Conversations.new(titler:)
+conv   = convs.open(id: entry.id, transport:, listener:, initializer:, untitled: store.stamp_titled?(entry))
 # in the listener:
 #   in Pikuri::Conversations::Event::Titled(title:) then entry = store.retitle(entry, title)
 ```

@@ -21,10 +21,11 @@ module Pikuri
   #   store = Pikuri::Conversations::Store.new(root: dir, shell: 'my-chat')
   #   entries = {}   # id => Store::Entry; store.find sees only saved ones
   #   chat = Chat.new(store, entries)
-  #   convs = Pikuri::Conversations.new(initializer: chat, saver: chat)
+  #   convs = Pikuri::Conversations.new
   #   entry = store.find(id) || store.create   # resume, or start one
   #   entries[entry.id] = entry
-  #   conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
+  #   conv = convs.open(id: entry.id, transport:, listener:, initializer: chat, saver: chat,
+  #                     history: store.history(entry))
   #   conv.submit('how do I keep an avocado?')   # => :started; events reach +listener+
   #   convs.shutdown(timeout: 5)
   #
@@ -34,8 +35,8 @@ module Pikuri
   # turn; {RateLimitedListener} paces a streamed reply for a renderer;
   # {HistoryFile} is the stored format of an
   # {Pikuri::Agent::History}; {Store} keeps one folder per conversation. A list
-  # never touches a store: the host's {Saver} joins them. Its
-  # {AgentInitializer} gives each agent its prompt and tools.
+  # never touches a store: each conversation's {Saver} joins them, and its
+  # {AgentInitializer} gives its agent the prompt and the tools.
   #
   # Thread-safe.
   class Conversations
@@ -48,17 +49,11 @@ module Pikuri
 
     include Enumerable
 
-    # @param initializer [AgentInitializer] each conversation's system prompt
-    #   and tools
-    # @param saver [Saver, nil] keeps a conversation after every turn; +nil+
-    #   keeps nothing
     # @param streaming [Boolean] the agents' +streaming:+
     # @param priority [Integer] the turn threads' +Thread#priority+; a GUI host
     #   lowers it to keep its main loop responsive
     # @param titler [Titler, nil] names the conversations opened +untitled: true+
-    def initialize(initializer:, saver: nil, streaming: true, priority: 0, titler: nil)
-      @initializer = initializer
-      @saver = saver
+    def initialize(streaming: true, priority: 0, titler: nil)
       @titler = titler
       @streaming = streaming
       @priority = priority
@@ -71,10 +66,12 @@ module Pikuri
     # first message.
     #
     # The listener hears events before this returns: {Event::Booting} on the
-    # caller's thread, then the boot's own from its thread. A listener that
-    # reads the conversation back boots it once the host holds it:
+    # caller's thread, then the boot's own from its thread. A host object that
+    # is all three of a conversation's hooks, and reads the conversation back,
+    # boots it once it holds it:
     #
-    #   @live = convs.open(id:, transport:, listener: self, history:, boot: false)
+    #   @live = convs.open(id:, transport:, listener: self, initializer: self, saver: self,
+    #                      history:, boot: false)
     #   @live.boot
     #
     # @param id [String] unique among the open conversations
@@ -82,6 +79,8 @@ module Pikuri
     # @param listener [Pikuri::Agent::Listener::Base] hears the agent's events
     #   and the conversation's {Event}s; a +Pikuri::Agent::ListenerList+ hands
     #   them to several, one per pane
+    # @param initializer [AgentInitializer] its agent's system prompt and tools
+    # @param saver [Saver, nil] keeps it after every turn; +nil+ keeps nothing
     # @param history [Pikuri::Agent::History, nil] a conversation to resume
     # @param boot [Boolean]
     # @param untitled [Boolean] whether it still wants a name — a resumed one
@@ -89,9 +88,10 @@ module Pikuri
     #   once a turn has ended ({Event::Titled}). Ignored without a titler.
     # @return [Conversation]
     # @raise [ArgumentError] if a conversation with +id+ is open
-    def open(id:, transport:, listener:, history: nil, boot: true, untitled: false)
-      conv = Conversation.new(id:, transport:, listener:, history:, build: method(:build_agent),
-                              saver: @saver, on_closed: method(:forget), priority: @priority,
+    def open(id:, transport:, listener:, initializer:, saver: nil, history: nil, boot: true, untitled: false)
+      build = ->(conv, model, resumed, cancellable) { build_agent(initializer, conv, model, resumed, cancellable) }
+      conv = Conversation.new(id:, transport:, listener:, history:, build:,
+                              saver:, on_closed: method(:forget), priority: @priority,
                               titler: untitled ? @titler : nil)
       @lock.synchronize do
         raise ArgumentError, "conversation #{id.inspect} is already open" if @conversations.key?(id)
@@ -139,11 +139,11 @@ module Pikuri
 
     private
 
-    def build_agent(conv, transport, history, cancellable)
-      Pikuri::Agent.new(transport:, system_prompt: @initializer.system_prompt(conv), cancellable:,
+    def build_agent(initializer, conv, transport, history, cancellable)
+      Pikuri::Agent.new(transport:, system_prompt: initializer.system_prompt(conv), cancellable:,
                         streaming: @streaming, history:, around_request: Throttle) do |c|
         c.add_listener(conv.listener)
-        @initializer.configure(c, conv)
+        initializer.configure(c, conv)
       end
     end
 

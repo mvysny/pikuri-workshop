@@ -295,7 +295,9 @@ end
 ```
 
 An interface rather than a pair of lambdas: the arguments each method gets have names and
-types you can look up, and one object can hold what both need.
+types you can look up, and one object can hold what both need. It comes with each conversation,
+to `open`, beside its `Saver`: an app with one object per conversation passes that object as
+its listener, initializer and saver alike, and one with a single `Chat` passes it every time.
 
 Nothing enforces the split; the `Sharing:` line is the contract. Thread-safe is no licence to
 share, either: a per-conversation thing that happens to hold a lock is still per-conversation.
@@ -354,13 +356,14 @@ class Saving
   end
 end
 
-convs = Pikuri::Conversations.new(initializer: Chat.new,   # the tool split above
-                                  saver: Saving.new(store, entries), titler:)
+convs  = Pikuri::Conversations.new(titler:)
+chat   = Chat.new                                        # the tool split above
+saving = Saving.new(store, entries)
 
 entry = store.find(id) || store.create
 entries[entry.id] = entry
-conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry),
-                  untitled: store.stamp_titled?(entry))
+conv = convs.open(id: entry.id, transport:, listener:, initializer: chat, saver: saving,
+                  history: store.history(entry), untitled: store.stamp_titled?(entry))
 
 conv.submit('how do I keep an avocado?')   # => :started
 conv.submit('also, ripe?')                 # => :injected

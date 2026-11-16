@@ -69,7 +69,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
   let(:saved) { Queue.new }
   let(:configure) { nil }
   let(:host) { TestHost.new(configure:, saved:) }
-  let(:convs) { Pikuri::Conversations.new(initializer: host, saver: host, streaming: false) }
+  let(:convs) { Pikuri::Conversations.new(streaming: false) }
 
   # A Gate that also says when a response has parked in it, so a test knows the
   # turn is running before it acts.
@@ -122,7 +122,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
   def contents(history) = history.messages.map(&:content)
 
   def open(transport, **opts)
-    convs.open(id: 'c1', transport:, listener: recorder, **opts)
+    convs.open(id: 'c1', transport:, listener: recorder, initializer: host, saver: host, **opts)
   end
 
   it 'boots, runs a turn, saves before going idle' do
@@ -140,6 +140,23 @@ RSpec.describe Pikuri::Conversations::Conversation do
     assert_equal ['how do I keep an avocado?', 'Keep it cool.'], contents(history)
     assert_equal :idle, conv.status.state
     assert_equal history, conv.history
+  end
+
+  it "builds each conversation's agent with its own initializer, and saves through its own saver" do
+    built = []
+    other_saved = Queue.new
+    other = TestHost.new(configure: ->(_, conv) { built << conv.id }, saved: other_saved)
+    rec = Recorder.new
+    conv = convs.open(id: 'c2', transport: Pikuri::Testing.fake_transport { |llm| llm.reply('2') }, listener: rec,
+                      initializer: other, saver: other)
+    rec.await(Event::Ready)
+    assert_equal ['c2'], built
+
+    conv.submit('1 + 1?')
+    assert_equal :completed, rec.await(Event::TurnEnded).outcome
+    id, history = other_saved.pop
+    assert_equal ['c2', ['1 + 1?', '2']], [id, contents(history)]
+    assert_equal 0, saved.size
   end
 
   # RateLimitedListener flushes on TurnEnded without a lock, relying on this.
@@ -186,8 +203,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
       llm.reply('done')
     end
     host = TestHost.new(configure: ->(c, _) { c.add_tool(Pikuri::Tool::CALCULATOR) })
-    convs = Pikuri::Conversations.new(initializer: host, streaming: false)
-    conv = convs.open(id: 'c1', transport:, listener: recorder)
+    conv = convs.open(id: 'c1', transport:, listener: recorder, initializer: host)
     recorder.await(Event::Ready)
     gate.block!
     conv.submit('first')
@@ -516,7 +532,8 @@ RSpec.describe Pikuri::Conversations::Conversation do
 
     it 'shuts the whole list down, waiting for the agents' do
       open(Pikuri::Testing.fake_transport)
-      convs.open(id: 'c2', transport: Pikuri::Testing.fake_transport, listener: Recorder.new, boot: false)
+      convs.open(id: 'c2', transport: Pikuri::Testing.fake_transport, listener: Recorder.new, initializer: host,
+                 boot: false)
       assert convs.shutdown(timeout: 5)
       assert_equal [], convs.to_a
     end
@@ -638,7 +655,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
       recorders = Array.new(3) { Recorder.new }
       conversations = recorders.each_with_index.map do |rec, i|
         transport = Pikuri::Testing.fake_transport(api_base: server, gate:) { |llm| llm.reply("answer #{i}") }
-        convs.open(id: "c#{i}", transport:, listener: rec)
+        convs.open(id: "c#{i}", transport:, listener: rec, initializer: host, saver: host)
       end
       recorders.each { _1.await(Event::Ready) }
       conversations.each { _1.submit('hi') }
@@ -747,7 +764,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
         transport: Pikuri::Testing.fake_transport(model: 'titler', gate: titler_gate) { |llm| llm.reply('Keeping An Avocado') }
       )
     end
-    let(:convs) { Pikuri::Conversations.new(initializer: host, saver: host, streaming: false, titler:) }
+    let(:convs) { Pikuri::Conversations.new(streaming: false, titler:) }
 
     def chat(*replies)
       Pikuri::Testing.fake_transport { |llm| replies.each { llm.reply(_1) } }
