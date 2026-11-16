@@ -384,8 +384,31 @@ Built against pikuri `3aed7e2` with no pikuri change:
   overflow. Reactive compaction needs no cap; proactive compaction and the late warning take it
   from the probe. The per-turn budget-line refusal has no pikuri `D_` yet; it lives in
   `context-budget.md`.
-- `Q_replay` — leaning to a pure `History#events` in core, usable with no agent; webui's
-  `HistoryReplay` duplicates the dangling-call repair.
+- `Q_replay` — two hosts turn a saved `History` into a transcript, two ways. (The dangling-call
+  repair is no longer duplicated: core's public `History#repair_interrupted_tool_calls` is what
+  webui calls.)
+  - **webui's `HistoryReplay`** (145 lines) synthesizes the live `Agent::Event` stream and feeds
+    it through the live listener — one renderer, live or reloaded. To fake the stream it mirrors
+    pikuri-core's private knowledge: the `<system-reminder>` envelope (the constant is private
+    upstream; only webui's live-vs-replay spec catches a rename), the emit order (a `ToolResult`
+    right after its own `ToolCall`, not in stored order), the emit-path filters (empty thinking,
+    empty assistant text), and no `Tokens` (`HistoryLoaded` reseeds `TokenLog`).
+  - **Puri's `Core::Replay`** (34 lines) builds its own blocks straight from messages — the
+    "second place block kinds are decided" webui's header warns against — and already differs
+    from Puri's live view: a `/skill` (`kind: 'reference'`) vanishes on reload, an interrupted
+    call shows nothing (no repair), and thinking is dropped (unchecked whether Puri shows it live).
+  - tui never resumes, so needs none.
+  - **A. `History#events` in pikuri-core** — the envelope, order and filters stay private to
+    the code that emits; the live-vs-replay spec moves into pikuri, failing in the commit that
+    changes emission; Puri drops `Replay` and feeds the events through its `TurnListener`.
+    Against: no pikuri caller, as no bin resumes — `D_history_file`'s argument, though that one
+    is about carrying a format, and this is a pure function over core's own value.
+  - **B. `Conversations::Replay` in pikuri-conversations**, beside `HistoryFile`: every caller
+    is here, but the mirrored private knowledge moves rather than goes.
+  - **C. Leave it**: two callers, webui's spec catches the worst drift; Puri's reload stays
+    unlike its live view.
+  - Follow-on, A or B: should `Conversations#open(history:)` replay into the listener itself?
+    Not yet — webui replays per browser tab into that tab's SSE stream.
 - `Q_listener_swap` — listeners are fixed at `Agent.new`; webui keeps a detached conversation's
   15 fps timer alive. A conversation-level listener swap is cheap (the gem owns the forwarder).
 - `Q_confirmer_token` — pikuri-code's `Confirmer` should watch the cancel token as Puri's does, so

@@ -1620,8 +1620,9 @@ answers `:injected`; the turn reads it after its current tool batch. Injections 
 late for the turn's last request start a bare turn in the critical section that would have gone
 idle — **only after a completed turn**: after a cancel the stop button would look broken, and
 after a failure an unreachable server would spin. A cancel keeps undelivered injections, counted
-in `status.pending`; the host decides what they become — a blank `submit` re-sends them (tui), or
-`discard_pending` takes them (Puri shows what it took).
+in `status.pending`; the host decides what they become — the next `submit` delivers them ahead of
+its message (webui, tui), a blank one alone, or `discard_pending` takes them (Puri shows what it
+took).
 
 **Alternatives rejected.**
 

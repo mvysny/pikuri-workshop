@@ -253,7 +253,7 @@ VM, the cost is zero and `--yolo` there is a reasonable way to work.
 
 ## What the book built
 
-Ten chapters, one agent. pikuri's secretary is safe by construction: read its wiring and you
+Ten chapters so far, one agent. pikuri's secretary is safe by construction: read its wiring and you
 can see each leg weakened before an injection gets to use it. This one can't be, and every
 chapter here said so in its last section. What it has instead is a stack of walls you can name,
 each with a measured edge: the workspace, the cage with its environment and its loopback, the
@@ -264,3 +264,8 @@ From here, the sources read directly. [`SECURITY.md`](../SECURITY.md) is the wor
 model in one place, with every spot where the promise and the code disagree;
 `design/decisions.md` is why each wall is shaped the way it is; and each gem's
 `design/architecture.md` is the measurements its code rests on. Start with `pikuri-code`'s.
+
+## What's next
+
+[Hosting many conversations](conversations.md) steps outside the one-agent shape: what changes
+when a chat app runs many conversations at once, and the gem that handles it for the app.
