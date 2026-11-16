@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- **Breaking:** `Pikuri::Conversations.new(system_prompt:, configure:, on_turn_end:)` is now `Pikuri::Conversations.new(initializer:, saver:)`: move the prompt and the tools into an object including `Conversations::AgentInitializer` (`system_prompt(conversation)`, `configure(configurator, conversation)`), and the save into one including `Conversations::Saver` (`save(conversation, history)`).
 - Hand `Pikuri::Conversations::Throttle` to `Pikuri::VectorDb::Embedder.new(around_request:)` and `Reranker::LlamaServer.new(around_request:)` too (pikuri `4106ddd`), so a RAG reindex queues with the chat on a small llama-server; a separate embedding server stays unlimited until you `Throttle.limit` it.
 
 - New `pikuri-stemmers`: `Pikuri::Stemmers::Voikko`, the Finnish stemmer for pikuri-rag's `stemmer:`, moved unchanged from pikuri's `Rag::Stemmer::Voikko` (where it is gone); rename the constant where you build one (`D_voikko_stemmer`).

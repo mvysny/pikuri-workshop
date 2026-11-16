@@ -117,7 +117,7 @@ module Pikuri
         def to_s = 'Cancelling'
       end
 
-      # A turn ended, after the host's +on_turn_end+ ran. Emitted on the turn's
+      # A turn ended, after the host's {Saver} ran. Emitted on the turn's
       # own thread, after the agent's last event — {RateLimitedListener} flushes
       # on it without a lock, relying on that.
       #

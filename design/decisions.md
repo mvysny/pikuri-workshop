@@ -1574,7 +1574,7 @@ reads as the HTTP one.
 - **A grab-bag `pikuri-ext` for host utilities.** Refuses nothing, and charges every host the
   union of every utility's dependencies. A utility that fails the rule above finds another home.
 - **Several gems — throttle, store, scheduler.** The parts are already independent inside one
-  (`Conversations` never references `Store`; the host joins them in `on_turn_end`), and a host
+  (`Conversations` never references `Store`; the host's `Saver` joins them), and a host
   that wants only the store requires the gem and never opens a list.
 
 ---

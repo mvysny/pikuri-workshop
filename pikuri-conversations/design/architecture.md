@@ -14,10 +14,11 @@ files hold (`HistoryFile` and `Store`, `D_history_file`, `D_history_container`,
   hosts (pikuri-webui, pikuri-tui, Puri) to this gem to pikuri-core, never back.
 - **The list builds every agent.** `Conversations#build_agent` wires what the gem owns — the
   conversation's `Cancellable`, the `History` it resumes, its listener, `around_request:
-  Throttle` — then hands the `Configurator` to the host's `configure:` for tools and extensions.
+  Throttle` — then asks the host's `AgentInitializer` for the system prompt and hands it the
+  `Configurator` for tools and extensions.
   A host never calls `Agent.new` for a conversation.
 - **The parts don't know each other.** `Conversations` and `Conversation` never reference
-  `Store` or `HistoryFile`: the host joins them in `on_turn_end:`, where it saves, and in its
+  `Store` or `HistoryFile`: the host joins them in its `Saver`, and in its
   listener, where `Event::Titled` meets `Store#retitle`. Whether a conversation still wants a
   name is the store's to know, so the host says so with `open(untitled:)`.
 - **`Throttle` and `Probe` are process-wide modules**, not a list's objects, keyed by server
@@ -49,7 +50,7 @@ The work runs on plain threads the conversation starts — one per task, never a
 | Thread | Started by | Runs |
 |---|---|---|
 | `boot <id>` | `open(boot: true)`, `boot`, the first `submit` of a `:new` one, a `clear` | the modalities lookup, `Agent.new`, then the first turn on the same thread if a message waits |
-| `turn <id>` | `submit` while `:idle` | `run_loop`, `on_turn_end`, then bare turns while injections arrived too late |
+| `turn <id>` | `submit` while `:idle` | `run_loop`, `Saver#save`, then bare turns while injections arrived too late |
 | `title <id>` | the turn that first has a user message, if opened `untitled:` | one `Titler#title_for` |
 | `close <id>` | `close`, a forced close's unwinding turn, a failed boot under close | `Agent#close` (an MCP teardown may take seconds), then `Event::Closed` |
 
@@ -59,7 +60,7 @@ thread, sharing its `Cancellable`. Every thread is counted from before it starts
 last event, which is all `wait_settled` waits on.
 
 **The one rule: nothing outside the gem is called under its lock** — no listener, no
-`on_turn_end`, no `Agent#close`, no `Titler`. A critical section queues its events and its
+`Saver`, no `Agent#close`, no `Titler`. A critical section queues its events and its
 threads (`Conversation#locked`'s `@effects` and `@spawns`), and they go out after the lock drops.
 So a host may hold its own lock in a listener and read `status` under that same lock
 (`pikuri-webui:D_global_monitor`). The order is **host lock → conversation lock → the agent's
@@ -71,7 +72,7 @@ section** — `submit` on the caller's thread, a boot that found a message waiti
 restarting for late injections — so no cancel can fall between the move and the reset
 (`pikuri:D_host_resets_cancel`).
 
-**A host hook never strands the state machine.** A listener or `on_turn_end` that raises is
+**A host hook never strands the state machine.** A listener or `Saver` that raises is
 logged at error, and the transition goes on.
 
 ## The states
@@ -93,7 +94,7 @@ logged at error, and the transition goes on.
   hold one MCP or language server at once. A clear landing mid-boot bumps a generation, and the
   boot builds again from the empty history.
 - **`close` is refused while a turn runs**, or while a boot has a message waiting; `force: true`
-  cancels and closes once the turn unwinds. The cut turn still runs `on_turn_end` — a quitting
+  cancels and closes once the turn unwinds. The cut turn is still saved — a quitting
   host keeps what was said, and a deleting host needs no guard, since `Store#delete` wins over
   every later write.
 
@@ -111,7 +112,7 @@ logged at error, and the transition goes on.
 4. `agent.run_loop(user_message:, attachments:, transport: Probe.facts(transport))`. A picked
    model switches the chat; newly learnt facts are adopted silently. `Cancelled` and any
    `StandardError` become the outcome.
-5. `export_history`, then `on_turn_end.(conv, history)` — off the lock, before going idle, for
+5. `export_history`, then `saver.save(conv, history)` — off the lock, before going idle, for
    every outcome: "idle" means "saved". The first turn with user text asks the `Titler` on a
    `title <id>` thread.
 6. Under the lock: completed **and** the `Interloper` still holds something **and** not closing →

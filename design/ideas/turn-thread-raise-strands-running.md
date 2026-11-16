@@ -3,7 +3,7 @@
 Status: **suspected bug, found reading the code (2026-11-14) while fixing
 `Closed`-is-last; not reproduced.**
 
-`Conversation#run_turns` rescues `run_loop` and `save` rescues `on_turn_end`, but nothing
+`Conversation#run_turns` rescues `run_loop` and `save` rescues `Saver#save`, but nothing
 rescues `@agent.export_history` at the top of `save`. If it raises:
 
 - the exception leaves `run_turns`; `spawn` logs it and drops the thread count;

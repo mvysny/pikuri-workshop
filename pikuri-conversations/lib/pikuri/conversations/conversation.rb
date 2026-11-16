@@ -21,7 +21,7 @@ module Pikuri
     # == Implementation details
     #
     # One +Mutex+ guards the state; nothing outside the gem is ever called
-    # under it — no listener, no +on_turn_end+, no +Agent#close+ — so a host may
+    # under it — no listener, no {Saver}, no +Agent#close+ — so a host may
     # take its own lock in a listener and call {#status} under that same lock.
     # The lock order is host lock → this lock → the agent's +Interloper+ lock.
     #
@@ -64,19 +64,18 @@ module Pikuri
       # @param history [Pikuri::Agent::History, nil] a conversation to resume
       # @param build [#call] +(conversation, transport, history, cancellable)+
       #   → a new +Pikuri::Agent+
-      # @param on_turn_end [#call, nil] +(conversation, history)+, see
-      #   {Conversations#initialize}
+      # @param saver [Saver, nil] keeps the conversation after every turn
       # @param on_closed [#call, nil] +(conversation)+, once the agent is released
       # @param priority [Integer] the turn threads' +Thread#priority+
       # @param titler [Titler, nil] names this conversation once a turn has
       #   ended; +nil+ when it needs no name
-      def initialize(id:, transport:, listener:, history:, build:, on_turn_end:, on_closed:, priority:, titler: nil)
+      def initialize(id:, transport:, listener:, history:, build:, saver:, on_closed:, priority:, titler: nil)
         @id = id
         @listener = listener
         @transport = transport
         @history = history
         @build = build
-        @on_turn_end = on_turn_end
+        @saver = saver
         @on_closed = on_closed
         @priority = priority
         @titler = titler
@@ -235,7 +234,7 @@ module Pikuri
       # Refused while a turn runs, or while a boot has a message waiting to
       # become one. A boot nothing waits on closes: it would lose nothing.
       #
-      # A turn +force+ cuts short still ends with +on_turn_end+, as any
+      # A turn +force+ cuts short is still saved by the {Saver}, as any
       # cancelled turn does, so a quitting host keeps what was said. A host
       # deleting the conversation needs no guard against that late save:
       # {Store#delete} wins over it.
@@ -626,7 +625,7 @@ module Pikuri
         facts
       end
 
-      # Snapshot the history and hand it to +on_turn_end+, on the turn's
+      # Snapshot the history and hand it to the {Saver}, on the turn's
       # thread: the conversation goes idle only once the host has saved.
       #
       # @return [Pikuri::Agent::History, nil] the snapshot; +nil+ when taking it
@@ -635,10 +634,10 @@ module Pikuri
         history = @agent.export_history
         locked { @history = history }
         begin
-          @on_turn_end&.call(self, history)
+          @saver&.save(self, history)
         rescue StandardError => e
           # A host hook that raises must not strand the conversation in :running.
-          LOGGER.error("conversation #{@id}: on_turn_end raised #{e.class}: #{e.message}")
+          LOGGER.error("conversation #{@id}: saver raised #{e.class}: #{e.message}")
         end
         history
       end

@@ -8,13 +8,20 @@ module Pikuri
   # never writes to disk. This is the list of live ones — each its own agent,
   # its turns on threads of their own — and the folder they are saved in:
   #
+  #   class Chat
+  #     include Pikuri::Conversations::AgentInitializer
+  #     include Pikuri::Conversations::Saver
+  #
+  #     def initialize(store, entries) = (@store, @entries = store, entries)
+  #     def system_prompt(_conv) = 'You are a helpful assistant.'
+  #     def configure(c, _conv) = c.add_tool(Pikuri::Tool::CALCULATOR)
+  #     def save(conv, history) = @store.save(@entries[conv.id], history, model:, server:)
+  #   end
+  #
   #   store = Pikuri::Conversations::Store.new(root: dir, shell: 'my-chat')
   #   entries = {}   # id => Store::Entry; store.find sees only saved ones
-  #   convs = Pikuri::Conversations.new(
-  #     system_prompt: 'You are a helpful assistant.',
-  #     configure: ->(c, conv) { c.add_tool(Pikuri::Tool::CALCULATOR) },
-  #     on_turn_end: ->(conv, history) { store.save(entries[conv.id], history, model:, server:) }
-  #   )
+  #   chat = Chat.new(store, entries)
+  #   convs = Pikuri::Conversations.new(initializer: chat, saver: chat)
   #   entry = store.find(id) || store.create   # resume, or start one
   #   entries[entry.id] = entry
   #   conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
@@ -27,7 +34,8 @@ module Pikuri
   # turn; {RateLimitedListener} paces a streamed reply for a renderer;
   # {HistoryFile} is the stored format of an
   # {Pikuri::Agent::History}; {Store} keeps one folder per conversation. A list
-  # never touches a store: the host joins them in +on_turn_end+.
+  # never touches a store: the host's {Saver} joins them. Its
+  # {AgentInitializer} gives each agent its prompt and tools.
   #
   # Thread-safe.
   class Conversations
@@ -40,23 +48,17 @@ module Pikuri
 
     include Enumerable
 
-    # @param system_prompt [String, #call] the agents' system prompt, or
-    #   +(conversation)+ → one per conversation
-    # @param configure [#call, nil] +(configurator, conversation)+ — the
-    #   +Agent.new+ block: tools, extensions, more listeners. The conversation's
-    #   cancel token, history, listener and {Throttle} are wired already.
-    # @param on_turn_end [#call, nil] +(conversation, history)+ after every turn
-    #   — completed, cancelled or failed, one a forced close cut short included
-    #   — on the turn's thread, before the conversation goes idle, so "idle"
-    #   means "saved". +conversation.status.model+ is the model the turn ran on.
+    # @param initializer [AgentInitializer] each conversation's system prompt
+    #   and tools
+    # @param saver [Saver, nil] keeps a conversation after every turn; +nil+
+    #   keeps nothing
     # @param streaming [Boolean] the agents' +streaming:+
     # @param priority [Integer] the turn threads' +Thread#priority+; a GUI host
     #   lowers it to keep its main loop responsive
     # @param titler [Titler, nil] names the conversations opened +untitled: true+
-    def initialize(system_prompt:, configure: nil, on_turn_end: nil, streaming: true, priority: 0, titler: nil)
-      @system_prompt = system_prompt
-      @configure = configure
-      @on_turn_end = on_turn_end
+    def initialize(initializer:, saver: nil, streaming: true, priority: 0, titler: nil)
+      @initializer = initializer
+      @saver = saver
       @titler = titler
       @streaming = streaming
       @priority = priority
@@ -89,7 +91,7 @@ module Pikuri
     # @raise [ArgumentError] if a conversation with +id+ is open
     def open(id:, transport:, listener:, history: nil, boot: true, untitled: false)
       conv = Conversation.new(id:, transport:, listener:, history:, build: method(:build_agent),
-                              on_turn_end: @on_turn_end, on_closed: method(:forget), priority: @priority,
+                              saver: @saver, on_closed: method(:forget), priority: @priority,
                               titler: untitled ? @titler : nil)
       @lock.synchronize do
         raise ArgumentError, "conversation #{id.inspect} is already open" if @conversations.key?(id)
@@ -118,7 +120,7 @@ module Pikuri
     end
 
     # Close every conversation, cancelling running turns; each turn unwinds on
-    # its own thread, saves through +on_turn_end+ and releases its agent.
+    # its own thread, saves through the {Saver} and releases its agent.
     #
     #   convs.shutdown                # returns at once — a Puma +:state+ hook
     #   convs.shutdown(timeout: 5)    # waits up to 5 s in all, the saves included
@@ -138,11 +140,10 @@ module Pikuri
     private
 
     def build_agent(conv, transport, history, cancellable)
-      prompt = @system_prompt.respond_to?(:call) ? @system_prompt.call(conv) : @system_prompt
-      Pikuri::Agent.new(transport:, system_prompt: prompt, cancellable:, streaming: @streaming, history:,
-                        around_request: Throttle) do |c|
+      Pikuri::Agent.new(transport:, system_prompt: @initializer.system_prompt(conv), cancellable:,
+                        streaming: @streaming, history:, around_request: Throttle) do |c|
         c.add_listener(conv.listener)
-        @configure&.call(c, conv)
+        @initializer.configure(c, conv)
       end
     end
 

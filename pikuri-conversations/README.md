@@ -30,10 +30,17 @@ agent = Pikuri::Agent.new(transport:, system_prompt:, history: store.history(ent
   switches, clear and close are safe from any thread and never block it.
 
 ```ruby
-convs = Pikuri::Conversations.new(
-  system_prompt: 'You are a helpful assistant.',
-  on_turn_end: ->(conv, history) { store.save(store.find(conv.id), history, model:, server:) }
-)
+class Chat
+  include Pikuri::Conversations::AgentInitializer   # each agent's prompt and tools
+  include Pikuri::Conversations::Saver              # called after every turn
+
+  def initialize(store) = @store = store
+  def system_prompt(_conv) = 'You are a helpful assistant.'
+  def save(conv, history) = @store.save(@store.find(conv.id), history, model:, server:)
+end
+
+chat  = Chat.new(store)
+convs = Pikuri::Conversations.new(initializer: chat, saver: chat)
 conv = convs.open(id: entry.id, transport:, listener:, history: store.history(entry))
 conv.submit('how do I keep an avocado?')   # => :started — events reach your listener
 conv.submit('also, ripe?')                  # => :injected — the running turn reads it
@@ -59,7 +66,7 @@ reranker = Pikuri::VectorDb::Reranker::LlamaServer.new(server:, model:, around_r
 
 ```ruby
 titler = Pikuri::Conversations::Titler.new(transport: thinking_off_transport, params_declared: true)
-convs  = Pikuri::Conversations.new(system_prompt:, titler:)
+convs  = Pikuri::Conversations.new(initializer:, titler:)
 conv   = convs.open(id: entry.id, transport:, listener:, untitled: store.stamp_titled?(entry))
 # in the listener:
 #   in Pikuri::Conversations::Event::Titled(title:) then entry = store.retitle(entry, title)

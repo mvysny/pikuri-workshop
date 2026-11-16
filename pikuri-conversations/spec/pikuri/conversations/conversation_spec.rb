@@ -49,13 +49,27 @@ RSpec.describe Pikuri::Conversations::Conversation do
     def all(klass) = @lock.synchronize { @events.grep(klass) }
   end
 
+  # A fixed prompt, the test's +configure+ lambda, and every save as
+  # +[id, history]+ on +saved+.
+  class TestHost
+    include Pikuri::Conversations::AgentInitializer
+    include Pikuri::Conversations::Saver
+
+    def initialize(configure: nil, saved: nil)
+      @configure = configure
+      @saved = saved
+    end
+
+    def system_prompt(_conversation) = 'test'
+    def configure(configurator, conversation) = @configure&.call(configurator, conversation)
+    def save(conversation, history) = @saved&.push([conversation.id, history])
+  end
+
   let(:recorder) { Recorder.new }
   let(:saved) { Queue.new }
   let(:configure) { nil }
-  let(:convs) do
-    Pikuri::Conversations.new(system_prompt: 'test', configure:, streaming: false,
-                              on_turn_end: ->(conv, history) { saved << [conv.id, history] })
-  end
+  let(:host) { TestHost.new(configure:, saved:) }
+  let(:convs) { Pikuri::Conversations.new(initializer: host, saver: host, streaming: false) }
 
   # A Gate that also says when a response has parked in it, so a test knows the
   # turn is running before it acts.
@@ -171,8 +185,8 @@ RSpec.describe Pikuri::Conversations::Conversation do
       llm.tool_call('calculator', expression: '1 + 1')
       llm.reply('done')
     end
-    convs = Pikuri::Conversations.new(system_prompt: 'test', streaming: false,
-                                      configure: ->(c, _) { c.add_tool(Pikuri::Tool::CALCULATOR) })
+    host = TestHost.new(configure: ->(c, _) { c.add_tool(Pikuri::Tool::CALCULATOR) })
+    convs = Pikuri::Conversations.new(initializer: host, streaming: false)
     conv = convs.open(id: 'c1', transport:, listener: recorder)
     recorder.await(Event::Ready)
     gate.block!
@@ -733,10 +747,7 @@ RSpec.describe Pikuri::Conversations::Conversation do
         transport: Pikuri::Testing.fake_transport(model: 'titler', gate: titler_gate) { |llm| llm.reply('Keeping An Avocado') }
       )
     end
-    let(:convs) do
-      Pikuri::Conversations.new(system_prompt: 'test', streaming: false, titler:,
-                                on_turn_end: ->(conv, history) { saved << [conv.id, history] })
-    end
+    let(:convs) { Pikuri::Conversations.new(initializer: host, saver: host, streaming: false, titler:) }
 
     def chat(*replies)
       Pikuri::Testing.fake_transport { |llm| replies.each { llm.reply(_1) } }

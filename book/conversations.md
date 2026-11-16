@@ -188,7 +188,7 @@ request thread holding webui's lock asked the conversation for its status: each 
 lock and waits for the other. Nothing crashes; the app just stops.
 
 The gem's answer is one rule: **nothing outside the gem is called under its lock.** No listener,
-no `on_turn_end`, no `Agent#close`. A critical section changes state and *queues* the events and
+no saver, no `Agent#close`. A critical section changes state and *queues* the events and
 threads it wants; they go out after the lock drops. So the lock order is fixed — the app's lock,
 then the conversation's, then the agent's `Interloper` — and an app may call `status` from inside
 its own listener, under its own lock, safely. The rule reaches into odd corners: a mid-turn
@@ -275,18 +275,27 @@ four postures:
 - **`P_one_agent`** — one conversation's state, so one agent. The task list: agent A's todos are
   not agent B's, and wiring one list into two agents is a correctness bug before it's a race.
 
-So tool construction splits in two, and the gem's `configure:` hook is where the second half
-goes. It is the `Agent.new` block, called once per conversation, after the gem has wired what it
-owns:
+So tool construction splits in two, and the second half goes in your `AgentInitializer`. The
+gem asks it for each agent it builds: `system_prompt` for the prompt, and `configure` — the
+`Agent.new` block, called after the gem has wired what it owns — for the tools:
 
 ```ruby
-SHARED_TOOLS = [Pikuri::Tool::CALCULATOR, Pikuri::Web::FETCH]   # built once, at boot
+class Chat
+  include Pikuri::Conversations::AgentInitializer
 
-configure = lambda do |c, conversation|
-  SHARED_TOOLS.each { |t| c.add_tool(t) }
-  c.add_extension(Pikuri::Tasks::Extension.new)                  # P_one_agent: per conversation
+  SHARED_TOOLS = [Pikuri::Tool::CALCULATOR, Pikuri::Web::FETCH]   # built once, at boot
+
+  def system_prompt(_conversation) = 'You are a helpful assistant.'
+
+  def configure(c, _conversation)
+    SHARED_TOOLS.each { |t| c.add_tool(t) }
+    c.add_extension(Pikuri::Tasks::Extension.new)                  # P_one_agent: per conversation
+  end
 end
 ```
+
+An interface rather than a pair of lambdas: the arguments each method gets have names and
+types you can look up, and one object can hold what both need.
 
 Nothing enforces the split; the `Sharing:` line is the contract. Thread-safe is no licence to
 share, either: a per-conversation thing that happens to hold a lock is still per-conversation.
@@ -308,7 +317,7 @@ messages as one JSON file, attachments beside them named by their digest — and
 through validators only (`D_history_file`). `Store` keeps one such folder per conversation under
 a root, with a `meta.json` for the title, timestamps and the model it ran on.
 
-The gem never saves on its own. It calls your `on_turn_end:` after every turn — completed,
+The gem never saves on its own. It calls your `Saver`'s `save(conversation, history)` after every turn — completed,
 cancelled, failed, or cut short by a quit — on the turn's thread, *before* the conversation goes
 idle. So "idle" means "saved", and a cancelled turn keeps what was said.
 
@@ -334,15 +343,19 @@ store  = Pikuri::Conversations::Store.new(root: File.expand_path('~/.local/state
 titler = Pikuri::Conversations::Titler.new(transport: thinking_off, params_declared: true)
 entries = {}   # id => Store::Entry
 
-convs = Pikuri::Conversations.new(
-  system_prompt: 'You are a helpful assistant.',
-  configure:,                                   # the tool split above
-  titler:,
-  on_turn_end: lambda { |conv, history|
+class Saving
+  include Pikuri::Conversations::Saver
+
+  def initialize(store, entries) = (@store, @entries = store, entries)
+
+  def save(conv, history)
     model = conv.status.model                   # the model the turn ran on
-    store.save(entries[conv.id], history, model: model.model, server: model.api_base)
-  }
-)
+    @store.save(@entries[conv.id], history, model: model.model, server: model.api_base)
+  end
+end
+
+convs = Pikuri::Conversations.new(initializer: Chat.new,   # the tool split above
+                                  saver: Saving.new(store, entries), titler:)
 
 entry = store.find(id) || store.create
 entries[entry.id] = entry
