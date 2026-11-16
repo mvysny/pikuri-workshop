@@ -44,12 +44,13 @@ convs.shutdown(timeout: 5)
 - `Pikuri::Conversations::Throttle` — how many requests may fly against one server at a
   time, process-wide. A llama.cpp sizes itself from its `/props` slot count on a
   conversation's first turn; size any other server yourself, and pass the throttle to the
-  agents you build outside a list, and to a RAG embedder, so they queue with the rest:
+  agents you build outside a list, and to a RAG embedder and reranker, so they queue with the rest:
 
 ```ruby
 Pikuri::Conversations::Throttle.limit('http://localhost:8080', 1)   # llama-server --parallel 1
 titler = Pikuri::Agent.new(transport:, system_prompt:, around_request: Pikuri::Conversations::Throttle)
 embedder = Pikuri::VectorDb::Embedder.new(server:, model:, around_request: Pikuri::Conversations::Throttle)
+reranker = Pikuri::VectorDb::Reranker::LlamaServer.new(server:, model:, around_request: Pikuri::Conversations::Throttle)
 ```
 
 - `Pikuri::Conversations::Titler` — names a conversation from its opening message. Give the

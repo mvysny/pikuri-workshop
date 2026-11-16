@@ -170,7 +170,8 @@ Three details make it work without configuration:
   a RAG `Embedder`, which takes the same hook: a reindex is a burst of embed requests, and
   unthrottled it crowds the chat off a one-slot server. Three embeds against a stub server
   sized to one permit ran one at a time, 1.5 s in all against 0.7 s unsized; a live llama.cpp
-  was not tried. An embedding server of its own is never probed, since only a turn probes, so
+  was not tried. A `Reranker::LlamaServer` takes the hook the same way; its reranks were not
+  timed. An embedding server of its own is never probed, since only a turn probes, so
   it stays unlimited until you `limit` it.
 
 Turns themselves are *not* bounded. Each runs on a plain thread of its own: a bounded pool would

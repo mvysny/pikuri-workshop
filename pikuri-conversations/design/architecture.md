@@ -27,7 +27,8 @@ files hold (`HistoryFile` and `Store`, `D_history_file`, `D_history_container`,
 - **`Throttle` is the `around_request` hook itself**, one permit per HTTP request
   (`pikuri:D_llm_request_throttle`). Agents the list doesn't build take it explicitly — the
   `Titler`'s, an MCP `Thinker`'s through `Mcp::Catalog.build(around_request:)` — or they bypass
-  the queue, and so does pikuri-vectordb's `Embedder`, whose `around_request:` is the same hook.
+  the queue, and so do pikuri-vectordb's `Embedder` and `Reranker::LlamaServer`, whose
+  `around_request:` is the same hook.
   pikuri's `SubAgentTool` passes it on to children. Only turns probe, so a server nothing but
   embeds dial stays unlimited until the host's `Throttle.limit`.
 - **`Agent` never probes** (`pikuri:D_deferred_cap_probe`). The gem hands it

@@ -5,7 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
-- Hand `Pikuri::Conversations::Throttle` to `Pikuri::VectorDb::Embedder.new(around_request:)` too, so a RAG reindex queues with the chat on a small llama-server; a separate embedding server stays unlimited until you `Throttle.limit` it.
+- Hand `Pikuri::Conversations::Throttle` to `Pikuri::VectorDb::Embedder.new(around_request:)` and `Reranker::LlamaServer.new(around_request:)` too (pikuri `4106ddd`), so a RAG reindex queues with the chat on a small llama-server; a separate embedding server stays unlimited until you `Throttle.limit` it.
 
 - New `pikuri-stemmers`: `Pikuri::Stemmers::Voikko`, the Finnish stemmer for pikuri-rag's `stemmer:`, moved unchanged from pikuri's `Rag::Stemmer::Voikko` (where it is gone); rename the constant where you build one (`D_voikko_stemmer`).
 - **Breaking:** `Pikuri::Code::Extension` and `Pikuri::Os::Extension` take `plan_mode:`, a new `Pikuri::Code::PlanMode`, instead of pikuri's dropped `Workspace::ReadOnly`; hand `Workspace::Extension` the filesystem `plan_mode.guard(filesystem)`, and `Code::Extension::PLAN_MODE_READONLY_MESSAGE` is now `PlanMode::REFUSAL`.

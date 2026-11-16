@@ -14,6 +14,8 @@ module Pikuri
     #
     #   Pikuri::VectorDb::Embedder.new(server:, model:, around_request: Pikuri::Conversations::Throttle)
     #
+    # Its +Reranker::LlamaServer+ takes it too, the same way.
+    #
     # The permits are shared only when the embeds dial the chat's server, a
     # llama.cpp router serving both models. A separate embedding server is a
     # key of its own that no turn probes, so it stays unlimited until you
