@@ -5,6 +5,8 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- Hand `Pikuri::Conversations::Throttle` to `Pikuri::VectorDb::Embedder.new(around_request:)` too, so a RAG reindex queues with the chat on a small llama-server; a separate embedding server stays unlimited until you `Throttle.limit` it.
+
 - New `pikuri-stemmers`: `Pikuri::Stemmers::Voikko`, the Finnish stemmer for pikuri-rag's `stemmer:`, moved unchanged from pikuri's `Rag::Stemmer::Voikko` (where it is gone); rename the constant where you build one (`D_voikko_stemmer`).
 - **Breaking:** `Pikuri::Code::Extension` and `Pikuri::Os::Extension` take `plan_mode:`, a new `Pikuri::Code::PlanMode`, instead of pikuri's dropped `Workspace::ReadOnly`; hand `Workspace::Extension` the filesystem `plan_mode.guard(filesystem)`, and `Code::Extension::PLAN_MODE_READONLY_MESSAGE` is now `PlanMode::REFUSAL`.
 - **Breaking:** `Pikuri::Code::GIT_REPO_RESEARCHER` is now `Pikuri::Code::GitRepoResearcher`, an extension adding the `git_repo_research` tool whose child agent works in a throwaway folder of its own, since pikuri dropped the sub-agent temp workspace; `Code::Extension` no longer registers `git_clone`, and `GitClone#with_workspace` is gone.

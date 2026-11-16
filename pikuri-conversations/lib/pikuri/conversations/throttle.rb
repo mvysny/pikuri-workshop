@@ -9,6 +9,16 @@ module Pikuri
     #
     #   Pikuri::Agent.new(transport:, system_prompt:, around_request: Pikuri::Conversations::Throttle)
     #
+    # pikuri-vectordb's +Embedder+ takes the same hook, so a RAG reindex queues
+    # beside the chat's completions instead of crowding them off a small server:
+    #
+    #   Pikuri::VectorDb::Embedder.new(server:, model:, around_request: Pikuri::Conversations::Throttle)
+    #
+    # The permits are shared only when the embeds dial the chat's server, a
+    # llama.cpp router serving both models. A separate embedding server is a
+    # key of its own that no turn probes, so it stays unlimited until you
+    # {.limit} it.
+    #
     # A host sizes a server it knows is small; everything else is unlimited:
     #
     #   Throttle.limit('http://localhost:8080', 1)        # llama-server --parallel 1
