@@ -32,8 +32,10 @@ files hold (`HistoryFile` and `Store`, `D_history_file`, `D_history_container`,
   `Probe.facts(transport)` — the transport with the learnt cap and modalities filled in — at
   boot and at each turn's start, and announces the cap itself with `Event::ContextCap`.
 - **One listener per conversation, fixed for its life**, hears both the agent's events and the
-  gem's `Event`s. A host fanning out to several panes hands a `ListenerList`;
-  `RateLimitedListener` paces streamed deltas and passes the gem's events straight through.
+  gem's `Event`s — the host's own record of the conversation, kept current while nobody watches
+  so a viewer arriving later gets a snapshot. Fan-out to viewers is the host's: a
+  `ListenerList` for panes, a broadcaster for browser tabs. `RateLimitedListener` paces
+  streamed deltas, with no timer, and passes the gem's events straight through.
 
 ## Threads and the lock
 

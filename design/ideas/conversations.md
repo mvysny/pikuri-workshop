@@ -409,8 +409,6 @@ Built against pikuri `3aed7e2` with no pikuri change:
     unlike its live view.
   - Follow-on, A or B: should `Conversations#open(history:)` replay into the listener itself?
     Not yet — webui replays per browser tab into that tab's SSE stream.
-- `Q_listener_swap` — listeners are fixed at `Agent.new`; webui keeps a detached conversation's
-  15 fps timer alive. A conversation-level listener swap is cheap (the gem owns the forwarder).
 - `Q_confirmer_token` — pikuri-code's `Confirmer` should watch the cancel token as Puri's does, so
   `cancel` needs no host hook; a pikuri-code change, not the gem's.
 - `Q_book` — the chapter: lost cancels, stranded injections, a lock-order inversion around a
