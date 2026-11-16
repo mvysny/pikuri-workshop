@@ -1543,6 +1543,147 @@ next (`--die-with-parent`), so per-command namespaces change nothing there.
 
 ---
 
+## D_conversations_gem — Why does one workshop gem host conversations, rather than pikuri's `Agent` or each host?
+
+**Context.** `Agent#run_loop` is a blocking, thread-unsafe call with rules attached: serialize
+every call, reset the `Cancellable` where the turn starts (`pikuri:D_host_resets_cancel`), route
+a mid-turn message to the `Interloper`, start a turn for injections left at turn end, switch
+models only between turns. pikuri-webui's `Runner`, pikuri-tui's `AgentSession` and Puri's
+`Conversation` each obeyed them, each a little differently — and when the reset moved to the
+host, none of the three called it, so one pin bump broke cancel in all three at once. webui's
+store (512 lines) and Puri's (206) wrote one folder format, and each had the same titler.
+
+**Decision.** pikuri-conversations hosts many conversations asynchronously: the turn state
+machine, the threads, the request throttle, the `/props` probe, the stored format, the folder
+and the titler. **A piece leaves `Agent` if it only matters when something else runs at the same
+time, or across many conversations.** One `bin/` script has neither — tools run one at a time,
+sub-agents inline, so one agent tree sends one request at a time, and a bin holds one
+conversation — so anything a bin needs stays in core: answering dangling tool calls, the
+empty-turn guard, the `Interloper` (pikuri-code's single-threaded REPL queues a `/skill` through
+it). The same rule is what the gem refuses: a UI, an HTTP server, a database, and anything one
+bin needs. It lives in the workshop because a scheduler is a feature, and pikuri grows by
+explaining better (`pikuri:D_gem_placement`). It is conversation-centric, as the hosts are: for
+the user the conversation *is* the agent. "Session" was rejected as a name, since in webui it
+reads as the HTTP one.
+
+**Alternatives rejected.**
+
+- **An `Agent::Runner` in core**, owning a turn queue: `pikuri:D_host_resets_cancel` says why.
+- **Each host keeping its own.** Three copies drifted, and a change to `Agent`'s contract broke
+  all three in the same release.
+- **A grab-bag `pikuri-ext` for host utilities.** Refuses nothing, and charges every host the
+  union of every utility's dependencies. A utility that fails the rule above finds another home.
+- **Several gems — throttle, store, scheduler.** The parts are already independent inside one
+  (`Conversations` never references `Store`; the host joins them in `on_turn_end`), and a host
+  that wants only the store requires the gem and never opens a list.
+
+---
+
+## D_conversation_turn_state — Why a plain state machine on a thread per task, rather than a pool or a serialized executor?
+
+**Context.** A turn holds its thread through waits that are not load: a `Confirmer` parked on a
+human, a long `bash`, a router's cold model load. A sub-agent's turn runs inside its parent's.
+And the cancel reset must sit in the same critical section as the move to "running"
+(`pikuri:D_host_resets_cancel`).
+
+**Decision.** One `Mutex` per `Conversation` guards a plain state machine, and the work runs on
+plain `Thread`s it starts — one per boot, per turn, per title, per agent release — unbounded, with
+no concurrent-ruby. Load is bounded per HTTP request by the `Throttle`, never per turn
+(`pikuri:D_llm_request_throttle`). Sub-agents stay plain `run_loop` calls on the parent's thread,
+sharing its token. A thread per task names itself (`turn <id>`, which webui's Puma thread dump
+shows, `pikuri-webui:D_puma_thread_dump`), and its start cost is nothing beside a turn's seconds.
+
+**Alternatives rejected.**
+
+- **A bounded pool.** N conversations parked on N confirmations hold every worker while the
+  server idles, and the next conversation cannot start. A sub-agent submitted to the pool and
+  awaited deadlocks it outright: the parent holds a worker, waiting for a child queued behind it.
+  webui ran turns on a fixed pool first (`pikuri-webui:D_serial_turn_executor`).
+- **`Concurrent::SerializedExecution` per conversation.** With `submit` injecting into a running
+  turn (`D_submit_injects`), no second turn ever queues, so per-key serialization only duplicates
+  the "running" flag. Once anything does queue behind a turn, a reset at post time wipes the
+  running turn's cancel.
+- **Confining a conversation to one thread.** `Agent` asks only that calls don't overlap; no
+  `lib/` in pikuri or the workshop reads `Thread.current`, so a turn may run on its boot thread.
+
+---
+
+## D_submit_injects — Why does a message sent mid-turn join the turn, and why does a cancel keep what it hadn't delivered?
+
+**Context.** A user types while the agent works: a correction, a "also check the tests". Then
+they may press stop. webui settled both for itself (`pikuri-webui:D_interloper_mid_loop_input`);
+tui re-sent its pending correction as a new turn after Ctrl+C, and Puri queued messages as
+turns of their own and dropped them on cancel.
+
+**Decision.** `Conversation#submit` while a turn runs injects into the agent's `Interloper` and
+answers `:injected`; the turn reads it after its current tool batch. Injections that arrive too
+late for the turn's last request start a bare turn in the critical section that would have gone
+idle — **only after a completed turn**: after a cancel the stop button would look broken, and
+after a failure an unreachable server would spin. A cancel keeps undelivered injections, counted
+in `status.pending`; the host decides what they become — a blank `submit` re-sends them (tui), or
+`discard_pending` takes them (Puri shows what it took).
+
+**Alternatives rejected.**
+
+- **Queueing each message as a turn of its own.** The correction reaches the model only after
+  the turn it was meant to correct has finished.
+- **Dropping the injections on cancel.** Silently discards text the user typed and never saw
+  rendered.
+- **Handing them back on cancel**, as text: no host can put text back into its input box.
+- **A routing hook in `submit`**, for Puri's "a message typed while a confirmation waits answers
+  the confirmation". The host writes `confirmer.redirect(text) || conversation.submit(text)`;
+  `redirect` is atomic and answers `false` once the confirmation is gone.
+
+---
+
+## D_no_idle_eviction — Why is an idle conversation's agent never closed to free what it holds?
+
+**Context.** Every open conversation holds an agent, and an agent may hold MCP servers, language
+servers and a containerised extractor. Closing an idle one and rebuilding it from its `History`
+on the next message looks free: `Agent.new(history:)` resumes it.
+
+**Decision.** An agent lives until `Conversation#close`. A host closes what it is done with — webui
+on delete, tui and Puri on quit — and nothing in the gem closes on a timer.
+
+**Why not evict.** A rebuild keeps the messages and loses everything outside them: the task
+list, activated skills, and what each server held. MCP's tools come back from cached schemas, but
+the browser a Playwright server had logged in does not (`pikuri:D_agent_is_one_conversation`).
+The user would find it gone after a coffee break, with nothing to say why. webui rejected
+reaping its own runners for the same reason, until residency actually hurts.
+
+---
+
+## D_title_after_turn — Why is a title asked after the first turn, and fired by the gem but stored by the host?
+
+**Context.** webui and Puri named a conversation from its opening message, each with the same
+titler class, each asking beside the first turn so the title showed while the answer streamed.
+On a server with one slot the title's request won the permit, and the answer waited for it
+(~2 s, measured in webui).
+
+**Decision.** A `Conversation` opened `untitled: true` asks the list's `Titler` once, after the
+first turn whose history holds user text has ended — completed, cancelled or failed — on a
+`title <id>` thread, through the `Throttle`, and reports `Event::Titled`. After the turn, the
+turn's requests are done before the title asks, so the race is gone rather than rarer. The cost
+is cosmetic: the start stamp shows until the first answer is in. A failure is logged and not
+retried; reopening the conversation `untitled: true` asks again. Which model titles is the
+host's (`pikuri-webui:D_titler_connection`).
+
+**The gem fires, the host stores.** A `Conversation` never references the `Store`, so it cannot
+tell a stamp-titled conversation from a named one; the host says so with `open(untitled:)`
+(`Store#stamp_titled?`) and lands the title through `Store#retitle`. A title landing once the
+conversation is closing is dropped, and `close` cancels its request.
+
+**Alternatives rejected.**
+
+- **Beside the first turn**, as both hosts did: the permit race above. One rule for every host
+  wins over Puri's title-while-streaming.
+- **On open**, naming a stored conversation the moment anyone looks at it: names conversations
+  only read (`pikuri-webui:D_lazy_retro_titling`).
+- **On a shared executor the list owns.** Every other task already runs on a thread of the
+  conversation's own, which `close` and `wait_settled` know how to wait for.
+
+---
+
 ## D_history_file — Why does the workshop own the stored form of a conversation, and why are its only doors validators?
 
 **Context.** pikuri hands a conversation out as `Agent::History`, an in-memory value it never
