@@ -53,7 +53,7 @@ RSpec.describe 'trifecta dry run: pikuri-code' do
     [Pikuri::Workspace::Read.new(workspace: ws),
      Pikuri::Workspace::Search::Grep.new(workspace: ws),
      Pikuri::Workspace::Search::Glob.new(workspace: ws),
-     Pikuri::Workspace::Edit.new(workspace: ws),
+     Pikuri::Workspace::Edit.new(workspace: ws, confirmer: Pikuri::Workspace::Confirmer::AUTO_APPROVE),
      Pikuri::Code::Bash.new(filesystem: fs,
                             confirmer: Pikuri::Workspace::Confirmer::AUTO_APPROVE,
                             sandbox: sandbox)]

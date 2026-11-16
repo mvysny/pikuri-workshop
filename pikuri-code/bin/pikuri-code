@@ -557,9 +557,12 @@ build_conversation = lambda do |mcp_catalog|
     # Its filesystem is plan mode's guard, so edit/write refuse while it is
     # active — the same flag Code::Extension's plan tools (and the /plan,
     # /impl slash commands) flip.
+    # confirm_all_writes: false — a coding agent edits all day and creates
+    # files routinely, and git is the undo; an overwrite still asks.
     c.add_extension Pikuri::Workspace::Extension.new(
       filesystem: plan_mode.guard(filesystem),
-      confirmer: confirmer
+      confirmer: confirmer,
+      confirm_all_writes: false
     )
     c.add_tool Pikuri::Tool::CALCULATOR
     c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])

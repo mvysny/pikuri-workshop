@@ -25,7 +25,8 @@ agent = Pikuri::Agent.new(transport: ..., system_prompt: ..., cancellable: ...) 
   c.add_listener Pikuri::Agent::Listener::Terminal.new
   c.add_listener Pikuri::Agent::Listener::TokenLog.new
 
-  c.add_extension Pikuri::Workspace::Extension.new(filesystem: plan_mode.guard(filesystem), confirmer:)
+  c.add_extension Pikuri::Workspace::Extension.new(filesystem: plan_mode.guard(filesystem), confirmer:,
+                                                   confirm_all_writes: false)
   c.add_tool Pikuri::Tool::CALCULATOR
   c.add_sub_agent_tool Pikuri::Web::Search.from_h(examples_config['search'])
   c.add_sub_agent_tool Pikuri::Web::SCRAPE
