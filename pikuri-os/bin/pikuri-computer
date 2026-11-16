@@ -181,7 +181,7 @@ begin
       sandbox: sandbox,
       plan_mode: plan_mode
     )
-    # The mail + calendar surface: five read-only inbound tools plus both
+    # The mail + calendar surface: the read-only inbound tools plus both
     # human-gated outbound hand-offs (compose a message, create an event).
     # No confirmer wired — the gate is Thunderbird's own compose window /
     # import wizard, where the user reviews and Sends/confirms.
