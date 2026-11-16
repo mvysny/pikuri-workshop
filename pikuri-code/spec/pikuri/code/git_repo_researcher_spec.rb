@@ -58,8 +58,9 @@ RSpec.describe Pikuri::Code::GitRepoResearcher do
       FileUtils.remove_entry(project)
     end
 
-    def run_parent(transport)
-      agent = Pikuri::Agent.new(transport: transport, system_prompt: 'test') do |c|
+    def run_parent(transport, around_request: nil)
+      agent = Pikuri::Agent.new(transport: transport, system_prompt: 'test',
+                                around_request: around_request) do |c|
         c.add_listener spy
         web_tools.each { |t| c.add_sub_agent_tool(t) }
         c.add_extension described_class.new
@@ -93,6 +94,27 @@ RSpec.describe Pikuri::Code::GitRepoResearcher do
       run_parent(transport)
 
       assert_equal 1, @minted.size
+      refute_predicate @minted.first, :exist?
+    end
+
+    it "answers the child's context overflow as a tool error, and the parent carries on" do
+      transport = Pikuri::Testing.fake_transport do |llm|
+        llm.tool_call('git_repo_research', task: 'read the whole kernel')   # parent
+        llm.reply('done')                                                   # parent
+      end
+      requests = 0
+      # The second request is the child's first; it overflows.
+      overflow = lambda do |_api_base, _cancellable, &request|
+        requests += 1
+        raise RubyLLM::ContextLengthExceededError if requests == 2
+
+        request.call
+      end
+      run_parent(transport, around_request: overflow)
+
+      result = events.grep(Pikuri::Agent::Event::ToolResult).find { _1.name == 'git_repo_research' }
+      assert_match(/\AError: .*ran out of context.*narrower task/, result.content)
+      assert_equal 'done', events.grep(Pikuri::Agent::Event::Assistant).last.content
       refute_predicate @minted.first, :exist?
     end
   end

@@ -139,6 +139,11 @@ module Pikuri
           answer = child.last_assistant_content.to_s
           Pikuri::Tool::Result.new(content: answer,
                                    summary: "Answered, #{Pikuri::Tool.format_bytes(answer.bytesize)}")
+        rescue RubyLLM::ContextLengthExceededError
+          # The parent can react with a narrower task, so it keeps its turn, as
+          # pikuri's +SubAgentTool+ does for a persona's child.
+          Pikuri::Tool::Result.error('The agent ran out of context before answering. ' \
+                                     'Give it a narrower task.')
         ensure
           child.close
         end

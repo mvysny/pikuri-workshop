@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- Fix `git_repo_research`'s child running out of context ending the parent's whole turn; `Pikuri::Code::GitRepoResearcher` now answers it as a tool error telling the parent to give the agent a narrower task, as pikuri's `agent` tool does (pikuri `85f96cf`).
 - **Breaking:** `Pikuri::Conversations.new(system_prompt:, configure:, on_turn_end:)` is now `Pikuri::Conversations#open(initializer:, saver:)`, given per conversation: move the prompt and the tools into an object including `Conversations::AgentInitializer` (`system_prompt(conversation)`, `configure(configurator, conversation)`), and the save into one including `Conversations::Saver` (`save(conversation, history)`).
 - Hand `Pikuri::Conversations::Throttle` to `Pikuri::VectorDb::Embedder.new(around_request:)` and `Reranker::LlamaServer.new(around_request:)` too (pikuri `4106ddd`), so a RAG reindex queues with the chat on a small llama-server; a separate embedding server stays unlimited until you `Throttle.limit` it.
 
