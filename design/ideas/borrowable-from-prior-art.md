@@ -1,7 +1,7 @@
 # Borrowable from prior art — the workshop's share
 
-Split out of `pikuri:design/ideas/borrowable-from-prior-art.md`, which keeps the items about
-pikuri's own gems; these are the ones about the shell, skills, permissions, MCP and memory.
+What the harness survey suggests for the workshop: the shell, skills, permissions, MCP, memory,
+and the one item about pikuri's own tools that outlived pikuri going feature-complete.
 `design/research.md` (and `pikuri:design/research.md` for the general harness survey) records
 what the others do; this file records what might be worth doing about it. Sorted by fit, from
 "worth it" to "out of scope". Graduate an item the moment it is acted on — into a `D_` entry, a
@@ -22,27 +22,34 @@ convention line, or nothing — and delete this file once the live items are gon
    presentation belongs (pikuri-workspace's `Confirmer::Terminal` renders it, `Bash`'s tokenizer
    does the split), and directly serves the anti-fatigue argument in `pikuri:book/security.md`.
    Neighbours the deferred work in `bash-confirmer.md`.
+3. **Over-cap tool output: truncate the middle, spill to disk** (PI, opencode, grok-build). `Bash`
+   (and pikuri's `read` / `web_scrape`) cap output by bytes and keep only the head. The missing
+   pieces are keeping the **tail** too — a build's error summary lives at the end, so head-only
+   truncation discards the answer — and writing the overflow to a `Paths.new_temp` file whose path
+   the model can `grep`. `Bash` is the case that motivates it; pikuri's own tools follow only if a
+   shared helper is the seam this needs. Cross-cutting version in
+   `pikuri:design/ideas/security-open-questions.md` §"Output-size DoS and cost".
 
 ## C-tier — only when scope changes
 
-3. **Permission system with glob rules** (opencode, grok-build). The coding agent ships pikuri's
+4. **Permission system with glob rules** (opencode, grok-build). The coding agent ships pikuri's
    `Workspace` + `Confirmer` as v1; the three-action `allow` / `deny` / `ask` glob model is the
    right next step once friction shows up. Tracked in `coding-agent.md`. grok-build is the richer
    reference — evaluation by severity rather than by source, per-segment matching, and a curated
    read-only command allowlist whose *exclusions* are the part worth reading before writing any
    auto-approval logic (`R_permissions`).
-4. **Deferred MCP tool loading via search** (grok-build's `search_tool` / `use_tool`). Same goal as
+5. **Deferred MCP tool loading via search** (grok-build's `search_tool` / `use_tool`). Same goal as
    `mcp_connect` with a different lever; scales better when one server exposes a hundred tools.
-5. **Markdown-plus-SQLite memory substrate** (grok-build). Arguably the more pikuri-shaped answer on
+6. **Markdown-plus-SQLite memory substrate** (grok-build). Arguably the more pikuri-shaped answer on
    privacy and auditability grounds; not worth churning a shipped gem over, but the no-LLM-call
    automatic save and the confirm-before-write review panel are separable and cheap (`R_memory`).
-6. **Pluggable Operations interfaces** (pi). Lets the `bash` tool delegate to SSH / sandbox / cloud.
+7. **Pluggable Operations interfaces** (pi). Lets the `bash` tool delegate to SSH / sandbox / cloud.
    pikuri-core's `Subprocess.spawn` is the seam where this would hook in; today it only spawns
    local, and widening it is a change on pikuri's side.
 
 ## Out of scope
 
-7. **In-process kernel sandbox** (grok-build's Landlock / Seatbelt applied at startup). Strictly
+8. **In-process kernel sandbox** (grok-build's Landlock / Seatbelt applied at startup). Strictly
    stronger than bubblewrap-around-`Bash`, but pikuri's file tools run in-process as the real user
    *on purpose*, so `File.writable?` is exact and backs the confirm-writable-writes posture
    (`pikuri:pikuri-workspace/AGENTS.md`). Adopting it would mean giving that up — a real fork,
