@@ -109,6 +109,7 @@ client =
     begin
       mem0_server = Pikuri::Memory::Mem0Server.ensure_running(
         router_url:     transport.api_base,
+        api_key:        examples_config['llm_api_key'],
         llm_model:      extraction_model,
         embedder_model: embed_model
       )

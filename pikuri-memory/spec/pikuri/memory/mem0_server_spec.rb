@@ -3,6 +3,7 @@
 require 'spec_helper'
 require 'faraday'
 require 'fileutils'
+require 'json'
 require 'socket'
 require 'stringio'
 require 'tmpdir'
@@ -87,6 +88,24 @@ describe Pikuri::Memory::Mem0Server do
   let(:built) { [] }
   after { built.each { |s| Pikuri::Finalizers.unregister(s) } }
 
+  # Faraday stub for the embedder probe; answers a 3-wide vector unless a
+  # test plans otherwise. `probes` records each request's headers.
+  let(:probes) { [] }
+  let(:probe_reply) { [200, { 'data' => [{ 'embedding' => [0.1, 0.2, 0.3] }] }] }
+  let(:router_stubs) do
+    probes_ref = probes
+    reply = probe_reply
+    Faraday::Adapter::Test::Stubs.new do |stub|
+      stub.post('/v1/embeddings') do |env|
+        probes_ref << { headers: env.request_headers, body: JSON.parse(env.request_body) }
+        [reply[0], {}, JSON.generate(reply[1])]
+      end
+    end
+  end
+  let(:router_conn) do
+    Faraday.new(url: 'http://router:8080/v1') { |f| f.adapter :test, router_stubs }
+  end
+
   def build_server(**overrides)
     server = Pikuri::Memory::Mem0Server.new(
       router_url: 'http://router:8080/v1',
@@ -95,6 +114,7 @@ describe Pikuri::Memory::Mem0Server do
       cache_dir: cache_dir,
       healthcheck_timeout: 1,
       connection: health_conn,
+      router_connection: router_conn,
       **overrides
     )
     built << server
@@ -202,7 +222,78 @@ describe Pikuri::Memory::Mem0Server do
       assert_equal 'http://router-proxy:8080/v1', env['PIKURI_ROUTER_URL']
       assert_equal 'qwen2.5-7b', env['PIKURI_LLM_MODEL']
       assert_equal 'nomic', env['PIKURI_EMBEDDER_MODEL']
-      assert_equal '768', env['PIKURI_EMBEDDING_DIMS']
+      assert_equal Pikuri::Memory::Mem0Server::NO_API_KEY, env['PIKURI_ROUTER_API_KEY']
+    end
+
+    it "sizes the collection from the embedder's own vector" do
+      planned.replace(fresh_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+
+      build_server.ensure_running!
+
+      assert_equal 1, probes.size
+      assert_equal 'nomic', probes.first[:body]['model']
+      refute probes.first[:headers].key?('Authorization'), 'no key, no Authorization header'
+      up = calls.find { |c| c[:argv].include?('up') }
+      assert_equal '3', up[:env]['PIKURI_EMBEDDING_DIMS']
+    end
+
+    it 'sends the router key with the probe and into the stack' do
+      planned.replace(fresh_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+
+      build_server(api_key: 'sk-local-1234').ensure_running!
+
+      assert_equal 'Bearer sk-local-1234', probes.first[:headers]['Authorization']
+      up = calls.find { |c| c[:argv].include?('up') }
+      assert_equal 'sk-local-1234', up[:env]['PIKURI_ROUTER_API_KEY']
+    end
+
+    it 'skips the probe when embedding_dims is given' do
+      planned.replace(fresh_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+
+      build_server(embedding_dims: 1024).ensure_running!
+
+      assert_empty probes
+      up = calls.find { |c| c[:argv].include?('up') }
+      assert_equal '1024', up[:env]['PIKURI_EMBEDDING_DIMS']
+    end
+
+    describe 'when the router refuses the probe' do
+      let(:probe_reply) { [401, { 'error' => { 'message' => 'Invalid API Key' } }] }
+
+      it 'raises with the reply, before touching git or docker' do
+        err = assert_raises(RuntimeError) { build_server.ensure_running! }
+        assert_match(/probing embedder "nomic".*HTTP 401.*Invalid API Key/, err.message)
+        assert_empty calls
+      end
+    end
+
+    it 'raises when the stored collection was embedded at another size' do
+      dir = File.join(cache_dir, 'data', 'qdrant', 'collections', 'pikuri_memory')
+      FileUtils.mkdir_p(dir)
+      File.write(File.join(dir, 'config.json'), JSON.generate('params' => { 'vectors' => { 'size' => 768 } }))
+
+      err = assert_raises(RuntimeError) { build_server.ensure_running! }
+      assert_match(/embedded 768 wide, but "nomic" embeds 3 wide/, err.message)
+      assert_empty calls
+    end
+
+    it 'boots over a stored collection of the same size' do
+      dir = File.join(cache_dir, 'data', 'qdrant', 'collections', 'pikuri_memory')
+      FileUtils.mkdir_p(dir)
+      File.write(File.join(dir, 'config.json'), JSON.generate('params' => { 'vectors' => { 'size' => 3 } }))
+      planned.replace(fresh_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+
+      build_server.ensure_running!
+
+      assert(calls.any? { |c| c[:argv].include?('up') })
     end
 
     it 'raises a socat install hint when socat is missing' do

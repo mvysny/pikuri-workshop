@@ -76,12 +76,13 @@ services:
       - qdrant
       - router-proxy
     environment:
-      # Dummy key: the OpenAI-compatible endpoint is local llama.cpp,
-      # which ignores auth. OPENAI_BASE_URL routes both the extraction
-      # LLM and the embedder to the router (mem0's openai provider reads
-      # this env var), via the router-proxy relay above
+      # The router's key (a dummy when it wants none), under a PIKURI_
+      # name so a real OPENAI_API_KEY in the host's environment never
+      # lands in this container. OPENAI_BASE_URL routes both the
+      # extraction LLM and the embedder to the router (mem0's openai
+      # provider reads this env var), via the router-proxy relay above
       # (http://router-proxy:8080/v1).
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-pikuri-local-no-auth}
+      OPENAI_API_KEY: ${PIKURI_ROUTER_API_KEY:?PIKURI_ROUTER_API_KEY must be the router key or a dummy}
       OPENAI_BASE_URL: ${PIKURI_ROUTER_URL:?PIKURI_ROUTER_URL must be the /v1 base URL as seen from inside the container}
       MEM0_DEFAULT_LLM_MODEL: ${PIKURI_LLM_MODEL:?PIKURI_LLM_MODEL must be the extraction model id}
       MEM0_DEFAULT_EMBEDDER_MODEL: ${PIKURI_EMBEDDER_MODEL:?PIKURI_EMBEDDER_MODEL must be the embedder model id}
@@ -95,7 +96,7 @@ services:
       QDRANT_HOST: "qdrant"
       QDRANT_PORT: "6333"
       MEM0_COLLECTION_NAME: ${PIKURI_COLLECTION:-pikuri_memory}
-      MEM0_EMBEDDING_DIMS: ${PIKURI_EMBEDDING_DIMS:-768}
+      MEM0_EMBEDDING_DIMS: ${PIKURI_EMBEDDING_DIMS:?PIKURI_EMBEDDING_DIMS must be the embedder output size}
       # Memory-history SQLite, bind-mounted to the host cache so it
       # survives container recreation alongside the Qdrant corpus.
       HISTORY_DB_PATH: "/data/history.db"

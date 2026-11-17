@@ -42,12 +42,6 @@ Memories, end to end, ran 2026-11-17 (rootless docker, router on another host wi
 Ornith-1.5 as chat *and* extractor, nomic embedder): three facts stored, recalled by a fresh
 process, the stack torn down clean both times. It surfaced:
 
-- **`embed_model` doesn't set the vector size.** `bin/pikuri-memory` never passes
-  `embedding_dims:`, so any embedder but a 768-dim one (e.g. `bge-m3`, 1024) breaks Qdrant
-  upserts.
-- **The router's API key never reaches mem0.** The compose file defaults `OPENAI_API_KEY` to a
-  dummy and neither the bin nor `Mem0Server` passes `llm_api_key`; a keyed router 401s every
-  extraction. The run worked only because `OPENAI_API_KEY` was exported by hand.
 - **`Mem0Server` calls `docker` only**, against the podman-first convention.
 - **The exit flush loses the last turn.** `Recorder`'s 10 s flush timed out while the extractor
   shared the router with chat; `compose down` then cut the in-flight `POST /memories`. A fact

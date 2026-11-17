@@ -2,6 +2,7 @@
 
 require 'faraday'
 require 'fileutils'
+require 'json'
 require 'pathname'
 require 'uri'
 
@@ -47,6 +48,17 @@ module Pikuri
     # +Qwen2.5-7B-Instruct+) — a thinking model burns its budget on CoT
     # and returns empty/truncated JSON (design/architecture.md §"Extraction model
     # decision"). The vector store is not bundle-gated, so Qdrant is fine.
+    # A router that wants a key gets +api_key:+; the container sees only
+    # that, never the host's own +OPENAI_API_KEY+.
+    #
+    # == Vector size: asked of the embedder
+    #
+    # mem0 creates its Qdrant collection at boot, sized by
+    # +MEM0_EMBEDDING_DIMS+, and a wrong size fails every later write. So
+    # unless +embedding_dims:+ is given, {#ensure_running!} embeds one
+    # probe string through the router and takes the vector's length. A
+    # collection already on disk at another size (the embedder changed)
+    # raises before boot rather than silently dropping every memory.
     #
     # == The router relay (container → host loopback)
     #
@@ -121,10 +133,9 @@ module Pikuri
       # @return [Integer] default host port mem0's REST API binds (127.0.0.1).
       DEFAULT_PORT = 8888
 
-      # @return [Integer] default embedding dimension. 768 matches
-      #   +nomic-embed-text-v1.5+; must equal the embedder's output dim or
-      #   Qdrant rejects upserts.
-      DEFAULT_EMBEDDING_DIMS = 768
+      # @return [String] the key mem0 sends the router when +api_key:+ is
+      #   nil — a llama.cpp router without +--api-key+ ignores it.
+      NO_API_KEY = 'pikuri-local-no-auth'
 
       # @return [String] default Qdrant collection name.
       DEFAULT_COLLECTION = 'pikuri_memory'
@@ -172,22 +183,29 @@ module Pikuri
       # @param llm_model [String] extraction model id on the router. Must
       #   be **non-reasoning** (see the class header).
       # @param embedder_model [String] embedder model id on the router.
+      # @param api_key [String, nil] the router's API key, e.g.
+      #   +"sk-local-1234"+; +nil+ for a router that wants none.
       # @param port [Integer] host port for the REST API (127.0.0.1).
-      # @param embedding_dims [Integer] embedder output dimension.
+      # @param embedding_dims [Integer, nil] embedder output dimension, e.g.
+      #   +1024+ for bge-m3; +nil+ asks the embedder (class header).
       # @param collection [String] Qdrant collection name.
       # @param qdrant_image [String] Qdrant docker image.
       # @param cache_dir [String, Pathname, nil] where the mem0 checkout
       #   lives. +nil+ resolves to {#default_cache_dir}.
       # @param healthcheck_timeout [Integer] seconds to poll readiness.
-      # @param connection [Faraday::Connection, nil] DI hook for tests.
+      # @param connection [Faraday::Connection, nil] DI hook for tests: the
+      #   heartbeat poll.
+      # @param router_connection [Faraday::Connection, nil] DI hook for
+      #   tests: the embedder probe, based at +router_url+.
       # @return [Mem0Server]
       # @raise [ArgumentError] when +router_url+ is not +http://+ (the TCP
       #   relay can't originate TLS, and the store has no other way out).
-      def initialize(router_url:, llm_model:, embedder_model:,
+      def initialize(router_url:, llm_model:, embedder_model:, api_key: nil,
                      port: DEFAULT_PORT,
-                     embedding_dims: DEFAULT_EMBEDDING_DIMS, collection: DEFAULT_COLLECTION,
+                     embedding_dims: nil, collection: DEFAULT_COLLECTION,
                      qdrant_image: DEFAULT_QDRANT_IMAGE, cache_dir: nil,
-                     healthcheck_timeout: DEFAULT_HEALTHCHECK_TIMEOUT, connection: nil)
+                     healthcheck_timeout: DEFAULT_HEALTHCHECK_TIMEOUT, connection: nil,
+                     router_connection: nil)
         @router_url = router_url
         unless URI(router_url).scheme == 'http'
           raise ArgumentError, "Mem0Server: the socat relay carries plain TCP, so router_url must be " \
@@ -196,6 +214,8 @@ module Pikuri
         end
         @llm_model = llm_model
         @embedder_model = embedder_model
+        @api_key = api_key
+        @router_connection = router_connection
         @port = port
         @embedding_dims = embedding_dims
         @collection = collection
@@ -251,9 +271,12 @@ module Pikuri
       # {Pikuri::Finalizers} so the stack is stopped at process exit.
       #
       # @return [void]
-      # @raise [RuntimeError] on missing docker/git, clone/patch failure,
-      #   +compose up+ failure, or healthcheck timeout.
+      # @raise [RuntimeError] on a failed embedder probe, a stored
+      #   collection of another vector size, missing docker/git,
+      #   clone/patch failure, +compose up+ failure, or healthcheck timeout.
       def ensure_running!
+        @embedding_dims ||= probe_embedding_dims!
+        check_collection_dims!
         prepare_checkout!
         # Pre-create the bind-mount sources so docker doesn't create them
         # root-owned (and so a missing dir isn't silently a fresh volume).
@@ -372,6 +395,7 @@ module Pikuri
           'PIKURI_SOCK_DIR' => sock_dir.to_s,
           'PIKURI_SOCAT_IMAGE' => SOCAT_IMAGE,
           'PIKURI_ROUTER_URL' => "http://router-proxy:8080#{URI(@router_url).path}",
+          'PIKURI_ROUTER_API_KEY' => @api_key || NO_API_KEY,
           'PIKURI_LLM_MODEL' => @llm_model,
           'PIKURI_EMBEDDER_MODEL' => @embedder_model,
           'PIKURI_MEM0_PORT' => @port.to_s,
@@ -379,6 +403,51 @@ module Pikuri
           'PIKURI_COLLECTION' => @collection,
           'PIKURI_EMBEDDING_DIMS' => @embedding_dims.to_s
         }
+      end
+
+      # Embed one string through the router and return the vector's
+      # length (class header, "Vector size").
+      #
+      # @return [Integer]
+      # @raise [RuntimeError] when the router is unreachable, refuses, or
+      #   answers without an embedding.
+      def probe_embedding_dims!
+        response = router_http.post('embeddings') do |req|
+          req.headers['Content-Type'] = 'application/json'
+          req.headers['Authorization'] = "Bearer #{@api_key}" if @api_key
+          req.body = JSON.generate(model: @embedder_model, input: 'pikuri embedding-size probe')
+        end
+        unless response.status == 200
+          raise "Mem0Server: probing embedder #{@embedder_model.inspect} at #{@router_url} failed " \
+                "(HTTP #{response.status}): #{response.body.to_s[0, 300]}"
+        end
+
+        vector = JSON.parse(response.body).dig('data', 0, 'embedding')
+        return vector.size if vector.is_a?(Array) && !vector.empty?
+
+        raise "Mem0Server: embedder #{@embedder_model.inspect} answered without an embedding: " \
+              "#{response.body.to_s[0, 300]}"
+      rescue Faraday::Error, JSON::ParserError => e
+        raise "Mem0Server: probing embedder #{@embedder_model.inspect} at #{@router_url} failed: " \
+              "#{e.class.name}: #{e.message}"
+      end
+
+      # Raise when Qdrant's on-disk config for {#data_dir}'s collection
+      # names another vector size than the embedder's; no collection yet
+      # passes.
+      #
+      # @return [void]
+      # @raise [RuntimeError] on a size mismatch or an unreadable size.
+      def check_collection_dims!
+        config = data_dir.join('qdrant', 'collections', @collection, 'config.json')
+        return unless config.file?
+
+        stored = JSON.parse(config.read).dig('params', 'vectors', 'size')
+        return if stored == @embedding_dims
+
+        raise "Mem0Server: the memories in #{data_dir} were embedded #{stored.inspect} wide, but " \
+              "#{@embedder_model.inspect} embeds #{@embedding_dims} wide. Switch back to the " \
+              "embedder that wrote them, or move #{data_dir} aside to start an empty store."
       end
 
       # Spawn the host-side half of the router relay (class header):
@@ -465,6 +534,15 @@ module Pikuri
       # endpoint.
       def http
         @http ||= @connection || Faraday.new(url: endpoint) do |f|
+          f.adapter Faraday.default_adapter
+        end
+      end
+
+      # Embedder-probe connection, based at +router_url+. The timeout
+      # covers a router loading the embedder on first use.
+      def router_http
+        @router_connection || Faraday.new(url: @router_url) do |f|
+          f.options.timeout = 120
           f.adapter Faraday.default_adapter
         end
       end

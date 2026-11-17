@@ -15,8 +15,8 @@ supervisor clones mem0, applies the patch, and drives compose through
   stack, and `MEM0_TELEMETRY=false` stops mem0 trying. `front-door` also
   joins the ordinary `pikuri-mem0-edge` network, solely so the API port
   can be published. Parameterized by `PIKURI_*` environment variables the
-  supervisor sets (build-context path, host data dir, router URL, model
-  ids, port, dims). The one published port binds `127.0.0.1` only. The containers are **ephemeral**
+  supervisor sets (build-context path, host data dir, router URL and key,
+  model ids, port, dims). The one published port binds `127.0.0.1` only. The containers are **ephemeral**
   — all state is bind-mounted to the host under `PIKURI_DATA_DIR`
   (`~/.cache/pikuri/mem0/data/{qdrant,history}`), so the corpus survives
   container recreation, same posture as pikuri-vectordb's Server::Qdrant.
