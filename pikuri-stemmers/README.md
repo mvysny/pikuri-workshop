@@ -32,7 +32,7 @@ Pikuri::Rag::Backend::Fts5.new(
 )
 ```
 
-The stemmer closes the Voikko handle when the indexer that owns the keyword index is closed.
+The stemmer closes the Voikko handle when the corpus that owns the keyword index is closed.
 
 Switching stemmers on a saved index empties it at the next start, and the next index run
 re-embeds every note.
