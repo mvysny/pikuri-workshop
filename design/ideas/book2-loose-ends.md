@@ -50,8 +50,11 @@ process, the stack torn down clean both times. It surfaced:
   did on a short one. Candidate fix: a mem0 patch falling back to `json_repair`, and a warning on
   a parse failure. The book and `architecture.md` still describe a separate extraction model.
 - **`Mem0Server` calls `docker` only**, against the podman-first convention.
-- **The exit flush loses the last turn.** `Recorder`'s 10 s flush timed out while the extractor
-  shared the router with chat; `compose down` then cut the in-flight `POST /memories`. A fact
-  told in the last turn before quitting is dropped.
+- **The exit flush lost the last turn** with a thinking extractor: `Recorder`'s 10 s flush timed
+  out and `compose down` cut the in-flight `POST /memories`. Fixed in practice by the no-think
+  default: quitting right after a one-turn fact stored it 3/3, no warning (extraction, 2–5 s,
+  starts with the turn and beats the reply). Still possible with a thinking extractor, slow
+  hardware or rapid-fire turns, and then warned. The book's exit-flush paragraph describes the
+  thinking run; rewrite it with the extraction-model docs.
 - **The model doesn't know capture is automatic.** Told "remember this", Ornith-1.5 reasoned at
   length about having no save tool; the prompt could say capture happens on its own.
