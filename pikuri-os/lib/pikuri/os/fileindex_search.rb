@@ -39,8 +39,8 @@ module Pikuri
       #   plus the backend's +#limitations+, appended at construction (see
       #   {#initialize}) — and it is that appended text, not this constant,
       #   that states *which folders the index actually covers* and what it
-      #   misses (recoll lists its +topdirs+; localsearch notes it ranks
-      #   across the whole home). So keep coverage claims out of here; they
+      #   misses (recoll lists its +topdirs+; localsearch names source code
+      #   and git checkouts). So keep coverage claims out of here; they
       #   belong with the backend that knows them.
       DESCRIPTION = <<~DESC
         Find files whose contents contain your words or phrase, using the desktop search index.
@@ -48,6 +48,7 @@ module Pikuri
         Usage:
         - Searches inside PDFs, Word/ODT/spreadsheet documents and plain text — reach for this when the answer may live in a file's contents.
         - Keyword match (and word stems); type the actual words that would appear in the file.
+        - Pass `folder` to search only under one folder (subfolders included) — the way to find a common word inside one project instead of across the whole disk.
         - The index returns at most ONE match per file and may be slightly stale — this is a locator, not the full story. To read a file's full, current text, read it (see fileindex_read).
         - Cheap: it queries a prebuilt index rather than walking the filesystem, so it barely touches the disk of the machine the user is on — fine to run many times to narrow down.
         - Only indexed folders are covered; system paths like /etc or /var are not — search those with a text/regex tool instead.
@@ -73,9 +74,12 @@ module Pikuri
             p.optional_integer :limit,
                                "Max number of matching files to return " \
                                "(default #{DEFAULT_LIMIT}, max #{MAX_LIMIT}), e.g. 10."
+            p.optional_string :folder,
+                              'Absolute path of a folder to search under, subfolders ' \
+                              'included; omit to search everything indexed, e.g. "~/Documents/taxes".'
           },
-          execute: lambda { |query:, limit: DEFAULT_LIMIT|
-            FileindexSearch.search(query: query, limit: limit, backend: backend)
+          execute: lambda { |query:, limit: DEFAULT_LIMIT, folder: nil|
+            FileindexSearch.search(query: query, limit: limit, folder: folder, backend: backend)
           },
           # Private and hard untrusted, both fixed rather than derived: this searches
           # the *whole machine's* file index, which is the whole-disk case by
@@ -87,17 +91,35 @@ module Pikuri
 
       # @param query [String]
       # @param limit [Integer]
+      # @param folder [String, nil] folder to search under, absolute or
+      #   +~+-relative; +nil+ or blank searches everything indexed
       # @param backend [Module] the file-index backend to query
       # @return [Pikuri::Tool::Result] the hits + disclaimer (+"Found 8
-      #   files"+), or {Pikuri::Tool::Result.error} for a backend failure
-      def self.search(query:, backend:, limit: DEFAULT_LIMIT)
+      #   files"+), or {Pikuri::Tool::Result.error} for a bad +folder+ or a
+      #   backend failure
+      def self.search(query:, backend:, limit: DEFAULT_LIMIT, folder: nil)
         q = query.to_s.strip
         return Pikuri::Tool::Result.error('empty query.') if q.empty?
 
+        folder = folder.to_s.strip
+        folder = nil if folder.empty?
+        if folder
+          unless folder.start_with?('/', '~')
+            return Pikuri::Tool::Result.error("folder must be an absolute path, got '#{folder}'.")
+          end
+
+          begin
+            folder = File.expand_path(folder)
+          rescue ArgumentError => e # "~nosuchuser"
+            return Pikuri::Tool::Result.error("bad folder '#{folder}': #{e.message}")
+          end
+          return Pikuri::Tool::Result.error("no such folder: #{folder}") unless File.directory?(folder)
+        end
+
         limit = clamp(limit, 1, MAX_LIMIT)
-        hits = backend.search(query: q, limit: limit)
+        hits = backend.search(query: q, limit: limit, folder: folder)
         if hits.empty?
-          return Pikuri::Tool::Result.new(content: no_match_message(q), summary: 'Found 0 files')
+          return Pikuri::Tool::Result.new(content: no_match_message(q, folder), summary: 'Found 0 files')
         end
 
         content, marker = head_truncate(hits.map { |hit| render_hit(hit) }.join("\n"))
@@ -127,8 +149,9 @@ module Pikuri
       private_class_method :disclaimer
 
       # @return [String]
-      def self.no_match_message(query)
-        "No files found matching '#{query}'. (Searches your indexed folders, " \
+      def self.no_match_message(query, folder)
+        where = folder ? " under #{folder}" : ''
+        "No files found matching '#{query}'#{where}. (Searches your indexed folders, " \
           'not system paths; the index may also be disabled or still building.)'
       end
       private_class_method :no_match_message

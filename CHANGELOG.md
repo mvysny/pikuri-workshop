@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- `fileindex_search` ranks hits best first and takes an optional `folder` to search under; `Pikuri::Os::LocalSearch` now queries the index through the `tinysparql` CLI (a dependency of Debian/Ubuntu's `localsearch` package) instead of `localsearch search`, and `search(folder:)` joins both backends' duck type.
 - `Pikuri::Memory::Mem0Server` runs the stack on podman when it is installed, through a private `podman system service` it starts and stops itself, and falls back to docker (`runtime:` forces either).
 - **Breaking:** `Pikuri::Memory::Mem0Server.new(llm_model:)` is now `extraction_model:`, a `Mem0Server::ExtractionModel` (`name:`, `params:`) whose `params` mem0 sends with every extraction call, so the chat model can extract with thinking off; `bin/pikuri-memory` defaults to exactly that (`extraction_model` / `extraction_params` override it).
 - Fix `Pikuri::Memory::Mem0Server` breaking on any embedder but a 768-wide one and on a router with an API key: it now asks the embedder for its vector size (`embedding_dims:` still overrides; `DEFAULT_EMBEDDING_DIMS` is gone), refuses to boot over a stored collection of another size, and takes the router key as `api_key:`, which `bin/pikuri-memory` reads from `llm_api_key`.

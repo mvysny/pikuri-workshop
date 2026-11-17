@@ -126,6 +126,28 @@ RSpec.describe Pikuri::Os::Recoll do
       end
     end
 
+    it 'scopes to a folder with a quoted dir: clause' do
+      seen = nil
+      original = Pikuri::Subprocess.method(:spawn)
+      Pikuri::Subprocess.define_singleton_method(:spawn) do |*args, **_kwargs|
+        seen = args.last
+        raise Errno::EPIPE, 'stop here'
+      end
+      begin
+        assert_raises(Errno::EPIPE) { described_class.search(query: 'tax', limit: 5, folder: '/home/u/My Docs') }
+        assert_equal 'tax dir:"/home/u/My Docs"', seen
+      ensure
+        restore_spawn(original)
+      end
+    end
+
+    it 'refuses a folder with a double quote, which recoll cannot quote' do
+      err = assert_raises(Pikuri::Os::Recoll::CommandError) do
+        described_class.search(query: 'tax', limit: 5, folder: '/home/u/say "hi"')
+      end
+      assert_includes err.message, 'double quote'
+    end
+
     it 'raises CommandError on non-zero exit' do
       original = stub_spawn(success: false, output: 'boom')
       begin

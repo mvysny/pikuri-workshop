@@ -29,13 +29,11 @@ it whiffs, the cause is one of *three*, and they have different answers
    **mime-gates** extraction: `text/plain` / Markdown / PDF / office get
    full body text, but **source code is filename-only** (`text/x-java`
    etc. store zero content — a 90 KB `.java` indexes 0 chars), and any
-   tree containing `.git` is skipped wholesale. On top of that it has
-   **no directory scoping** — it ranks globally over the whole `$HOME`
-   index, so a small target corpus is buried below the default result
-   limit even when fully indexed. So on a dev box the code is invisible
-   and the target folder is drowned. The fix is grep (cause 2 already
-   wires it) or a *different indexer* (`recoll`; survey below) — not
-   embeddings.
+   tree containing `.git` is skipped wholesale. So on a dev box the code
+   is invisible. The fix is grep (cause 2 already wires it) or a
+   *different indexer* (`recoll`; survey below) — not embeddings. (A
+   small target folder used to drown too; folder scoping fixed that,
+   see the survey.)
 2. **Phrasing / synonym miss** — the doc is indexed but the user's words
    differ ("the doc about our refund policy" vs. a file that says
    "returns & cancellations"). This is **already handled and in
@@ -43,8 +41,9 @@ it whiffs, the cause is one of *three*, and they have different answers
    because pikuri-os runs `FullFsNoNet` with full-disk *read* and wires
    `grep`/`glob`/`bash`, falls back to grepping likely directories when
    the index misses. `localsearch`'s index is already stemmed
-   ("mouse"↔"mice", see {Pikuri::Os::LocalSearch}), so inflectional
-   variants come free; the residue is true synonymy, which query
+   ("jumping" finds "jumps", "run" finds "running"), so regular
+   inflections come free — irregular ones don't ("mice" misses "mouse",
+   measured 2026-11); the residue is true synonymy, which query
    iteration handles better than any lexical index would.
 3. **Genuine semantic / conceptual gap** — cross-lingual, or "that thing
    about being frugal" → an unlabelled budget spreadsheet. The only
@@ -91,28 +90,33 @@ tempting "recoll wins 100%→single-digits" on the Java corpus was an
 those `localsearch` "hits" were *filename* matches; the fair corpus is
 prose. `localsearch`'s real limits are structural, not quality:
 **(a) no source code** (mime-gated; `.java` etc. filename-only, `.git`
-trees skipped); **(b) no directory scoping** — global ranking over the
-whole `$HOME` index, so a small target corpus is buried below the
-default limit (everything is *in* the index — ~100% at a high limit —
-but the LLM, capped at ten hits, sees none of it for a common word).
+trees skipped); **(b) the `localsearch search` CLI can't scope and
+doesn't rank** — it sorts hits by path, then applies the limit, so for a
+common word the LLM, capped at ten hits, got the first ten paths A–Z
+under `$HOME` (everything is *in* the index — ~100% at a high limit).
+(b) is the CLI's, not the index's: the backend skips that CLI and asks
+the index's SPARQL endpoint through `tinysparql`, ranked by `fts:rank`
+and filtered by URL prefix. Measured 2026-11: "lease" on the CLI gives
+five Android SDK `NOTICE.txt` files; ranked, the lease agreement comes
+first.
 
 | | `localsearch` (tracker3) | `recoll` |
 |---|---|---|
 | Backend | GNOME knowledge graph (SPARQL) | Xapian |
-| Setup | **zero** — already running on GNOME | install + build index + pick dirs |
+| Setup | **zero** on GNOME — already running; Debian/Ubuntu's `localsearch` package pulls in `tinysparql` | install + build index + pick dirs |
 | Freshness | continuous daemon (GNOME-managed) | cron *or* inotify daemon (`recollindex -m`) |
 | Recall on indexed prose | ~100% (**= recoll**, measured) | ~100% |
 | Source code | **filename-only** (mime-gated); `.git` trees skipped | full-text (all text mimes) |
-| Directory scope | **none** — global ranking only | `dir:` filter + per-config `topdirs` |
+| Directory scope | URL-prefix filter in SPARQL | `dir:` filter + per-config `topdirs` |
 | Query ops | stemmed AND / OR | + phrase / proximity / wildcard / field filters |
 | Desktop tie-in | **GNOME-only** | DE-independent (KDE, Xfce, headless) |
-| Headless CLI | `localsearch search` / `info` | `recollq` |
+| Headless CLI | `tinysparql query` (SPARQL over D-Bus) | `recollq` |
 
 Reading the table: on a GNOME box `localsearch` is the right default for
 whole-`$HOME` *document* discovery — already indexing, always fresh,
-zero-config, and (measured) as good as recoll at it. recoll only pulls
+no index to configure, and (measured) as good as recoll at it. recoll only pulls
 ahead where `localsearch` is structurally blind — **source trees,
-`.git` repos, scoped in-folder search, non-GNOME hosts** — and those
+`.git` repos, non-GNOME hosts** — and those
 cases are *already* covered by the wired `grep`/`glob` (scoped, exact,
 zero-setup, blind to none of it). So recoll's marginal value over the
 shipped `localsearch` + grep pairing is a thin slice: fast indexed,
@@ -133,6 +137,15 @@ constant (see {Pikuri::Os::Recoll.limitations} vs
 maintains, so recoll's `available?` requires a built `<confdir>/xapiandb`
 lest an installed-but-unindexed recoll win selection and then error on
 every query.
+
+Testing: the `localsearch` backend's specs run against a real indexer
+in a private sandbox (its own session bus, settings and database;
+`spec/support/private_local_search.rb`), so they never read the user's
+index; a host without `localsearch` + `tinysparql` + `dbus-daemon`, CI
+included, skips them and keeps only the stubbed unit specs. recoll's
+specs are stubbed only — a scratch index (`RECOLL_CONFDIR` +
+`recollindex` over a temp folder) would do the same job but isn't
+wired.
 
 Sources: local measurement (above);
 [recoll.org](https://www.recoll.org/),

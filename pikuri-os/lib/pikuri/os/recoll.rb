@@ -104,13 +104,23 @@ module Pikuri
       end
 
       # Run +recollq -F 'url abstract' -n <limit>+ and parse the results.
+      # A +folder+ becomes a +dir:"<folder>"+ clause, which recoll matches by
+      # whole path components (+/a/sp+ does not match +/a/sp ace+).
       #
       # @param query [String] recoll query-language string
       # @param limit [Integer]
+      # @param folder [String, nil] absolute folder to search under; +nil+
+      #   searches the whole index
       # @return [Array<Hash>] +[{ path: String, snippet: String|nil }, …]+,
       #   de-duplicated by path
-      # @raise [CommandError] if recollq exits non-zero
-      def self.search(query:, limit:)
+      # @raise [CommandError] if recollq exits non-zero, or +folder+ contains
+      #   a +"+ (recoll's query language cannot quote one)
+      def self.search(query:, limit:, folder: nil)
+        if folder
+          raise CommandError, "can't search a folder whose path contains a double quote: #{folder}" if folder.include?('"')
+
+          query = "#{query} dir:\"#{folder}\""
+        end
         result = Pikuri::Subprocess.spawn(BINARY, '-F', 'url abstract', '-n', limit.to_s, query,
                                           chdir: '/').wait
         unless result.status.success?

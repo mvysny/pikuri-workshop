@@ -53,11 +53,20 @@ pieces, all of which **degrade rather than crash** except the first:
   probes it (and the unprivileged user/network namespaces it needs)
   at boot and **raises rather than silently running with an open
   network**.
-- **A desktop file index**: GNOME's **`localsearch`** (the successor
-  to Tracker, part of a GNOME desktop) or, on any desktop,
-  **`recoll`** with an index you've built. When neither is usable,
-  the `fileindex_*` tools are simply omitted and the agent still
-  works with `bash` and the file tools.
+- **A desktop file index**, one of two. When neither is usable, the
+  `fileindex_*` tools are simply omitted and the agent still works
+  with `bash` and the file tools.
+  - GNOME's **`localsearch`** (the successor to Tracker) is already
+    indexing your home on a GNOME desktop. `pikuri-os` queries it
+    through the **`tinysparql`** CLI, which Debian and Ubuntu install
+    along with it. Check that it answers with
+    `tinysparql query -b org.freedesktop.LocalSearch3 -q 'ASK { }'`
+    (it prints `true`); `localsearch index` lists the folders it
+    covers.
+  - **`recoll`** works on any desktop, once you've built its index:
+    install it, list the folders to index as `topdirs` in
+    `~/.recoll/recoll.conf`, run `recollindex`, and keep it fresh
+    with a cron job or `recollindex -m`.
 - **`inxi`** — a hardware/desktop summariser, optional enrichment for
   the boot grounding. Absent is fine; the same facts come from
   `/proc`, `uname`, and the environment.
@@ -277,7 +286,11 @@ two-step shape as `vectordb_search` → `vectordb_read` from
   inside PDFs and office docs included — and returns each path with the
   one short snippet the index provides. It's honest about being a
   *locator*: the index reports at most one match per file, so the tool
-  doesn't pretend to show the whole story.
+  doesn't pretend to show the whole story. Hits come best match first,
+  and an optional `folder` keeps the search inside one folder, so a
+  common word in one project isn't buried under the rest of your home.
+  (`localsearch`'s own `search` command can do neither — it sorts hits
+  by path — which is why `pikuri-os` asks the index in SPARQL instead.)
 - **`fileindex_read`** then returns a file's full extracted text,
   line-paged exactly like the `read` tool, with no extractor of its
   own (the index did the extraction at index time).

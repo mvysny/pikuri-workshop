@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-LOCALSEARCH_AVAILABLE = begin
-  Pikuri::Subprocess.spawn('localsearch', '--version', chdir: '/').wait.status.success?
-rescue Errno::ENOENT
-  false
-end unless defined?(LOCALSEARCH_AVAILABLE)
+LOCALSEARCH_AVAILABLE = Pikuri::Os::LocalSearch.available? unless defined?(LOCALSEARCH_AVAILABLE)
 
 RSpec.describe Pikuri::Os::FileindexRead do
   def stub_backend_read(&block)

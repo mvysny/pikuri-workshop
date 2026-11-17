@@ -1,10 +1,6 @@
 # frozen_string_literal: true
 
-LOCALSEARCH_AVAILABLE = begin
-  Pikuri::Subprocess.spawn('localsearch', '--version', chdir: '/').wait.status.success?
-rescue Errno::ENOENT
-  false
-end unless defined?(LOCALSEARCH_AVAILABLE)
+LOCALSEARCH_AVAILABLE = Pikuri::Os::LocalSearch.available? unless defined?(LOCALSEARCH_AVAILABLE)
 
 RSpec.describe Pikuri::Os::FileindexSearch do
   # Stub the LocalSearch backend so these run without the binary.
@@ -27,7 +23,7 @@ RSpec.describe Pikuri::Os::FileindexSearch do
     end
 
     it 'renders path + snippet per hit and a one-match-per-file disclaimer' do
-      original = stub_backend_search do |query:, limit:|
+      original = stub_backend_search do |query:, limit:, folder:|
         [{ path: '/home/u/a.pdf', snippet: 'alpha beta' },
          { path: '/home/u/b.txt', snippet: nil }]
       end
@@ -75,9 +71,37 @@ RSpec.describe Pikuri::Os::FileindexSearch do
       end
     end
 
+    it 'expands ~ in folder and passes it to the backend; no folder passes nil' do
+      seen = []
+      original = stub_backend_search do |query:, limit:, folder:|
+        seen << folder
+        []
+      end
+      begin
+        out = described_class.search(query: 'x', folder: '~', backend: backend).to_s
+        described_class.search(query: 'x', folder: '  ', backend: backend)
+        assert_equal [Dir.home, nil], seen
+        assert_includes out, "No files found matching 'x' under #{Dir.home}"
+      ensure
+        restore_backend_search(original)
+      end
+    end
+
+    it 'rejects a relative or missing folder without touching the backend' do
+      original = stub_backend_search { |**| raise 'backend must not run' }
+      begin
+        assert_equal "Error: folder must be an absolute path, got 'Documents'.",
+                     described_class.search(query: 'x', folder: 'Documents', backend: backend).to_s
+        assert_equal 'Error: no such folder: /nonexistent/pikuri',
+                     described_class.search(query: 'x', folder: '/nonexistent/pikuri', backend: backend).to_s
+      ensure
+        restore_backend_search(original)
+      end
+    end
+
     it 'clamps limit to MAX_LIMIT' do
       seen = nil
-      original = stub_backend_search do |query:, limit:|
+      original = stub_backend_search do |query:, limit:, folder:|
         seen = limit
         []
       end

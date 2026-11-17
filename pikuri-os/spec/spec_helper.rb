@@ -6,6 +6,8 @@ require 'minitest/assertions'
 
 require 'pikuri-os'
 
+Dir[File.join(__dir__, 'support', '*.rb')].each { |file| require file }
+
 # Silence Pikuri's default $stderr logging for the suite so production
 # log lines don't bleed into rspec output.
 Pikuri.log_io = File.open(File::NULL, 'w')
