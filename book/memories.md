@@ -171,9 +171,13 @@ neither can the store"](#and-neither-can-the-store) — with the one
 published port bound to `127.0.0.1` only, so your memory never
 listens on a routable interface.
 
-That needs **`docker` (with the compose plugin), `git`, and
-`socat`** on `PATH` — all four are part of
-[the prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md)'s rootless setup. The first run
+That needs **`podman` or `docker` with a compose provider, `git`,
+and `socat`** on `PATH` — all part of
+[the prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md)'s rootless setup. Podman wins
+when both are installed; compose then needs podman's API socket, so
+the supervisor runs a `podman system service` of its own for the
+stack's lifetime, on a socket no container mounts (one that could
+reach it could start containers as you). The first run
 builds the mem0 image and takes a few minutes;
 the clone lives under `~/.cache/pikuri/mem0/temp/git` and the data
 under `~/.cache/pikuri/mem0/data/` (bind-mounted into the containers),

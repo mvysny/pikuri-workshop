@@ -117,6 +117,7 @@ describe Pikuri::Memory::Mem0Server do
       healthcheck_timeout: 1,
       connection: health_conn,
       router_connection: router_conn,
+      runtime: 'docker',
       **overrides
     )
     built << server
@@ -368,6 +369,65 @@ describe Pikuri::Memory::Mem0Server do
       err = assert_raises(RuntimeError) { build_server.ensure_running! }
       assert_match(/did not become healthy/, err.message)
       assert_equal 1, terminated.size, 'the relay must not be left as a stray'
+    end
+  end
+
+  describe 'on podman' do
+    # The (stubbed-out) podman service would have bound its socket.
+    def fake_podman_socket!
+      dir = File.join(cache_dir, 'podman')
+      FileUtils.mkdir_p(dir)
+      @podman_sock = UNIXServer.new(File.join(dir, 'podman.sock'))
+    end
+    after { @podman_sock&.close }
+
+    let(:podman_boot_plan) { fresh_boot_plan.insert(-2, [0, '']) } # podman service, before compose up
+
+    it 'runs a private podman service and points compose at it' do
+      planned.replace(podman_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+      fake_podman_socket!
+
+      build_server(runtime: 'podman').ensure_running!
+
+      argvs = calls.map { |c| c[:argv] }
+      sock = File.join(cache_dir, 'podman', 'podman.sock')
+      assert_includes argvs, ['podman', 'system', 'service', '--time=0', "unix://#{sock}"]
+      up = argvs.find { |a| a.include?('up') }
+      assert_equal ['podman', '--url', "unix://#{sock}", 'compose', '-p', 'pikuri-internal-mem0'], up[0, 6]
+    end
+
+    it 'keeps the podman socket out of the directory containers mount' do
+      server = build_server(runtime: 'podman')
+      refute_equal server.sock_dir, server.podman_dir
+      refute server.podman_dir.to_s.start_with?("#{server.sock_dir}/")
+    end
+
+    it 'stops the podman service after compose down' do
+      planned.replace(podman_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+      fake_podman_socket!
+      server = build_server(runtime: 'podman')
+      server.ensure_running!
+
+      planned.replace([[0, '']]) # podman compose down
+      server.close
+
+      down = calls.find { |c| c[:argv].include?('down') }
+      assert_equal %w[podman --url], down[:argv][0, 2]
+      assert_equal 2, terminated.size, 'close must stop the podman service and the relay'
+    end
+
+    it 'stops the podman service and the relay when the stack never comes up' do
+      planned.replace(podman_boot_plan)
+      health_stubs.get('/docs') { [503, {}, 'starting'] }
+      fake_relay_socket!
+      fake_podman_socket!
+
+      assert_raises(RuntimeError) { build_server(runtime: 'podman').ensure_running! }
+      assert_equal 2, terminated.size, 'no daemon may be left as a stray'
     end
   end
 

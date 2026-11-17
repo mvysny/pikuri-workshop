@@ -49,7 +49,8 @@ process, the stack torn down clean both times. It surfaced:
   `response_format` on mem0's request (`json_object` 4/4 invalid, `json_schema` 1/4), though it
   did on a short one. Candidate fix: a mem0 patch falling back to `json_repair`, and a warning on
   a parse failure. The book and `architecture.md` still describe a separate extraction model.
-- **`Mem0Server` calls `docker` only**, against the podman-first convention.
+- **`pikuri-extractors` calls `docker` only** (`Documents`), against the podman-first convention;
+  `Mem0Server` had the same bug, now fixed.
 - **The exit flush lost the last turn** with a thinking extractor: `Recorder`'s 10 s flush timed
   out and `compose down` cut the in-flight `POST /memories`. Fixed in practice by the no-think
   default: quitting right after a one-turn fact stored it 3/3, no warning (extraction, 2–5 s,

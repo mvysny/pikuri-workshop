@@ -32,6 +32,19 @@ module Pikuri
     # {Pikuri::Subprocess.spawn}) over the compose file in the gem's
     # +docker/+ directory.
     #
+    # == Podman or docker
+    #
+    # {.runtime} picks +podman+ when it is on +PATH+, else +docker+ — the
+    # rule +Pikuri::VectorDb::Server::Container.runtime+ follows too (a
+    # convention, not a shared method; the gems don't depend on each other).
+    # +podman compose+ hands off to a compose provider that talks to
+    # podman's API socket, which a host may never have switched on, so on
+    # podman the supervisor runs its own +podman system service+ on a
+    # private socket for the stack's lifetime and points compose at it with
+    # +--url+: no setup step. That socket lives in {#podman_dir}, never in
+    # {#sock_dir}: a container that reaches podman's API can start
+    # containers as you, so no container mounts it.
+    #
     # == No Postgres; Qdrant, patched in at build
     #
     # Upstream's +DEFAULT_CONFIG+ hardcodes **pgvector**, whose mem0
@@ -173,6 +186,31 @@ module Pikuri
       #   rather than surfacing later as silent extraction failures.
       RELAY_BIND_TIMEOUT = 5
 
+      # @return [String] socket filename inside {#podman_dir} for the
+      #   private +podman system service+ ("Podman or docker").
+      PODMAN_SOCKET = 'podman.sock'
+
+      # @return [Integer] seconds to wait for +podman system service+ to
+      #   bind its socket.
+      PODMAN_BIND_TIMEOUT = 10
+
+      # The container CLI this process drives, chosen once: +podman+ if on
+      # +PATH+, else +docker+ (which may be missing too — the first command
+      # then raises naming both). See "Podman or docker".
+      #
+      # @return [String] +"podman"+ or +"docker"+
+      def self.runtime
+        @runtime ||= %w[podman docker].find { |bin| on_path?(bin) } || 'docker'
+      end
+
+      # @param bin [String]
+      # @return [Boolean]
+      def self.on_path?(bin)
+        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+          File.executable?(File.join(dir, bin))
+        end
+      end
+
       # Construct and immediately ensure the stack is running.
       # Convenience factory — +new(...).tap(&:ensure_running!)+.
       #
@@ -203,6 +241,8 @@ module Pikuri
       #   heartbeat poll.
       # @param router_connection [Faraday::Connection, nil] DI hook for
       #   tests: the embedder probe, based at +router_url+.
+      # @param runtime [String, nil] +"podman"+ or +"docker"+; +nil+ picks
+      #   by {.runtime}.
       # @return [Mem0Server]
       # @raise [ArgumentError] when +router_url+ is not +http://+ (the TCP
       #   relay can't originate TLS, and the store has no other way out).
@@ -211,7 +251,7 @@ module Pikuri
                      embedding_dims: nil, collection: DEFAULT_COLLECTION,
                      qdrant_image: DEFAULT_QDRANT_IMAGE, cache_dir: nil,
                      healthcheck_timeout: DEFAULT_HEALTHCHECK_TIMEOUT, connection: nil,
-                     router_connection: nil)
+                     router_connection: nil, runtime: nil)
         @router_url = router_url
         unless URI(router_url).scheme == 'http'
           raise ArgumentError, "Mem0Server: the socat relay carries plain TCP, so router_url must be " \
@@ -232,10 +272,15 @@ module Pikuri
         @closed = false
         @finalizer_handle = nil
         @relay = nil
+        @runtime = runtime || self.class.runtime
+        @podman_service = nil
       end
 
       # @return [Integer] host port the REST API binds.
       attr_reader :port
+
+      # @return [String] +"podman"+ or +"docker"+, the CLI driving the stack.
+      attr_reader :runtime
 
       # @return [Pathname] the mem0 source checkout (the image build
       #   context). Under +temp/+ — it is a regenerable clone, not data.
@@ -259,6 +304,12 @@ module Pikuri
         @cache_dir.join('sock')
       end
 
+      # @return [Pathname] host directory holding the private podman API
+      #   socket; mounted into no container ("Podman or docker").
+      def podman_dir
+        @cache_dir.join('podman')
+      end
+
       # @return [String] +"http://localhost:<port>"+.
       def endpoint
         "http://localhost:#{@port}"
@@ -278,8 +329,9 @@ module Pikuri
       #
       # @return [void]
       # @raise [RuntimeError] on a failed embedder probe, a stored
-      #   collection of another vector size, missing docker/git,
-      #   clone/patch failure, +compose up+ failure, or healthcheck timeout.
+      #   collection of another vector size, missing podman/docker/git, a
+      #   podman service that won't start, clone/patch failure, +compose up+
+      #   failure, or healthcheck timeout.
       def ensure_running!
         @embedding_dims ||= probe_embedding_dims!
         check_collection_dims!
@@ -291,20 +343,22 @@ module Pikuri
         FileUtils.mkdir_p(sock_dir, mode: 0o700)
         start_relay!
         begin
-          LOGGER.info("starting #{COMPOSE_PROJECT} (mem0 + Qdrant + relays) on 127.0.0.1:#{@port}; " \
-                      'first run builds the mem0 image and may take a few minutes')
+          start_podman_service! if @runtime == 'podman'
+          LOGGER.info("starting #{COMPOSE_PROJECT} (mem0 + Qdrant + relays) on 127.0.0.1:#{@port} " \
+                      "via #{@runtime}; first run builds the mem0 image and may take a few minutes")
           compose!('up', '-d', '--build')
           wait_for_healthy!
         rescue StandardError
-          # Self-heal: don't leave the relay as a stray when the stack
+          # Self-heal: don't leave the daemons as strays when the stack
           # never came up (same discipline as Agent's build-phase rescue).
+          stop_podman_service!
           stop_relay!
           raise
         end
         register_for_cleanup
       end
 
-      # Stop the stack (+docker compose down+), leaving {#data_dir}'s
+      # Stop the stack (+compose down+), leaving {#data_dir}'s
       # bind-mounted host directories — the Qdrant corpus and memory
       # history survive. Registered with
       # {Pikuri::Finalizers} by {#ensure_running!}; safe to call directly.
@@ -317,10 +371,11 @@ module Pikuri
 
         @closed = true
         result = compose('down')
+        stop_podman_service!
         stop_relay!
         return if result.status.success?
 
-        LOGGER.warn("docker compose down failed (exit #{result.status.exitstatus}): #{result.output.strip}")
+        LOGGER.warn("#{@runtime} compose down failed (exit #{result.status.exitstatus}): #{result.output.strip}")
       end
 
       # Default cache root for this supervisor: +<Pikuri::Paths.cache>/mem0+
@@ -381,17 +436,19 @@ module Pikuri
               'The pinned ref or the patch may have drifted; regenerate the patch.'
       end
 
-      # Run +docker compose+ with the supervisor's env, raising on
-      # failure. Used for +up+ (boot — loud).
+      # Run +compose+ with the supervisor's env, raising on failure. Used
+      # for +up+ (boot — loud).
       def compose!(*args)
-        run_loud!(compose(*args), "docker compose #{args.join(' ')}")
+        run_loud!(compose(*args), "#{@runtime} compose #{args.join(' ')}")
       end
 
-      # Run +docker compose+ with the supervisor's env, returning the
+      # Run +compose+ with the supervisor's env, returning the
       # {Pikuri::Subprocess::Result} (caller decides loud vs quiet). Used
-      # for +down+ (teardown — quiet).
+      # for +down+ (teardown — quiet). On podman it goes through the
+      # private service's socket ("Podman or docker").
       def compose(*args)
-        docker('compose', '-p', COMPOSE_PROJECT, '-f', COMPOSE_FILE, *args, env: compose_env)
+        url = @runtime == 'podman' ? ['--url', "unix://#{podman_dir.join(PODMAN_SOCKET)}"] : []
+        container_cli(*url, 'compose', '-p', COMPOSE_PROJECT, '-f', COMPOSE_FILE, *args, env: compose_env)
       end
 
       # Environment the compose file interpolates (+${PIKURI_*}+) — the
@@ -477,34 +534,56 @@ module Pikuri
           "TCP:#{uri.host}:#{uri.port}",
           chdir: '/'
         )
-        drain_relay_output!
-        wait_for_relay_socket!(sock)
+        drain_output!(@relay, 'relay')
+        wait_for_socket!(sock, RELAY_BIND_TIMEOUT, 'relay')
       rescue Errno::ENOENT
         raise 'Mem0Server: `socat` not found on PATH — the relay that lets the mem0 ' \
               'container reach the host router needs it. Install it (sudo apt install socat).'
       end
 
-      # Log whatever socat prints (errors only, in practice) and keep the
-      # pipe from blocking the child. Ends at EOF when the relay exits.
-      def drain_relay_output!
-        relay = @relay
+      # Spawn the private +podman system service+ ("Podman or docker"), a
+      # daemon child like the relay. +--time=0+: no idle exit, since
+      # compose may sit quiet between +up+ and +down+.
+      def start_podman_service!
+        FileUtils.mkdir_p(podman_dir, mode: 0o700)
+        sock = podman_dir.join(PODMAN_SOCKET)
+        LOGGER.info("podman: private API service on #{sock}")
+        @podman_service = Pikuri::Subprocess.spawn(
+          'podman', 'system', 'service', '--time=0', "unix://#{sock}", chdir: '/'
+        )
+        drain_output!(@podman_service, 'podman')
+        wait_for_socket!(sock, PODMAN_BIND_TIMEOUT, 'podman')
+      rescue Errno::ENOENT
+        raise 'Mem0Server: `podman` not found on PATH. Install it, or pass runtime: "docker".'
+      end
+
+      # Log whatever a daemon child prints (errors only, in practice) and
+      # keep its pipe from blocking it. Ends at EOF when the child exits.
+      #
+      # @param daemon [Pikuri::Subprocess] the spawned child.
+      # @param label [String] log-line prefix, e.g. +"relay"+.
+      def drain_output!(daemon, label)
         Thread.new do
-          relay.io.each_line { |line| LOGGER.warn("relay: #{line.chomp}") }
+          daemon.io.each_line { |line| LOGGER.warn("#{label}: #{line.chomp}") }
         rescue IOError
           # pipe closed mid-read during teardown — fine
         ensure
-          relay.io.close unless relay.io.closed?
+          daemon.io.close unless daemon.io.closed?
         end
       end
 
-      # Poll until socat has bound the socket, failing loud on timeout
-      # (see {RELAY_BIND_TIMEOUT}).
-      def wait_for_relay_socket!(sock)
-        deadline = Time.now + RELAY_BIND_TIMEOUT
+      # Poll until a daemon child has bound +sock+, failing loud on
+      # timeout rather than surfacing later as a confusing compose error.
+      #
+      # @param sock [Pathname]
+      # @param timeout [Integer] seconds.
+      # @param label [String] the daemon's log-line prefix.
+      def wait_for_socket!(sock, timeout, label)
+        deadline = Time.now + timeout
         until File.socket?(sock)
           if Time.now > deadline
-            raise "Mem0Server: relay socket #{sock} did not appear within " \
-                  "#{RELAY_BIND_TIMEOUT}s — socat failed to start (see 'relay:' log lines)"
+            raise "Mem0Server: #{label} socket #{sock} did not appear within " \
+                  "#{timeout}s — it failed to start (see '#{label}:' log lines)"
           end
           sleep 0.05
         end
@@ -515,6 +594,12 @@ module Pikuri
       def stop_relay!
         @relay&.terminate
         @relay = nil
+      end
+
+      # SIGTERM the private podman service. Idempotent; nil on docker.
+      def stop_podman_service!
+        @podman_service&.terminate
+        @podman_service = nil
       end
 
       # Poll the REST API's +/docs+ (FastAPI serves it once startup —
@@ -564,14 +649,15 @@ module Pikuri
         @finalizer_handle ||= Pikuri::Finalizers.register(self)
       end
 
-      # +docker+ chokepoint — routes through {Pikuri::Subprocess.spawn}
-      # (subprocess seam). Surfaces a clearer message when docker is absent.
-      def docker(*argv, env: {})
-        Pikuri::Subprocess.spawn('docker', *argv, chdir: '/', env: env).wait
+      # Container-CLI chokepoint (+podman+ or +docker+) — routes through
+      # {Pikuri::Subprocess.spawn} (subprocess seam). Surfaces a clearer
+      # message when neither is installed.
+      def container_cli(*argv, env: {})
+        Pikuri::Subprocess.spawn(@runtime, *argv, chdir: '/', env: env).wait
       rescue Errno::ENOENT
-        raise 'Mem0Server: `docker` not found on PATH. Install docker (with the ' \
-              'compose plugin), or point Mem0Client at an existing mem0 endpoint ' \
-              'via Pikuri::Memory::Mem0Client.new(endpoint:).'
+        raise 'Mem0Server: neither `podman` nor `docker` found on PATH. Install one ' \
+              '(with a compose provider), or point Mem0Client at an existing mem0 ' \
+              'endpoint via Pikuri::Memory::Mem0Client.new(endpoint:).'
       end
 
       # +git+ chokepoint — routes through {Pikuri::Subprocess.spawn}.

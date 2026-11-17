@@ -70,7 +70,7 @@ Two ways to get a server:
   Qdrant engine — as `pikuri-vectordb`'s `Server::Qdrant`): it
   clones mem0 at a pinned
   commit, patches `DEFAULT_CONFIG` to use Qdrant, and brings a
-  `docker compose` stack (mem0 + Qdrant + a ~5 MB socat relay,
+  compose stack (mem0 + Qdrant + a ~5 MB socat relay,
   **no Postgres**) up through `Pikuri::Subprocess.spawn`. `#client`
   returns a `Mem0Client` pointed at it. A `localhost` router works
   as-is: the relay carries the container's LLM/embedder calls to
@@ -80,14 +80,20 @@ Two ways to get a server:
 
   ```ruby
   server = Pikuri::Memory::Mem0Server.ensure_running(
-    router_url:     'http://localhost:8080/v1',
-    llm_model:      'bartowski/Qwen2.5-7B-Instruct-GGUF:Q5_K_M',
-    embedder_model: 'nomic-ai/nomic-embed-text-v1.5-GGUF:Q8_0'
+    router_url:       'http://localhost:8080/v1',
+    # the chat model again, thinking off, so one model stays in memory
+    extraction_model: Pikuri::Memory::Mem0Server::ExtractionModel.new(
+      name: 'Ornith-1.5', params: { chat_template_kwargs: { enable_thinking: false } }
+    ),
+    embedder_model:   'nomic-ai/nomic-embed-text-v1.5-GGUF:Q8_0'
   )
   Pikuri::Memory::Extension.new(client: server.client, user_id: 'martin')
   ```
 
-  Needs `docker` (with the compose plugin), `git`, and `socat`. The
+  Needs `podman` or `docker`, with a compose provider (docker-compose
+  serves both), plus `git` and `socat`. On podman the supervisor runs its
+  own `podman system service` for the stack, so podman's API socket needn't
+  be switched on. The
   first run builds the mem0 image (a few minutes); the clone lives under
   `~/.cache/pikuri/mem0/temp/git` and the Qdrant corpus + memory
   history under `~/.cache/pikuri/mem0/data/` (bind-mounted into the
