@@ -1,0 +1,16 @@
+diff --git a/mem0/llms/openai.py b/mem0/llms/openai.py
+index 5be8168..71d1ee9 100644
+--- a/mem0/llms/openai.py
++++ b/mem0/llms/openai.py
+@@ -137,6 +137,11 @@ class OpenAILLM(LLMBase):
+         if tools:  # TODO: Remove tools if no issues found with new memory addition logic
+             params["tools"] = tools
+             params["tool_choice"] = tool_choice
++        # pikuri: extra request-body fields (e.g. chat_template_kwargs turning
++        # thinking off), which mem0 config has no field to carry.
++        llm_extra_body = os.environ.get("MEM0_LLM_EXTRA_BODY")
++        if llm_extra_body:
++            params["extra_body"] = json.loads(llm_extra_body)
+         response = self.client.chat.completions.create(**params)
+         parsed_response = self._parse_response(response, tools)
+         if self.config.response_callback:

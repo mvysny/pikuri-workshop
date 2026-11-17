@@ -23,12 +23,13 @@
 #
 # Two model roles, both served by the local llama.cpp router:
 #   * the CHAT model (the conversation) — may be a thinking model;
-#   * the mem0 EXTRACTION model (what to remember) — must be NON-reasoning
-#     (a thinking model burns its budget on CoT and returns empty JSON),
-#     plus the embedder. These run inside the mem0 container, which
-#     reaches the (loopback-bound) host router through the supervisor's
-#     socat unix-socket relay — see Mem0Server's "router relay" yardoc.
-#     Needs `socat` on the host.
+#   * the mem0 EXTRACTION model (what to remember) — by default the chat
+#     model again with thinking turned off (`extraction_params`), so one
+#     model stays in memory; a thinking extractor can burn its budget on
+#     CoT and return empty JSON. With the embedder, it runs inside the
+#     mem0 container, which reaches the (loopback-bound) host router
+#     through the supervisor's socat unix-socket relay — see Mem0Server's
+#     "router relay" yardoc. Needs `socat` on the host.
 #
 # Same Bundler bootstrap as the other bundled bins so callers don't need
 # the `bundle exec` ceremony.
@@ -51,7 +52,11 @@ examples_config = File.exist?(examples_config_path) ? (YAML.safe_load_file(examp
 
 server           = examples_config['llm_server'] || 'http://localhost:8080'
 model            = examples_config['llm_model'] || 'unsloth/Qwen3.6-35B-A3B-GGUF:Q4_K_M'  # chat (may think)
-extraction_model = examples_config['extraction_model'] || 'bartowski/Qwen2.5-7B-Instruct-GGUF:Q5_K_M'  # mem0 (non-reasoning)
+extraction_model = Pikuri::Memory::Mem0Server::ExtractionModel.new(
+  name: examples_config['extraction_model'] || model,
+  # Sent as written: llama.cpp + a Qwen-style template; {} for a model that never thinks.
+  params: examples_config['extraction_params'] || { 'chat_template_kwargs' => { 'enable_thinking' => false } }
+)
 embed_model      = examples_config['embed_model'] || 'nomic-ai/nomic-embed-text-v1.5-GGUF:Q8_0'
 user_id          = ENV['USER'] || 'default'
 mem0_url         = nil # BYO mem0 endpoint; when set, the supervisor is skipped
@@ -108,10 +113,10 @@ client =
     # Mem0Server's "router relay" yardoc section.
     begin
       mem0_server = Pikuri::Memory::Mem0Server.ensure_running(
-        router_url:     transport.api_base,
-        api_key:        examples_config['llm_api_key'],
-        llm_model:      extraction_model,
-        embedder_model: embed_model
+        router_url:       transport.api_base,
+        api_key:          examples_config['llm_api_key'],
+        extraction_model: extraction_model,
+        embedder_model:   embed_model
       )
     rescue StandardError => e
       warn "Could not start the mem0 sidecar: #{e.message}"

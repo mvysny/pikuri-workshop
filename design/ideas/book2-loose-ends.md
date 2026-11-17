@@ -42,6 +42,13 @@ Memories, end to end, ran 2026-11-17 (rootless docker, router on another host wi
 Ornith-1.5 as chat *and* extractor, nomic embedder): three facts stored, recalled by a fresh
 process, the stack torn down clean both times. It surfaced:
 
+- **Capture drops facts once a user has memories.** With a related memory stored, mem0's
+  extraction reply asks for `linked_memory_ids`, and Ornith-1.5 often returns `["0"}]}`; mem0
+  logs "Error parsing extraction response" and returns `[]`, so nothing is stored and pikuri
+  warns of nothing. 2/2 with thinking off, 1/2 with it on. llama.cpp didn't enforce
+  `response_format` on mem0's request (`json_object` 4/4 invalid, `json_schema` 1/4), though it
+  did on a short one. Candidate fix: a mem0 patch falling back to `json_repair`, and a warning on
+  a parse failure. The book and `architecture.md` still describe a separate extraction model.
 - **`Mem0Server` calls `docker` only**, against the podman-first convention.
 - **The exit flush loses the last turn.** `Recorder`'s 10 s flush timed out while the extractor
   shared the router with chat; `compose down` then cut the in-flight `POST /memories`. A fact

@@ -16,9 +16,12 @@ module Pikuri
     # {Mem0Client.new(endpoint:)} directly (the +Server::Qdrant+-shaped
     # let-pikuri-manage-it vs bring-your-own choice).
     #
-    #   Mem0Server.ensure_running(router_url: 'http://localhost:8080/v1',
-    #                             llm_model: 'qwen2.5-7b', embedder_model: 'nomic')
-    #             .client   # => a Mem0Client pointed at 127.0.0.1:8888
+    #   no_think = { chat_template_kwargs: { enable_thinking: false } }
+    #   Mem0Server.ensure_running(
+    #     router_url: 'http://localhost:8080/v1',
+    #     extraction_model: Mem0Server::ExtractionModel.new(name: 'Ornith-1.5', params: no_think),
+    #     embedder_model: 'nomic'
+    #   ).client   # => a Mem0Client pointed at 127.0.0.1:8888
     #
     # == Why a compose stack, not a single +docker run+
     #
@@ -44,12 +47,13 @@ module Pikuri
     # mem0's provider validation accepts only +openai+/+anthropic+/+gemini+
     # (LLM) and +openai+/+gemini+ (embedder), so the local path keeps
     # +provider: "openai"+ and points +OPENAI_BASE_URL+ at the llama.cpp
-    # router. The extraction model must be **non-reasoning** (e.g.
-    # +Qwen2.5-7B-Instruct+) — a thinking model burns its budget on CoT
-    # and returns empty/truncated JSON (design/architecture.md §"Extraction model
-    # decision"). The vector store is not bundle-gated, so Qdrant is fine.
-    # A router that wants a key gets +api_key:+; the container sees only
-    # that, never the host's own +OPENAI_API_KEY+.
+    # router. The extraction model must not think — a thinking model can
+    # burn its budget on CoT and return empty JSON — so {ExtractionModel}
+    # carries the request-body fields that turn thinking off, and
+    # +docker/llm-extra-body.patch+ makes mem0 send them (its config has no
+    # field for them). The vector store is not bundle-gated, so Qdrant is
+    # fine. A router that wants a key gets +api_key:+; the container sees
+    # only that, never the host's own +OPENAI_API_KEY+.
     #
     # == Vector size: asked of the embedder
     #
@@ -98,10 +102,10 @@ module Pikuri
     #
     # == Pinned + patched checkout
     #
-    # Built from {MEM0_REF} (a pinned commit), cloned once and reused. The
-    # patch is applied with +git apply+ and is **fail-loud**: if it
-    # neither applies cleanly nor is already applied, {#prepare_checkout!}
-    # raises rather than build a wrong image.
+    # Built from {MEM0_REF} (a pinned commit), cloned once and reused. Each
+    # of {PATCH_FILES} is applied with +git apply+ and is **fail-loud**: if
+    # one neither applies cleanly nor is already applied,
+    # {#prepare_checkout!} raises rather than build a wrong image.
     #
     # The one published port binds +127.0.0.1+ only — the memory never
     # listens on a routable interface. Boot errors (missing docker/git,
@@ -115,8 +119,8 @@ module Pikuri
 
       # @return [String] pinned mem0 commit the image is built from
       #   (library 2.0.4, v3 token-efficient algorithm). Bumping this is
-      #   how the mem0 version is upgraded — and the shipped patch must be
-      #   regenerated against the new ref if +DEFAULT_CONFIG+ moved.
+      #   how the mem0 version is upgraded — and {PATCH_FILES} must be
+      #   regenerated against the new ref if the code they touch moved.
       MEM0_REF = 'a3154d59e52386d4e1189c1f5f44819868f76514'
 
       # @return [String] compose project name. The +pikuri-internal-+
@@ -126,9 +130,11 @@ module Pikuri
       # @return [String] absolute path to the shipped compose file.
       COMPOSE_FILE = File.expand_path('../../../docker/docker-compose.yml', __dir__)
 
-      # @return [String] absolute path to the shipped DEFAULT_CONFIG
-      #   pgvector→qdrant patch.
-      PATCH_FILE = File.expand_path('../../../docker/qdrant-default-config.patch', __dir__)
+      # @return [Array<String>] absolute paths to the shipped patches: the
+      #   DEFAULT_CONFIG pgvector→qdrant swap, and +MEM0_LLM_EXTRA_BODY+
+      #   carrying {ExtractionModel#params} into every LLM call.
+      PATCH_FILES = %w[qdrant-default-config.patch llm-extra-body.patch]
+                    .map { |f| File.expand_path("../../../docker/#{f}", __dir__) }.freeze
 
       # @return [Integer] default host port mem0's REST API binds (127.0.0.1).
       DEFAULT_PORT = 8888
@@ -180,8 +186,8 @@ module Pikuri
       #   mem0 server routes its LLM + embedder calls to. Must be
       #   +http://+ — the relay (class header) carries it into the
       #   container, so a loopback-bound router is fine.
-      # @param llm_model [String] extraction model id on the router. Must
-      #   be **non-reasoning** (see the class header).
+      # @param extraction_model [ExtractionModel] what mem0 extracts with,
+      #   thinking off (see the class header).
       # @param embedder_model [String] embedder model id on the router.
       # @param api_key [String, nil] the router's API key, e.g.
       #   +"sk-local-1234"+; +nil+ for a router that wants none.
@@ -200,7 +206,7 @@ module Pikuri
       # @return [Mem0Server]
       # @raise [ArgumentError] when +router_url+ is not +http://+ (the TCP
       #   relay can't originate TLS, and the store has no other way out).
-      def initialize(router_url:, llm_model:, embedder_model:, api_key: nil,
+      def initialize(router_url:, extraction_model:, embedder_model:, api_key: nil,
                      port: DEFAULT_PORT,
                      embedding_dims: nil, collection: DEFAULT_COLLECTION,
                      qdrant_image: DEFAULT_QDRANT_IMAGE, cache_dir: nil,
@@ -212,7 +218,7 @@ module Pikuri
                                "http:// (got #{router_url.inspect}). For a router elsewhere, run " \
                                'mem0 yourself and point Mem0Client at it.'
         end
-        @llm_model = llm_model
+        @extraction_model = extraction_model
         @embedder_model = embedder_model
         @api_key = api_key
         @router_connection = router_connection
@@ -329,12 +335,12 @@ module Pikuri
 
       private
 
-      # Clone mem0 at {MEM0_REF} (once) and apply the Qdrant patch
+      # Clone mem0 at {MEM0_REF} (once) and apply {PATCH_FILES}
       # (idempotently, fail-loud). Reused across runs — a populated,
       # already-patched checkout is a no-op.
       def prepare_checkout!
         ensure_clone!
-        apply_patch!
+        apply_patches!
       end
 
       # Shallow-fetch the pinned commit into {#checkout_dir} if not already
@@ -355,17 +361,22 @@ module Pikuri
                   'git checkout FETCH_HEAD')
       end
 
-      # Apply {PATCH_FILE} unless it is already applied. Fail loud if it
-      # neither applies cleanly nor is already present (upstream drift
-      # past the pinned ref) — never build a wrong image silently.
-      def apply_patch!
-        dir = checkout_dir
-        return if git('apply', '--reverse', '--check', PATCH_FILE, chdir: dir).status.success?
+      # Apply each of {PATCH_FILES} unless it is already applied. Fail loud
+      # if one neither applies cleanly nor is already present (upstream
+      # drift past the pinned ref) — never build a wrong image silently.
+      def apply_patches!
+        PATCH_FILES.each { |patch| apply_patch!(patch) }
+      end
 
-        result = git('apply', PATCH_FILE, chdir: dir)
+      # @param patch [String] absolute path to one of {PATCH_FILES}.
+      def apply_patch!(patch)
+        dir = checkout_dir
+        return if git('apply', '--reverse', '--check', patch, chdir: dir).status.success?
+
+        result = git('apply', patch, chdir: dir)
         return if result.status.success?
 
-        raise "Mem0Server: failed to apply #{PATCH_FILE} to mem0 @ #{MEM0_REF} " \
+        raise "Mem0Server: failed to apply #{patch} to mem0 @ #{MEM0_REF} " \
               "(exit #{result.status.exitstatus}): #{result.output.strip}. " \
               'The pinned ref or the patch may have drifted; regenerate the patch.'
       end
@@ -396,7 +407,8 @@ module Pikuri
           'PIKURI_SOCAT_IMAGE' => SOCAT_IMAGE,
           'PIKURI_ROUTER_URL' => "http://router-proxy:8080#{URI(@router_url).path}",
           'PIKURI_ROUTER_API_KEY' => @api_key || NO_API_KEY,
-          'PIKURI_LLM_MODEL' => @llm_model,
+          'PIKURI_LLM_MODEL' => @extraction_model.name,
+          'PIKURI_LLM_EXTRA_BODY' => @extraction_model.params.empty? ? '' : JSON.generate(@extraction_model.params),
           'PIKURI_EMBEDDER_MODEL' => @embedder_model,
           'PIKURI_MEM0_PORT' => @port.to_s,
           'PIKURI_QDRANT_IMAGE' => @qdrant_image,

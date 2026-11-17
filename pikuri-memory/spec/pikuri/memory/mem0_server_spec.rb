@@ -109,7 +109,9 @@ describe Pikuri::Memory::Mem0Server do
   def build_server(**overrides)
     server = Pikuri::Memory::Mem0Server.new(
       router_url: 'http://router:8080/v1',
-      llm_model: 'qwen2.5-7b',
+      extraction_model: described_class::ExtractionModel.new(
+        name: 'qwen2.5-7b', params: { chat_template_kwargs: { enable_thinking: false } }
+      ),
       embedder_model: 'nomic',
       cache_dir: cache_dir,
       healthcheck_timeout: 1,
@@ -119,6 +121,22 @@ describe Pikuri::Memory::Mem0Server do
     )
     built << server
     server
+  end
+
+  # Planned subprocess results for a fresh-checkout boot, in FIFO order.
+  let(:fresh_boot_plan) do
+    [
+      [0, ''],   # git init
+      [0, ''],   # git remote add origin
+      [0, ''],   # git fetch --depth 1 origin <ref>
+      [0, ''],   # git checkout --detach FETCH_HEAD
+      [1, ''],   # git apply --reverse --check qdrant patch -> not yet applied
+      [0, ''],   # git apply qdrant patch
+      [1, ''],   # git apply --reverse --check extra-body patch -> not yet applied
+      [0, ''],   # git apply extra-body patch
+      [0, ''],   # socat relay (daemon — result unused)
+      [0, '']    # docker compose up -d --build
+    ]
   end
 
   describe '#initialize / accessors' do
@@ -162,20 +180,6 @@ describe Pikuri::Memory::Mem0Server do
   end
 
   describe '#ensure_running!' do
-    # Planned subprocess results for a fresh-checkout boot, in FIFO order.
-    let(:fresh_boot_plan) do
-      [
-        [0, ''],   # git init
-        [0, ''],   # git remote add origin
-        [0, ''],   # git fetch --depth 1 origin <ref>
-        [0, ''],   # git checkout --detach FETCH_HEAD
-        [1, ''],   # git apply --reverse --check -> not yet applied
-        [0, ''],   # git apply <patch>
-        [0, ''],   # socat relay (daemon — result unused)
-        [0, '']    # docker compose up -d --build
-      ]
-    end
-
     it 'clones+patches a fresh checkout, starts the relay, brings the stack up, then heartbeats' do
       planned.replace(fresh_boot_plan)
       health_stubs.get('/docs') { [200, {}, 'ok'] }
@@ -221,8 +225,31 @@ describe Pikuri::Memory::Mem0Server do
       # The container-visible URL: the relay sidecar, with /v1 carried over.
       assert_equal 'http://router-proxy:8080/v1', env['PIKURI_ROUTER_URL']
       assert_equal 'qwen2.5-7b', env['PIKURI_LLM_MODEL']
+      assert_equal '{"chat_template_kwargs":{"enable_thinking":false}}', env['PIKURI_LLM_EXTRA_BODY']
       assert_equal 'nomic', env['PIKURI_EMBEDDER_MODEL']
       assert_equal Pikuri::Memory::Mem0Server::NO_API_KEY, env['PIKURI_ROUTER_API_KEY']
+    end
+
+    it 'applies both shipped patches, the extra-body one last' do
+      planned.replace(fresh_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+
+      build_server.ensure_running!
+
+      applied = calls.map { |c| c[:argv] }.select { |a| a[0, 2] == %w[git apply] && a[2] != '--reverse' }
+      assert_equal %w[qdrant-default-config.patch llm-extra-body.patch], applied.map { |a| File.basename(a.last) }
+    end
+
+    it 'sends no extra body for an extraction model without params' do
+      planned.replace(fresh_boot_plan)
+      health_stubs.get('/docs') { [200, {}, 'ok'] }
+      fake_relay_socket!
+
+      build_server(extraction_model: described_class::ExtractionModel.new(name: 'qwen2.5-7b')).ensure_running!
+
+      up = calls.find { |c| c[:argv].include?('up') }
+      assert_equal '', up[:env]['PIKURI_LLM_EXTRA_BODY']
     end
 
     it "sizes the collection from the embedder's own vector" do
@@ -297,7 +324,7 @@ describe Pikuri::Memory::Mem0Server do
     end
 
     it 'raises a socat install hint when socat is missing' do
-      planned.replace([[0, ''], [0, ''], [0, ''], [0, ''], [1, ''], [0, ''], :enoent])
+      planned.replace([[0, ''], [0, ''], [0, ''], [0, ''], [1, ''], [0, ''], [1, ''], [0, ''], :enoent])
 
       err = assert_raises(RuntimeError) { build_server.ensure_running! }
       assert_match(/socat.*not found/, err.message)
@@ -307,7 +334,8 @@ describe Pikuri::Memory::Mem0Server do
       FileUtils.mkdir_p(File.join(cache_dir, 'temp', 'git', '.git'))
       planned.replace([
                         [0, Pikuri::Memory::Mem0Server::MEM0_REF], # git rev-parse HEAD
-                        [0, ''],                                   # git apply --reverse --check -> already applied
+                        [0, ''],                                   # qdrant patch: already applied
+                        [0, ''],                                   # extra-body patch: already applied
                         [0, ''],                                   # socat relay
                         [0, '']                                    # docker compose up
                       ])
@@ -343,6 +371,15 @@ describe Pikuri::Memory::Mem0Server do
     end
   end
 
+  describe 'ExtractionModel' do
+    it 'rejects params that are not a Hash' do
+      err = assert_raises(ArgumentError) do
+        described_class::ExtractionModel.new(name: 'm', params: 'enable_thinking=false')
+      end
+      assert_match(/params must be a Hash, got String/, err.message)
+    end
+  end
+
   describe '#initialize relay guard' do
     it 'rejects a non-http router_url' do
       err = assert_raises(ArgumentError) { build_server(router_url: 'https://router:8443/v1') }
@@ -352,7 +389,7 @@ describe Pikuri::Memory::Mem0Server do
 
   describe '#close' do
     it 'runs docker compose down, stops the relay, and is idempotent' do
-      planned.replace([[0, ''], [0, ''], [0, ''], [0, ''], [1, ''], [0, ''], [0, ''], [0, '']])
+      planned.replace(fresh_boot_plan)
       health_stubs.get('/docs') { [200, {}, 'ok'] }
       fake_relay_socket!
       server = build_server

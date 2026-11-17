@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- **Breaking:** `Pikuri::Memory::Mem0Server.new(llm_model:)` is now `extraction_model:`, a `Mem0Server::ExtractionModel` (`name:`, `params:`) whose `params` mem0 sends with every extraction call, so the chat model can extract with thinking off; `bin/pikuri-memory` defaults to exactly that (`extraction_model` / `extraction_params` override it).
 - Fix `Pikuri::Memory::Mem0Server` breaking on any embedder but a 768-wide one and on a router with an API key: it now asks the embedder for its vector size (`embedding_dims:` still overrides; `DEFAULT_EMBEDDING_DIMS` is gone), refuses to boot over a stored collection of another size, and takes the router key as `api_key:`, which `bin/pikuri-memory` reads from `llm_api_key`.
 - **Breaking:** `Pikuri::Stemmers::Voikko` owns its `::Voikko` handle and closes it from `#close`, which the `Fts5` it is handed calls when its corpus closes (pikuri's new stemmer `#close`); stop closing the handle yourself.
 - Fix `git_repo_research`'s child running out of context ending the parent's whole turn; `Pikuri::Code::GitRepoResearcher` now answers it as a tool error telling the parent to give the agent a narrower task, as pikuri's `agent` tool does (pikuri `85f96cf`).
