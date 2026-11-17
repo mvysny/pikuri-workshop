@@ -81,7 +81,8 @@ module Pikuri
       # @!attribute [r] user_message
       #   @return [String, nil] the message the turn runs with; +nil+ for a bare
       #     turn — the first after a boot, a restart that delivers leftover
-      #     injections, a system injection's turn
+      #     injections, a system injection's turn, a message sent while others
+      #     wait, which the turn delivers in order as mid-loop +UserTurn+s
       # @!attribute [r] attachments
       #   @return [Array<Pikuri::Attachment>]
       TurnStarted = Data.define(:user_message, :attachments) do

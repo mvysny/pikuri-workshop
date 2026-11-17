@@ -85,10 +85,14 @@ logged at error, and the transition goes on.
 ```
 
 - **Messages before the agent exists wait in the conversation**, since the agent builds its
-  `Interloper` itself. Once built, the last waiting user message becomes the first turn's message
-  and the earlier ones go into the `Interloper`, which `run_loop` drains ahead of it: the order
-  holds, and the common case of one message is an ordinary turn, not a `UserTurn(mid_loop:
-  true)`.
+  `Interloper` itself, and go into it once it is built.
+- **A turn's own message is never a later one than what waits.** `TurnStarted` names the turn's
+  own message, and a host hears it before the `UserTurn`s of whatever `run_loop` drains ahead of
+  that message. So a lone waiting user message — `system:` blocks may wait ahead of it — becomes
+  the turn's own, the common case staying an ordinary turn, not a `UserTurn(mid_loop: true)`;
+  with an earlier one waiting (two sent during a boot, one kept across a cancel) the message goes
+  into the `Interloper` too and the turn is bare, the drain delivering them in the order sent.
+  From `:idle`, where the `Interloper` does not say what it holds, anything waiting makes it bare.
 - **A failed boot returns to `:new`** keeping its messages; the next `submit` boots again.
 - **`clear` builds a fresh agent** — the old one closed first, on the boot thread, so two never
   hold one MCP or language server at once. A clear landing mid-boot bumps a generation, and the
@@ -126,8 +130,9 @@ undelivered injections; the host decides whether a blank `submit` re-sends them 
 
 `PendingChanged` carries the queue itself, never a diff: `@waiting`'s copy while booting, the
 `Interloper`'s snapshot after, the same `Interloper::Item`s in both, so a host draws its queued
-bubbles without knowing the phase. A boot that takes the last waiting message as its first turn's
-reports `[]`, since no inject is left to say so.
+bubbles without knowing the phase. A boot hands `@waiting` to the `Interloper` silently, since the
+queue is the one last reported, and reports it anew only when the first turn took its message out
+of it — `[]` for a lone one.
 
 **Shutdown** (`Conversations#shutdown(timeout:)`): `close(force: true)` on each, then wait for
 each `Event::Closed` within the one deadline. `timeout: 0` returns at once, for a host whose

@@ -31,10 +31,16 @@ module Pikuri
     # previous turn.
     #
     # Messages that arrive before the agent exists wait here, since the agent
-    # builds its +Interloper+ itself. Once it is built, the last waiting user
-    # message becomes the first turn's message and the ones before it go into
-    # the +Interloper+, which +run_loop+ drains ahead of the message — so the
-    # order holds, and the common case (one message) is an ordinary turn.
+    # builds its +Interloper+ itself; once it is built they go into it.
+    #
+    # A turn's own message is the one {Event::TurnStarted} names, so a host
+    # hears it ahead of everything +run_loop+ drains from the +Interloper+,
+    # though the chat gets those first. So a user message becomes the turn's own
+    # only when no earlier one waits: then the common case (one message) is
+    # an ordinary turn, and +system:+ blocks still go ahead of it. Otherwise
+    # it waits with the rest and the turn is bare, delivering them all in
+    # the order they came. From +:idle+ the check is anything waiting at all,
+    # since the +Interloper+ does not say what it holds.
     #
     # Thread-safe.
     class Conversation
@@ -401,9 +407,9 @@ module Pikuri
           start_boot if @state == :new
           :started
         when :idle
-          # A trailing user message is the turn's own; run_loop drains what
-          # went into the interloper ahead of it, so the order holds.
-          message = items.last if items.last&.kind == :user
+          # A trailing user message is the turn's own unless something still
+          # waits, which TurnStarted would show after it.
+          message = items.last if items.last&.kind == :user && !@agent.interloper.pending?
           (message ? items[...-1] : items).each { |item| inject(@agent, item) }
           if message
             start_turn(message.content, message.attachments)
@@ -509,25 +515,26 @@ module Pikuri
 
             @agent = agent
             @trifecta = trifecta
-            agent.interloper.on_change = method(:pending_changed)
-            first = @waiting.pop if @waiting.last&.kind == :user
+            run = @run_after_boot && !@cancelled_boot && (@waiting.any? || agent.interloper.pending?)
+            @run_after_boot = false
+            # The turn's own message: the only user one waiting. A cancelled
+            # boot keeps every message pending, like any other.
+            first = @waiting.pop if run && @waiting.count { |item| item.kind == :user } == 1 &&
+                                    @waiting.last.kind == :user
             @waiting.each { |item| inject(agent, item) }
-            # Each inject reports the queue it leaves; with none, nothing would
-            # say the first message left it to become the turn's.
-            @effects << Event::PendingChanged.new(items: [].freeze) if first && @waiting.empty?
+            # Hooked after the injects: they leave the queue @waiting last
+            # reported, unless the turn took its message out of it.
+            agent.interloper.on_change = method(:pending_changed)
+            @effects << Event::PendingChanged.new(items: @waiting.dup.freeze) if first
             @waiting.clear
             @effects << Event::Ready.new(trifecta:)
             @cap = facts.context_window
             @effects << Event::ContextCap.new(cap: @cap)
-            run = @run_after_boot && !@cancelled_boot && (first || agent.interloper.pending?)
-            @run_after_boot = false
             if run
               @state = :running
               @cancellable.reset!
               next :turn
             end
-            # A cancelled boot keeps its first message pending, like any other.
-            inject(agent, first) if first
             @state = :idle
             :idle
           end

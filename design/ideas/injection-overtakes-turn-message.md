@@ -33,6 +33,12 @@ block (`submit(system:)`), and the gem's own boot case, where messages that wait
 are injected *before* the last one becomes the turn's message, so they really are earlier. It is
 wrong only for an injection that arrived *after* the turn's message was accepted.
 
+The boot case was right only for the model: `TurnStarted` named the last message, so a host drew
+it ahead of the earlier ones. It now takes (a)'s shape when more than one user message waits —
+a bare turn, everything through the `Interloper` — and so does a submit from `:idle` while
+something is still pending (`pikuri-conversations/design/architecture.md`, "The states"). Puri
+draws `UserTurn(mid_loop: true)` as an ordinary user message.
+
 ## Options
 
 - **(a) Deliver the turn's own message through the Interloper too**: `start_turn` injects it

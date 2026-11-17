@@ -314,6 +314,63 @@ RSpec.describe Pikuri::Conversations::Conversation do
     convs&.shutdown(timeout: 5)
   end
 
+  context 'several messages waiting for one turn' do
+    # The user messages as a host draws them: the turn's own from TurnStarted,
+    # the rest from the agent's mid-loop UserTurns, in the order they came.
+    def shown
+      recorder.events.filter_map do |event|
+        case event
+        in Event::TurnStarted(user_message: String => text) then text
+        in Pikuri::Agent::Event::UserTurn(content:, mid_loop: true) then content
+        else nil
+        end
+      end
+    end
+
+    def reported = recorder.all(Event::PendingChanged).map { |e| e.items.map(&:content) }
+
+    it 'delivers the messages sent during a boot in the order they were sent' do
+      probe_gate = Queue.new
+      detector.define_singleton_method(:detect_modalities) do |*, **|
+        probe_gate.pop
+        nil
+      end
+      conv = open(Pikuri::Testing.fake_transport(modalities: nil) { |llm| llm.reply('Bob.') })
+      assert_equal :started, conv.submit("I'm Bob")
+      assert_equal :started, conv.submit("what's my name?")
+      probe_gate << true
+
+      refute recorder.await(Event::TurnEnded).restarting
+      assert_equal ["I'm Bob", "what's my name?", 'Bob.'], contents(conv.history)
+      assert_equal ["I'm Bob", "what's my name?"], shown
+      assert_equal [["I'm Bob"], ["I'm Bob", "what's my name?"], []], reported
+    end
+
+    it 'delivers a message kept across a cancel ahead of the next one' do
+      transport = Pikuri::Testing.fake_transport(gate:) do |llm|
+        llm.tool_call('calculator', expression: '1 + 1')
+        llm.reply('done')
+      end
+      host = TestHost.new(configure: ->(c, _) { c.add_tool(Pikuri::Tool::CALCULATOR) })
+      conv = convs.open(id: 'c1', transport:, listener: recorder, initializer: host)
+      recorder.await(Event::Ready)
+      gate.block!
+      conv.submit('first')
+      parked.pop
+      conv.submit('second')
+      conv.cancel
+      gate.release!
+      assert_equal :cancelled, recorder.await(Event::TurnEnded).outcome
+
+      assert_equal :started, conv.submit('third')
+      assert_equal :completed, recorder.await(Event::TurnEnded, nth: 2).outcome
+      users = conv.history.messages.select { _1.role.to_s == 'user' }.map(&:content)
+      assert_equal %w[first second third], users
+      assert_equal %w[first second third], shown
+      assert_equal [%w[second], %w[second third], []], reported
+    end
+  end
+
   context 'a system: block with the message' do
     # What the model was handed, in order: [:system, text] and [:user, text].
     def handed
