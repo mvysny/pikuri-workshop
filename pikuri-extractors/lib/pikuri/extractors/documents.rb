@@ -11,10 +11,11 @@ module Pikuri
     # EPUB, DOCX), markitdown (OOXML spreadsheet / presentation), or
     # pdftotext (PDF), selected per format.
     #
-    # Prefers a one-shot, networkless docker container ({IMAGE}) — bytes
-    # in via stdin, Markdown out via stdout, no volume mounts — and falls
-    # back to host +pandoc+ / +markitdown+ / +pdftotext+ CLIs on the same
-    # stdin→stdout contract when docker is absent. Requiring the gem
+    # Prefers a one-shot, networkless container ({IMAGE}) — bytes in via
+    # stdin, Markdown out via stdout, no volume mounts — run by podman or
+    # docker ({.runtime}), and falls back to host +pandoc+ / +markitdown+ /
+    # +pdftotext+ CLIs on the same stdin→stdout contract when neither
+    # answers. Requiring the gem
     # defines this class + the shared {DOCUMENTS} instance but registers
     # nothing; a host opts in with +DOCUMENTS.register+.
     #
@@ -41,8 +42,8 @@ module Pikuri
       # @return [Logger] gem-wide diagnostics logger.
       LOGGER = Pikuri.logger_for('Extractors')
 
-      # @return [String] absolute path to the shipped docker build
-      #   context (Dockerfile + convert.sh).
+      # @return [String] absolute path to the shipped container
+      #   build context (Dockerfile + convert.sh).
       DOCKER_DIR = File.expand_path('../../../docker', __dir__)
 
       # @return [String] converter image tag, named after a digest of the
@@ -117,6 +118,34 @@ module Pikuri
       #   but accepts +-v+.
       VERSION_PROBE_FLAGS = { 'pdftotext' => '-v' }.freeze
 
+      # The container CLI a new instance drives: +podman+ if on +PATH+, else
+      # +docker+ (which may be missing too — the probe then falls back to
+      # the host CLIs). The same rule as +Pikuri::Memory::Mem0Server.runtime+
+      # and pikuri's +VectorDb::Server::Container.runtime+, by convention.
+      #
+      # @return [String] +"podman"+ or +"docker"+
+      def self.runtime
+        %w[podman docker].find { |bin| on_path?(bin) } || 'docker'
+      end
+
+      # @param bin [String]
+      # @return [Boolean]
+      def self.on_path?(bin)
+        ENV.fetch('PATH', '').split(File::PATH_SEPARATOR).any? do |dir|
+          File.executable?(File.join(dir, bin))
+        end
+      end
+
+      # @param runtime [String, nil] +"podman"+ or +"docker"+; +nil+ picks
+      #   by {.runtime}.
+      def initialize(runtime: nil)
+        @runtime = runtime || self.class.runtime
+      end
+
+      # @return [String] the container CLI this instance drives,
+      #   +"podman"+ or +"docker"+.
+      attr_reader :runtime
+
       # @return [Symbol] kind tag carried on +Extractor::Page#kind+.
       def kind
         :document
@@ -190,10 +219,10 @@ module Pikuri
       # optional: {#extract} builds lazily on first use otherwise.
       #
       # @return [void]
-      # @raise [Pikuri::Extractor::Error] when docker is unavailable
+      # @raise [Pikuri::Extractor::Error] when {#runtime} is unavailable
       #   or the build fails.
       def ensure_image!
-        raise Pikuri::Extractor::Error, '`docker` is unavailable; cannot build the converter image' unless docker?
+        raise Pikuri::Extractor::Error, "`#{@runtime}` is unavailable; cannot build the converter image" unless container?
 
         image_ready!
         nil
@@ -314,15 +343,15 @@ module Pikuri
       end
 
       # The argv for one conversion of +format+ — the container when
-      # docker is up (building the image first if needed), else the
+      # {#runtime} answers (building the image first if needed), else the
       # first present host CLI for the format.
       #
       # @param format [String] format tag (or {AUTO}).
       # @return [Array<String>]
       # @raise [Pikuri::Extractor::Error] when no arm is available.
       def converter_argv(format)
-        if docker?
-          return ['docker', 'run', '--rm', '-i', '--network=none', '--read-only',
+        if container?
+          return [@runtime, 'run', '--rm', '-i', '--network=none', '--read-only',
                   '--cap-drop=ALL', '--security-opt', 'no-new-privileges',
                   '--tmpfs', '/tmp', image_ready!, format]
         end
@@ -330,7 +359,7 @@ module Pikuri
         backend = HOST_CONVERTERS.fetch(format).find { |cli| cli?(cli.to_s) }
         unless backend
           raise Pikuri::Extractor::Error,
-                "no converter available for #{format}: install docker (recommended — " \
+                "no converter available for #{format}: install podman or docker (recommended — " \
                 "sandboxed, pinned versions) or a host #{HOST_CONVERTERS.fetch(format).join(' / ')} CLI"
         end
         host_argv(backend, format)
@@ -349,21 +378,21 @@ module Pikuri
         end
       end
 
-      # Is a usable docker (binary on PATH *and* daemon answering)
-      # available? Probed once, memoized, choice logged.
+      # Does {#runtime} answer +info+ — the binary on PATH and, for
+      # docker, its daemon up? Probed once, memoized, choice logged.
       #
       # @return [Boolean]
-      def docker?
-        unless defined?(@docker)
-          @docker = begin
-            docker_cmd('info').status.success?
+      def container?
+        unless defined?(@container)
+          @container = begin
+            runtime_cmd('info').status.success?
           rescue Errno::ENOENT
             false
           end
-          LOGGER.info(@docker ? 'docker available — converting in the sandboxed container' \
-                              : 'docker unavailable — falling back to host pandoc/markitdown')
+          LOGGER.info(@container ? "#{@runtime} available — converting in the sandboxed container" \
+                                 : "#{@runtime} unavailable — falling back to host pandoc/markitdown")
         end
-        @docker
+        @container
       end
 
       # Make sure {IMAGE} exists locally, building from {DOCKER_DIR}
@@ -374,22 +403,22 @@ module Pikuri
       def image_ready!
         return IMAGE if @image_ready
 
-        unless docker_cmd('image', 'inspect', IMAGE).status.success?
+        unless runtime_cmd('image', 'inspect', IMAGE).status.success?
           LOGGER.info("building #{IMAGE} from #{DOCKER_DIR} (one-time, may take minutes)")
-          build = docker_cmd('build', '-t', IMAGE, DOCKER_DIR)
+          build = runtime_cmd('build', '-t', IMAGE, DOCKER_DIR)
           unless build.status.success?
             raise Pikuri::Extractor::Error,
-                  "docker build of #{IMAGE} failed: #{stderr_tail(build.output)}"
+                  "#{@runtime} build of #{IMAGE} failed: #{stderr_tail(build.output)}"
           end
         end
         @image_ready = true
         IMAGE
       end
 
-      # @param argv [Array<String>] docker subcommand + args.
+      # @param argv [Array<String>] {#runtime} subcommand + args.
       # @return [Pikuri::Subprocess::Result]
-      def docker_cmd(*argv)
-        Pikuri::Subprocess.spawn('docker', *argv, chdir: '/').wait
+      def runtime_cmd(*argv)
+        Pikuri::Subprocess.spawn(@runtime, *argv, chdir: '/').wait
       end
 
       # Is +name+'s version probe (+--version+, or the CLI's
@@ -426,8 +455,8 @@ module Pikuri
     # The shared, host-script-facing instance: call
     # +Pikuri::Extractors::DOCUMENTS.register+ to plug it into the
     # registry. One instance is right — its only state is memoized
-    # environment probes (docker? / image built / host CLIs), true
-    # process-wide.
+    # environment probes (container runtime / image built / host CLIs),
+    # true process-wide.
     DOCUMENTS = Documents.new
   end
 end

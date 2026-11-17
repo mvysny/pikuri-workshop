@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- `Pikuri::Extractors::Documents` runs its converter container on podman when it is installed, else docker, as `Mem0Server` does (`runtime:` forces either).
 - `fileindex_search` on localsearch shows about 40 words around each match instead of 12, the matched words marked `>>like this<<`.
 - `fileindex_search` shows each file's indexed text size and answers a file passed as `folder` with a pointer to `fileindex_read`, whose new `pattern` returns just the matching lines with their line numbers; both backends' `search` hits carry `text_size:`.
 - `fileindex_search` ranks hits best first and takes an optional `folder` to search under; `Pikuri::Os::LocalSearch` now queries the index through the `tinysparql` CLI (a dependency of Debian/Ubuntu's `localsearch` package) instead of `localsearch search`, and `search(folder:)` joins both backends' duck type.

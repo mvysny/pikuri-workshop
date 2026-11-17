@@ -1,15 +1,17 @@
 # frozen_string_literal: true
 
 require 'stringio'
+require 'tmpdir'
 
 RSpec.describe Pikuri::Extractors::Documents do
   # Fresh instance per example so the memoized environment probes
-  # (docker? / image built / host CLIs) can't leak between examples.
-  let(:documents) { described_class.new }
+  # (container runtime / image built / host CLIs) can't leak between
+  # examples. Pinned to podman so no example depends on the host's PATH.
+  let(:documents) { described_class.new(runtime: 'podman') }
 
   # Stubbing the subprocess seam, docker_stub-shaped but covering both
   # front doors: +spawn_plans+ feeds the probe/build calls
-  # (`docker info`, `docker image inspect`, `pandoc --version`, ...),
+  # (`podman info`, `podman image inspect`, `pandoc --version`, ...),
   # +run_plans+ feeds the conversions. A spawn plan is
   # +[exit_status, output]+ or +:enoent+; a run plan is
   # +[exit_status, stderr, payload]+ — +payload+ is written to the
@@ -85,14 +87,14 @@ RSpec.describe Pikuri::Extractors::Documents do
   let(:pdf_sample)  { "%PDF-1.4\nfake pdf body".b }
   let(:ole2_sample) { "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1#{"\x00" * 64}".b }
 
-  # Spawn plans for the happy container arm: `docker info` answers,
+  # Spawn plans for the happy container arm: `podman info` answers,
   # the image is already built.
   def plan_container!
     spawn_plans.concat([[0, ''], [0, '']])
   end
 
-  # Spawn plans for "no docker at all".
-  def plan_no_docker!
+  # Spawn plans for "no container runtime at all".
+  def plan_no_runtime!
     spawn_plans << :enoent
   end
 
@@ -145,7 +147,7 @@ RSpec.describe Pikuri::Extractors::Documents do
       assert_equal "# Title\n\nbody\n", markdown
       call = run_calls.fetch(0)
       assert_equal 'timeout', call[:argv].first # bounded, per the Subprocess convention
-      assert_includes call[:argv], 'docker'
+      assert_includes call[:argv], 'podman'
       assert_includes call[:argv], '--network=none'
       assert_includes call[:argv], '--read-only'
       assert_includes call[:argv], described_class::IMAGE
@@ -172,10 +174,10 @@ RSpec.describe Pikuri::Extractors::Documents do
       documents.extract(StringIO.new(odt_sample))
 
       build = spawn_calls.find { |argv| argv[1] == 'build' }
-      assert_equal ['docker', 'build', '-t', described_class::IMAGE, described_class::DOCKER_DIR], build
+      assert_equal ['podman', 'build', '-t', described_class::IMAGE, described_class::DOCKER_DIR], build
     end
 
-    it 'probes docker and the image once across conversions' do
+    it 'probes the runtime and the image once across conversions' do
       plan_container!
       run_plans.concat([[0, '', 'one'], [0, '', 'two']])
 
@@ -207,14 +209,62 @@ RSpec.describe Pikuri::Extractors::Documents do
       spawn_plans.concat([[0, ''], [1, ''], [1, 'pip blew up']])
 
       error = assert_raises(Pikuri::Extractor::Error) { documents.extract(StringIO.new(odt_sample)) }
-      assert_includes error.message, 'docker build'
+      assert_includes error.message, 'podman build'
       assert_includes error.message, 'pip blew up'
     end
   end
 
+  describe 'the container runtime' do
+    it 'drives docker for every probe, build and run when told to' do
+      documents = described_class.new(runtime: 'docker')
+      spawn_plans.concat([[0, ''], [1, ''], [0, 'built']])
+      run_plans << [0, '', 'md']
+
+      documents.extract(StringIO.new(odt_sample))
+
+      assert_equal %w[docker docker docker], spawn_calls.map(&:first)
+      assert_includes run_calls.fetch(0)[:argv], 'docker'
+      refute_includes run_calls.fetch(0)[:argv], 'podman'
+    end
+
+    describe '.runtime' do
+      around do |example|
+        Dir.mktmpdir do |dir|
+          @bin_dir = dir
+          old_path = ENV.fetch('PATH', nil)
+          ENV['PATH'] = dir
+          example.run
+        ensure
+          ENV['PATH'] = old_path
+        end
+      end
+
+      def fake_bin(name)
+        path = File.join(@bin_dir, name)
+        File.write(path, "#!/bin/sh\n")
+        File.chmod(0o755, path)
+      end
+
+      it 'prefers podman when both are on PATH' do
+        fake_bin('docker')
+        fake_bin('podman')
+        assert_equal 'podman', described_class.runtime
+      end
+
+      it 'takes docker when podman is missing' do
+        fake_bin('docker')
+        assert_equal 'docker', described_class.runtime
+      end
+
+      it 'names docker when neither is on PATH' do
+        assert_equal 'docker', described_class.runtime
+      end
+    end
+  end
+
   describe '#extract — host arm' do
-    it 'uses host pandoc when docker is absent' do
-      plan_no_docker!
+    it 'uses host pandoc when the runtime is absent' do
+      plan_no_runtime!
       spawn_plans << [0, 'pandoc 3.x'] # pandoc --version
       run_plans << [0, '', 'converted']
 
@@ -225,7 +275,7 @@ RSpec.describe Pikuri::Extractors::Documents do
     end
 
     it 'falls through to host markitdown for formats pandoc also serves' do
-      plan_no_docker!
+      plan_no_runtime!
       spawn_plans << :enoent      # pandoc --version → absent
       spawn_plans << [0, '0.1.6'] # markitdown --version
       run_plans << [0, '', 'converted']
@@ -238,11 +288,11 @@ RSpec.describe Pikuri::Extractors::Documents do
     end
 
     it 'raises a recoverable error naming the install options when no arm is available' do
-      plan_no_docker!
+      plan_no_runtime!
       spawn_plans << :enoent # pandoc --version → absent; odt has no other host converter
 
       error = assert_raises(Pikuri::Extractor::Error) { documents.extract(StringIO.new(odt_sample)) }
-      assert_includes error.message, 'install docker'
+      assert_includes error.message, 'install podman or docker'
       assert_includes error.message, 'pandoc'
     end
   end
@@ -278,8 +328,8 @@ RSpec.describe Pikuri::Extractors::Documents do
       assert_equal ['--- Page 1 ---', 'one', 'two', '--- Page 2 ---', 'three'], lines
     end
 
-    it 'uses host pdftotext when docker is absent, probing with -v (poppler rejects --version)' do
-      plan_no_docker!
+    it 'uses host pdftotext when the runtime is absent, probing with -v (poppler rejects --version)' do
+      plan_no_runtime!
       spawn_plans << [0, 'pdftotext version 26.01.0'] # pdftotext -v
       run_plans << [0, '', "text\n\f"]
 
@@ -303,8 +353,8 @@ RSpec.describe Pikuri::Extractors::Documents do
   end
 
   describe '#ensure_image!' do
-    it 'raises when docker is unavailable' do
-      plan_no_docker!
+    it 'raises when the runtime is unavailable' do
+      plan_no_runtime!
       assert_raises(Pikuri::Extractor::Error) { documents.ensure_image! }
     end
 

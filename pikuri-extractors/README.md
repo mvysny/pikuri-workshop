@@ -3,7 +3,7 @@
 Additional document extractors for the
 [pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit:
 office documents and PDFs → Markdown, converted preferably inside a
-one-shot **networkless docker container**, so a malicious document
+one-shot **networkless container** (podman, or docker), so a malicious document
 downloaded from the web is parsed somewhere it can't phone home or
 read your files.
 
@@ -25,19 +25,20 @@ page separators are rebuilt into `--- Page N ---` markers on the
 Ruby side), dispatched per format. One stdin→stdout contract,
 two ways to run it:
 
-1. **Container (preferred).** A small, locally-built docker image
+1. **Container (preferred).** A small, locally-built image
    (pinned pandoc + pinned markitdown; built from
    [docker/Dockerfile](docker/Dockerfile) on first use — read it,
    it's short) run as
-   `docker run --rm -i --network=none --read-only --cap-drop=ALL`,
+   `podman run --rm -i --network=none --read-only --cap-drop=ALL`,
    bytes in via stdin, Markdown out via stdout, **no volume
    mounts**. Office-format parsers are large, complex codebases and
    the documents they parse are exactly the bytes an attacker
    controls; in the container, the blast radius of a parser exploit
    is one throwaway process that can see neither your network nor
-   your filesystem.
-2. **Host CLI (fallback).** When docker is absent or the daemon is
-   down, a host-installed `pandoc` / `markitdown` / `pdftotext` is
+   your filesystem. podman is used when it is on `PATH`, else docker;
+   `Documents.new(runtime: 'docker')` forces either.
+2. **Host CLI (fallback).** When neither runs (not installed, or
+   docker's daemon down), a host-installed `pandoc` / `markitdown` / `pdftotext` is
    used directly — convenient, but unpinned and unsandboxed.
 
 Deliberately **not** covered: ODS / ODP (neither converter reads
@@ -60,7 +61,7 @@ pikuri-pdf and shows when to swap in this gem.
 gem 'pikuri-extractors'
 ```
 
-Plus *one* of: a working `docker` (recommended; the image builds
+Plus *one* of: a working `podman` or `docker` (recommended; the image builds
 itself on first use, network is only needed for that build), or
 host `pandoc` / `markitdown` CLIs.
 
@@ -79,14 +80,14 @@ Pikuri::Extractors::DOCUMENTS.register
 text = Pikuri::FileType.read_as_text(Pathname.new('report.docx'))
 
 # Optional: pay the one-time image build (~minutes) at boot instead
-# of mid-conversation. Requires docker; skip when relying on host CLIs.
+# of mid-conversation. Requires podman or docker; skip when relying on host CLIs.
 Pikuri::Extractors::DOCUMENTS.ensure_image!
 ```
 
 ## Performance posture
 
 A subprocess converter has no lazy mode: every paged `read` of a
-long document re-runs the full conversion (a cold `docker run` plus
+long document re-runs the full conversion (a cold `podman run` plus
 the converter itself — roughly a second for pandoc, a few for
 markitdown). That's accepted v1 behavior — no result cache — and it
 is well inside what an LLM tool call tolerates.

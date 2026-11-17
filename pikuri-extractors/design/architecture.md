@@ -16,8 +16,9 @@ AGENTS.md's gem inventory holds the one-liner this file resolves:
 
 ## Container first, host CLI second
 
-The preferred converter is a one-shot, locally-built docker container
-({Pikuri::Extractors::Documents::IMAGE}): `docker run --rm -i
+The preferred converter is a one-shot, locally-built container
+({Pikuri::Extractors::Documents::IMAGE}), run by podman when it is on
+`PATH`, else docker: `podman run --rm -i
 --network=none --read-only --cap-drop=ALL`, bytes in via stdin, Markdown
 out via stdout, **no volume mounts**. Two reasons over a host-installed
 converter:
@@ -30,11 +31,11 @@ converter:
 - **Reproducibility.** The Dockerfile pins pandoc + markitdown; a host
   install is whatever version the machine happens to have.
 
-When docker is unavailable it falls back to host `pandoc` / `markitdown`
+When neither runtime answers it falls back to host `pandoc` / `markitdown`
 / `pdftotext` CLIs — the same stdin→stdout contract, one code path with
 two argv builders. The fallback trades the sandbox away for whatever the
 host provides, so a host that cares about the untrusted-bytes surface
-keeps docker available and lets the container win.
+keeps podman or docker available and lets the container win.
 
 ## PDF: this gem or pikuri-pdf — pick one per wiring
 
@@ -46,7 +47,7 @@ registry's first-match-wins legible. The trade:
 
 - **This gem** — PDF parsing inside the sandbox (poppler is native code
   running on attacker bytes), one gem for every document format. Costs:
-  docker (or the host CLIs), no lazy paging (each paged read re-converts
+  podman or docker (or the host CLIs), no lazy paging (each paged read re-converts
   the whole PDF — see below), and the generic `:document` kind, so the
   Read tools say "End of file" not "End of PDF" and a scanned PDF reads
   as "(Empty file)" rather than a scanned-image hint.

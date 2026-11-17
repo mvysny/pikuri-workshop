@@ -1,10 +1,11 @@
 # Converter image for Pikuri::Extractors::DOCUMENTS — a one-shot,
 # networkless stdin→stdout document converter. Built locally by the
-# extractor on first use (`docker build -t pikuri-internal-extractors:<version> .`);
+# extractor on first use (`podman build -t pikuri-internal-extractors:<digest> .`,
+# or docker build);
 # never pulled from a registry, so what runs is exactly what you can
 # read here.
 #
-# Runtime contract (enforced by the extractor's `docker run` flags,
+# Runtime contract (enforced by the extractor's `podman run` flags,
 # not by this image): --network=none --read-only --cap-drop=ALL
 # --tmpfs /tmp, no volume mounts. Document bytes arrive on stdin,
 # Markdown leaves on stdout, diagnostics on stderr. Network exists
