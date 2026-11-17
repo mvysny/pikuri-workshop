@@ -26,12 +26,13 @@ require 'pikuri-rag'
 require 'pikuri-stemmers'
 require 'voikko'
 
-voikko = Voikko.new(language: 'fi')   # close it when you're done
-Pikuri::Rag::Extension.new(
-  backend: ..., source: '~/notes', embedder: ...,
-  stemmer: Pikuri::Stemmers::Voikko.new(voikko)
+Pikuri::Rag::Backend::Fts5.new(
+  store:   ...,
+  stemmer: Pikuri::Stemmers::Voikko.new(Voikko.new(language: 'fi'))
 )
 ```
+
+The stemmer closes the Voikko handle when the indexer that owns the keyword index is closed.
 
 Switching stemmers on a saved index empties it at the next start, and the next index run
 re-embeds every note.

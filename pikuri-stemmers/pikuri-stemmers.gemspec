@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description = <<~DESC
     pikuri-stemmers plugs languages other than English into
     pikuri-rag's keyword index, as the +stemmer:+ of
-    +Pikuri::Rag::Extension+. +Pikuri::Stemmers::Voikko+ stems Finnish
+    +Pikuri::Rag::Backend::Fts5+. +Pikuri::Stemmers::Voikko+ stems Finnish
     to dictionary forms and splits compounds, so "katu" finds
     "kadulla" and "kone" finds "tietokoneella".
 

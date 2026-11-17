@@ -12,6 +12,8 @@ describe Pikuri::Stemmers::Voikko do
   def fake_voikko(readings)
     Object.new.tap do |voikko|
       voikko.define_singleton_method(:language) { 'fi' }
+      voikko.define_singleton_method(:close) { @closed = true }
+      voikko.define_singleton_method(:closed?) { @closed == true }
       voikko.define_singleton_method(:analyze) do |word|
         readings.fetch(word, []).map { |attributes| ::Voikko::Analysis.new(word, attributes) }
       end
@@ -74,6 +76,11 @@ describe Pikuri::Stemmers::Voikko do
     it 'names the language and the compound split, so changing either rebuilds the index' do
       assert_equal 'voikko-fi+compounds', stemmer.id
     end
+  end
+
+  it 'closes its handle, as the Fts5 it is handed does at teardown' do
+    Pikuri::Rag::Backend::Fts5.new(stemmer: stemmer).close
+    assert voikko.closed?
   end
 
   # The readings above are hand-written, so check the same shapes against the

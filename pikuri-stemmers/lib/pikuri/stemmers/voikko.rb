@@ -3,7 +3,7 @@
 module Pikuri
   module Stemmers
     # Finnish stemming by dictionary form, as the +stemmer:+ of
-    # +Pikuri::Rag::Extension+ (the +Pikuri::Rag::Stemmer+ duck), over an
+    # +Pikuri::Rag::Backend::Fts5+ (the +Pikuri::Rag::Stemmer+ duck), over an
     # open handle of the +voikko+ gem:
     #
     #   stemmer = Pikuri::Stemmers::Voikko.new(::Voikko.new(language: 'fi'))
@@ -13,8 +13,8 @@ module Pikuri
     #   stemmer.index_stems('yrityskirjautumisen')  # => ["yrityskirjautua", "yritys", "kirjautua"]
     #
     # Needs, on the host: the distro's +libvoikko1+ and +voikko-fi+, and
-    # +gem 'voikko', '~> 0.2'+ in its Gemfile. The host owns the handle's
-    # +#close+.
+    # +gem 'voikko', '~> 0.2'+ in its Gemfile. It owns the handle: {#close}
+    # closes it, and the +Fts5+ it is handed calls that.
     #
     # An English word is unknown to Voikko and answers itself, which leaves
     # it to FTS5's +porter+ as before, so a mixed corpus keeps its English
@@ -63,6 +63,14 @@ module Pikuri
           [analysis.base_form&.downcase, *part_stems]
         end.compact.uniq
         forms.empty? ? [word.downcase] : forms
+      end
+
+      # Close the Voikko handle. Idempotent.
+      #
+      # @return [void]
+      def close
+        @voikko.close
+        nil
       end
     end
   end
