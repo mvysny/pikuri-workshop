@@ -197,6 +197,98 @@ RSpec.describe Pikuri::Conversations::Conversation do
     assert_equal [['first', false], ['second', true]], mid
   end
 
+  context 'PendingChanged' do
+    # Each event's queue, as [kind, content] pairs.
+    def reported = recorder.all(Event::PendingChanged).map { |e| e.items.map { [_1.kind, _1.content] } }
+
+    it 'reports a mid-turn message with its content, then the drain empties it' do
+      transport = Pikuri::Testing.fake_transport(gate:) do |llm|
+        llm.reply('one')
+        llm.reply('two')
+      end
+      conv = open(transport)
+      recorder.await(Event::Ready)
+      gate.block!
+      conv.submit('first')
+      parked.pop
+
+      conv.submit('second', system: ['SKILL'])
+      gate.release!
+      recorder.await(Event::TurnEnded, nth: 2)
+
+      assert_equal [[[:system, 'SKILL']], [[:system, 'SKILL'], [:user, 'second']], []], reported
+      assert recorder.all(Event::PendingChanged).all? { _1.items.frozen? }
+      in_queue = recorder.all(Event::PendingChanged)[1]
+      assert_equal 2, in_queue.count
+      assert((in_queue in Event::PendingChanged(count: 2, items: [_, _])))
+      assert_match(/\A2 pending\z/, in_queue.to_s)
+    end
+
+    it 'reports the messages waiting on a boot, and their leaving for the first turn' do
+      conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('done') }, boot: false)
+
+      conv.submit('extract page 3', system: ['SKILL'])
+      recorder.await(Event::TurnEnded)
+
+      # The boot keeps the message for the turn and queues the skill ahead of it.
+      assert_equal [[[:system, 'SKILL'], [:user, 'extract page 3']], [[:system, 'SKILL']], []], reported
+    end
+
+    it 'reports a lone message waiting on a boot gone once the turn takes it' do
+      conv = open(Pikuri::Testing.fake_transport { |llm| llm.reply('hi') }, boot: false)
+
+      conv.submit('hello')
+      recorder.await(Event::TurnEnded)
+
+      assert_equal [[[:user, 'hello']], []], reported
+    end
+
+    it 'reports a discard while booting, and while a turn runs, as empty' do
+      probe_gate = Queue.new
+      detector.define_singleton_method(:detect_modalities) do |*, **|
+        probe_gate.pop
+        nil
+      end
+      transport = Pikuri::Testing.fake_transport(modalities: nil, gate:) do |llm|
+        llm.reply('one')
+        llm.reply('two')
+      end
+      conv = open(transport)
+      conv.submit('hello')
+      assert_equal ['hello'], conv.discard_pending.map(&:content)
+      assert_equal [[[:user, 'hello']], []], reported
+
+      probe_gate << true
+      recorder.await(Event::Ready)
+      gate.block!
+      conv.submit('first')
+      parked.pop
+      conv.submit('second')
+      assert_equal ['second'], conv.discard_pending.map(&:content)
+      gate.release!
+      recorder.await(Event::TurnEnded)
+
+      assert_equal [[[:user, 'hello']], [], [[:user, 'second']], []], reported
+    end
+
+    it 'reports a clear that drops what waits as empty' do
+      transport = Pikuri::Testing.fake_transport(gate:) { |llm| llm.reply('one') }
+      conv = open(transport)
+      recorder.await(Event::Ready)
+      gate.block!
+      conv.submit('first')
+      parked.pop
+      conv.submit('second')
+      conv.cancel
+      gate.release!
+      recorder.await(Event::TurnEnded)
+
+      assert_equal :cleared, conv.clear
+      recorder.await(Event::Ready, nth: 2)
+      assert_equal [[[:user, 'second']], []], reported
+    end
+  end
+
   it 'keeps an undelivered message across a cancel, and a blank submit re-sends it' do
     transport = Pikuri::Testing.fake_transport(gate:) do |llm|
       llm.tool_call('calculator', expression: '1 + 1')

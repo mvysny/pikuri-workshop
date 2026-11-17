@@ -1,7 +1,7 @@
 GIT
   remote: https://codeberg.org/mvysny/pikuri.git
-  revision: de540ea2f5b78ce19733084fa571ed98a6b21604
-  ref: de540ea2f5b78ce19733084fa571ed98a6b21604
+  revision: 9b6a7e3f6b9af51dab7262f72f820fcfff323f31
+  ref: 9b6a7e3f6b9af51dab7262f72f820fcfff323f31
   specs:
     pikuri-core (0.1.0)
       faraday (~> 2.9)

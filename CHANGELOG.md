@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- **Breaking:** `Pikuri::Conversations::Event::PendingChanged` carries `items:`, the waiting `Interloper::Item`s in delivery order (`:user` and `:system`), instead of `count:`; `count` still reads and pattern-matches as `items.size`, but build the event with `items:`, and a boot that takes its only waiting message for the first turn now reports `[]` rather than leaving the last count standing (pikuri `9b6a7e3`).
 - **Breaking:** `Pikuri::Os::FileIndex.pick` returns the first ready file index or raises `FileIndex::Unavailable` naming why each one isn't; `LocalSearch` and `Recoll` answer `unavailable_reason` (an empty index counts as not ready) in place of `available?` and `check_binaries!`, the fileindex tools no longer probe at construction, and `Extension::FILE_INDEX_BACKENDS` is now `FileIndex::BACKENDS`.
 - `Pikuri::Extractors::Documents` runs its converter container on podman when it is installed, else docker, as `Mem0Server` does (`runtime:` forces either).
 - `fileindex_search` on localsearch shows about 40 words around each match instead of 12, the matched words marked `>>like this<<`.

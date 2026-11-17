@@ -89,12 +89,27 @@ module Pikuri
         def to_s = user_message ? "Turn started: #{user_message}" : 'Turn started'
       end
 
-      # The number of messages waiting for the agent changed — queued while it
-      # booted, or injected into a running turn and not yet delivered.
+      # The messages waiting for the agent changed — queued while it booted, or
+      # injected into a running turn and not yet delivered. Each event carries
+      # the whole queue, so a host redraws its "queued" bubbles from the last
+      # one alone:
       #
-      # @!attribute [r] count
-      #   @return [Integer]
-      PendingChanged = Data.define(:count) do
+      #   in Event::PendingChanged(items:) then bubbles.show(items.select { _1.kind == :user })
+      #   in Event::PendingChanged(count:) then badge.text = "#{count} queued"
+      #
+      # +count+ is +items.size+, matchable like a field.
+      #
+      # @!attribute [r] items
+      #   @return [Array<Pikuri::Agent::Control::Interloper::Item>] frozen, in
+      #     delivery order, +:user+ and +:system+ alike; +[]+ once nothing waits
+      PendingChanged = Data.define(:items) do
+        # @return [Integer] how many messages wait
+        def count = items.size
+
+        # @param _keys [Array<Symbol>, nil]
+        # @return [Hash{Symbol => Object}]
+        def deconstruct_keys(_keys) = { items:, count: }
+
         # @return [String]
         def to_s = "#{count} pending"
       end

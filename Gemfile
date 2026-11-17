@@ -21,7 +21,7 @@ gemspec path: 'pikuri-stemmers'
 # specs' choices: web tools, the PDF extractor, Thunderbird for
 # pikuri-computer, vectordb for the shared Qdrant image pin, and rag for
 # pikuri-stemmers' spec through a real FTS5 index.
-PIKURI_REF = 'de540ea2f5b78ce19733084fa571ed98a6b21604'
+PIKURI_REF = '9b6a7e3f6b9af51dab7262f72f820fcfff323f31'
 git 'https://codeberg.org/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-pdf'

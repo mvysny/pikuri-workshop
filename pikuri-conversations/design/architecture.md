@@ -65,7 +65,7 @@ threads (`Conversation#locked`'s `@effects` and `@spawns`), and they go out afte
 So a host may hold its own lock in a listener and read `status` under that same lock
 (`pikuri-webui:D_global_monitor`). The order is **host lock → conversation lock → the agent's
 `Interloper` lock**. The gem owns `Interloper#on_change` for the same reason: a mid-turn `submit`
-injects under the conversation's lock, so the count change is queued like any other event.
+injects under the conversation's lock, so the queue's change is queued like any other event.
 
 **Whoever moves a conversation to `:running` resets its `Cancellable` in the same critical
 section** — `submit` on the caller's thread, a boot that found a message waiting, a turn
@@ -123,6 +123,11 @@ A `submit` while `:running` injects into the `Interloper` (`:injected`); the run
 it after its current tool batch, or step 6 starts a bare turn for it. A `cancel` keeps
 undelivered injections; the host decides whether a blank `submit` re-sends them or
 `discard_pending` takes them (`D_submit_injects`).
+
+`PendingChanged` carries the queue itself, never a diff: `@waiting`'s copy while booting, the
+`Interloper`'s snapshot after, the same `Interloper::Item`s in both, so a host draws its queued
+bubbles without knowing the phase. A boot that takes the last waiting message as its first turn's
+reports `[]`, since no inject is left to say so.
 
 **Shutdown** (`Conversations#shutdown(timeout:)`): `close(force: true)` on each, then wait for
 each `Event::Closed` within the one deadline. `timeout: 0` returns at once, for a host whose

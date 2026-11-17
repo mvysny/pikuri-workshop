@@ -161,7 +161,7 @@ module Pikuri
       end
 
       # Drop every message waiting for the agent. Their count is
-      # {Status#pending}, and {Event::PendingChanged} reports each change.
+      # {Status#pending}; {Event::PendingChanged} reports each change to them.
       #
       # @return [Array<Pikuri::Agent::Control::Interloper::Item>] what was
       #   dropped; empty once closing, so no event follows {Event::Closed}
@@ -172,7 +172,7 @@ module Pikuri
 
           taken = @waiting.dup
           @waiting.clear
-          @effects << Event::PendingChanged.new(count: 0) unless taken.empty?
+          @effects << Event::PendingChanged.new(items: [].freeze) unless taken.empty?
           taken
         end
       end
@@ -216,7 +216,7 @@ module Pikuri
           @waiting.clear
           @history = nil
           @effects << Event::Cleared.new
-          @effects << Event::PendingChanged.new(count: 0) if dropped.positive?
+          @effects << Event::PendingChanged.new(items: [].freeze) if dropped.positive?
           if @state == :booting
             @boot_generation += 1
             @run_after_boot = false
@@ -393,7 +393,7 @@ module Pikuri
         when :new, :booting
           unless items.empty?
             @waiting.concat(items)
-            @effects << Event::PendingChanged.new(count: @waiting.size)
+            @effects << Event::PendingChanged.new(items: @waiting.dup.freeze)
           end
           return :ignored if @waiting.empty?
 
@@ -512,6 +512,9 @@ module Pikuri
             agent.interloper.on_change = method(:pending_changed)
             first = @waiting.pop if @waiting.last&.kind == :user
             @waiting.each { |item| inject(agent, item) }
+            # Each inject reports the queue it leaves; with none, nothing would
+            # say the first message left it to become the turn's.
+            @effects << Event::PendingChanged.new(items: [].freeze) if first && @waiting.empty?
             @waiting.clear
             @effects << Event::Ready.new(trifecta:)
             @cap = facts.context_window
@@ -670,12 +673,12 @@ module Pikuri
         end
       end
 
-      # +Interloper#on_change+: fires on whichever thread changed the count.
+      # +Interloper#on_change+: fires on whichever thread changed the queue.
       # Under this lock it is a mid-turn {#submit} or a {#discard_pending}, so
       # the event waits for the lock to drop; elsewhere it is the agent's own
       # drain, on the turn thread.
-      def pending_changed(count)
-        event = Event::PendingChanged.new(count:)
+      def pending_changed(items)
+        event = Event::PendingChanged.new(items:)
         if @lock.owned?
           @effects << event
         else

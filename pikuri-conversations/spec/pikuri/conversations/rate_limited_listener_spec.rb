@@ -93,7 +93,8 @@ RSpec.describe Pikuri::Conversations::RateLimitedListener do
   it "passes a conversation's own event straight through, leaving the buffers alone" do
     listener.on_event(assistant_delta('A0'))
     listener.on_event(assistant_delta('A1'))
-    pending = Pikuri::Conversations::Event::PendingChanged.new(count: 1)
+    queued = Pikuri::Agent::Control::Interloper::Item.new(kind: :user, content: 'also')
+    pending = Pikuri::Conversations::Event::PendingChanged.new(items: [queued].freeze)
     listener.on_event(pending)
     assert_equal [assistant_delta('A0'), pending], inner.events
 
