@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-LOCALSEARCH_AVAILABLE = Pikuri::Os::LocalSearch.available? unless defined?(LOCALSEARCH_AVAILABLE)
-
 RSpec.describe Pikuri::Os::FileindexRead do
   def stub_backend_read(&block)
     original = Pikuri::Os::LocalSearch.method(:read_text)
@@ -125,16 +123,9 @@ RSpec.describe Pikuri::Os::FileindexRead do
     end
   end
 
-  if LOCALSEARCH_AVAILABLE
-    it 'constructs as a Pikuri::Tool named fileindex_read' do
-      tool = described_class.new(backend: backend)
-      assert_kind_of Pikuri::Tool, tool
-      assert_equal 'fileindex_read', tool.name
-    end
-  else
-    it 'raises a clear error at construction when the backend binary is missing' do
-      err = assert_raises(RuntimeError) { described_class.new(backend: backend) }
-      assert_includes err.message, 'localsearch'
-    end
+  it 'constructs as a Pikuri::Tool named fileindex_read' do
+    tool = described_class.new(backend: backend)
+    assert_kind_of Pikuri::Tool, tool
+    assert_equal 'fileindex_read', tool.name
   end
 end

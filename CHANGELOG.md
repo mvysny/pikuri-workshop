@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- **Breaking:** `Pikuri::Os::FileIndex.pick` returns the first ready file index or raises `FileIndex::Unavailable` naming why each one isn't; `LocalSearch` and `Recoll` answer `unavailable_reason` (an empty index counts as not ready) in place of `available?` and `check_binaries!`, the fileindex tools no longer probe at construction, and `Extension::FILE_INDEX_BACKENDS` is now `FileIndex::BACKENDS`.
 - `Pikuri::Extractors::Documents` runs its converter container on podman when it is installed, else docker, as `Mem0Server` does (`runtime:` forces either).
 - `fileindex_search` on localsearch shows about 40 words around each match instead of 12, the matched words marked `>>like this<<`.
 - `fileindex_search` shows each file's indexed text size and answers a file passed as `folder` with a pointer to `fileindex_read`, whose new `pattern` returns just the matching lines with their line numbers; both backends' `search` hits carry `text_size:`.

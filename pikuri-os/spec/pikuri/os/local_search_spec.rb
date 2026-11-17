@@ -110,33 +110,38 @@ RSpec.describe Pikuri::Os::LocalSearch do
     end
   end
 
-  describe '.available?' do
-    it 'is true when the index answers' do
-      with_spawn(success: true, output: "Results:\n  true\n") { assert described_class.available? }
+  describe '.unavailable_reason' do
+    it 'is nil when the index holds a file' do
+      with_spawn(success: true, output: "Results:\n  v:file%3A%2F%2F%2Fhome%2Fu%2Fa.txt\n") do
+        assert_nil described_class.unavailable_reason
+      end
     end
 
-    it 'is false (no raise) when the index does not answer' do
-      with_spawn(success: false, output: 'not provided by any .service files') { refute described_class.available? }
+    it 'says the index is empty when it answers with no file' do
+      with_spawn(success: true, output: "Results:\n  None\n") do
+        assert_includes described_class.unavailable_reason, 'the index holds no files yet'
+      end
     end
 
-    it 'is false (no raise) when tinysparql is missing' do
+    it 'names the indexer package and what tinysparql said when the index does not answer' do
+      said = 'Could not establish a connection to Tracker: The name org.freedesktop.LocalSearch3 ' \
+             'was not provided by any .service files'
+      with_spawn(success: false, output: said) do
+        reason = described_class.unavailable_reason
+        assert_includes reason, said
+        assert_includes reason, "'localsearch' package"
+      end
+    end
+
+    it 'names both packages when tinysparql is missing' do
       original = Pikuri::Subprocess.method(:spawn)
       Pikuri::Subprocess.define_singleton_method(:spawn) { |*_a, **_k| raise Errno::ENOENT, 'tinysparql' }
       begin
-        refute described_class.available?
+        reason = described_class.unavailable_reason
+        assert_includes reason, "'tinysparql' command is missing"
+        assert_includes reason, "'localsearch'"
       ensure
         restore_spawn(original)
-      end
-    end
-  end
-
-  describe '.check_binaries!' do
-    it 'names both packages and what the probe saw' do
-      with_spawn(success: false, output: 'not provided by any .service files') do
-        err = assert_raises(RuntimeError) { described_class.check_binaries! }
-        assert_includes err.message, "'localsearch'"
-        assert_includes err.message, "'tinysparql'"
-        assert_includes err.message, 'not provided by any .service files'
       end
     end
   end

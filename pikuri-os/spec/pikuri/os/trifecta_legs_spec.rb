@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 RSpec.describe 'file-index tool trifecta legs' do
-  # A backend stub: the constructors probe for the search binary and splice its
-  # limitations into the description, neither of which these assertions care
-  # about.
+  # A backend stub: the constructor splices its limitations into the
+  # description, which these assertions don't care about.
   let(:backend) do
     Module.new do
-      def self.check_binaries!; end
       def self.limitations = ''
     end
   end

@@ -99,9 +99,21 @@ module Pikuri
         LIMIT 1
       SPARQL
 
-      # @return [String] a no-op query that succeeds only when the index
-      #   answers.
-      PROBE_QUERY = 'ASK { }'
+      # Any one searchable file: a folder alone gives a search nothing to
+      # find, and a file on an unmounted drive is filtered as {SEARCH_QUERY}
+      # filters it.
+      #
+      # @return [String]
+      PROBE_QUERY = <<~SPARQL
+        SELECT (CONCAT("v:", ENCODE_FOR_URI(?url)) AS ?u)
+        WHERE {
+          ?f nie:url ?url .
+          ?elem nie:isStoredAs ?f .
+          FILTER NOT EXISTS { ?elem a nfo:Folder }
+          FILTER (tracker:available(nie:dataSource(?f)))
+        }
+        LIMIT 1
+      SPARQL
 
       # @return [Regexp] a byte GLib leaves unescaped in a +file://+ URI
       #   (+g_filename_to_uri+'s set, measured against the index); anything
@@ -169,30 +181,29 @@ module Pikuri
         nil
       end
 
-      # Verify the index answers; raise loudly otherwise.
+      # Why this index can't answer a search right now, for a human to act
+      # on; +nil+ when it can. An index that answers but holds no files is
+      # not ready either: every search would come back empty.
       #
-      # @raise [RuntimeError] if tinysparql is missing or the index doesn't
-      #   answer, naming the package to install
-      # @return [void]
-      def self.check_binaries!
-        run(PROBE_QUERY)
-        nil
-      rescue Errno::ENOENT
-        raise install_hint("'#{BINARY}' is not on PATH")
-      rescue CommandError => e
-        raise install_hint(e.message)
-      end
+      #   LocalSearch.unavailable_reason
+      #   # => "the index holds no files yet. …"   (nil when ready)
+      #
+      # Starts the localsearch daemon if it is installed but not running, as
+      # any query does (D-Bus activation).
+      #
+      # @return [String, nil]
+      def self.unavailable_reason
+        return nil unless parse_rows(run(PROBE_QUERY)).empty?
 
-      # Non-raising {.check_binaries!}, so a caller can pick another backend
-      # or omit the file-index tools. Starts the localsearch daemon if it is
-      # installed but not running (D-Bus activation), as any query would.
-      #
-      # @return [Boolean]
-      def self.available?
-        run(PROBE_QUERY)
-        true
-      rescue Errno::ENOENT, CommandError
-        false
+        'the index holds no files yet. Right after a first login GNOME may still be ' \
+          'indexing: `localsearch status` shows how far it got. Otherwise pick the ' \
+          'folders to index under GNOME Settings → Search.'
+      rescue Errno::ENOENT
+        "the '#{BINARY}' command is missing. Install the 'localsearch' and '#{BINARY}' " \
+          "packages: GNOME's desktop file index and its query tool."
+      rescue CommandError => e
+        "the index doesn't answer (#{e.message}). Is the 'localsearch' package " \
+          "installed? It is GNOME's desktop file indexer."
       end
 
       # The +file://+ URI the index stores for +path+, escaped the way GLib
@@ -259,16 +270,6 @@ module Pikuri
         encoded.b.gsub(/%([0-9A-Fa-f]{2})/n) { ::Regexp.last_match(1).hex.chr }.force_encoding('UTF-8')
       end
       private_class_method :percent_decode
-
-      # @param reason [String] what the probe saw
-      # @return [String]
-      def self.install_hint(reason)
-        "fileindex_search / fileindex_read need GNOME's desktop file index: the " \
-          "'localsearch' package (the indexer, a GNOME default) and the '#{BINARY}' " \
-          "package (its query CLI). Install both, or wire these tools only on hosts " \
-          "that have them. (#{reason})"
-      end
-      private_class_method :install_hint
     end
   end
 end

@@ -52,13 +52,11 @@ module Pikuri
         - To find something in a long file without reading all of it, pass `pattern`: you get only the matching lines with their line numbers. Then read around a match with `offset` a few lines before it and a small `limit`.
       DESC
 
-      # @param backend [Module] a file-index backend ({LocalSearch} /
-      #   {Recoll}); only +#read_text+ and +#check_binaries!+ are used here.
-      # @raise [RuntimeError] if the backend's binary isn't on +PATH+.
+      # @param backend [Module] a ready file-index backend, from
+      #   {FileIndex.pick}; this tool uses only its +read_text+.
       # @return [FileindexRead]
       def initialize(backend:)
         @backend = backend
-        backend.check_binaries!
         super(
           name: 'fileindex_read',
           description: DESCRIPTION,

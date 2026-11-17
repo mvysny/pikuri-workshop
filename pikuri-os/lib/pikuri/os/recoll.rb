@@ -7,9 +7,9 @@ module Pikuri
     # Backend wrapper over the +recoll+ full-text index, via its headless
     # +recollq+ CLI (Xapian-backed). The DE-independent sibling of
     # {LocalSearch}: same seam shape ({.search} / {.read_text} /
-    # {.available?} / {.check_binaries!}), interchangeable behind the
-    # +fileindex_search+ / +fileindex_read+ tools, and {Extension} wires
-    # whichever is +available?+ first.
+    # {.unavailable_reason}), interchangeable behind the +fileindex_search+ /
+    # +fileindex_read+ tools; {FileIndex.pick} takes it when localsearch
+    # isn't ready.
     #
     # Recall on prose ties +localsearch+, so recoll is *not* a better
     # engine — it earns its place where +localsearch+ is structurally blind
@@ -42,8 +42,11 @@ module Pikuri
       DEFAULT_TOPDIRS = '~'
 
       # @return [String] the Xapian index directory name inside the config
-      #   dir; its presence is what {.available?} treats as "usable".
+      #   dir; missing until +recollindex+ first runs.
       INDEX_DIR = 'xapiandb'
+
+      # @return [String] a query matching every document in the index.
+      ANY_DOCUMENT = 'mime:*'
 
       # Raised when a recollq invocation exits non-zero — a recoverable
       # failure the calling tool renders as +"Error: ..."+.
@@ -199,35 +202,28 @@ module Pikuri
         capturing || !body.empty? ? body.join.chomp : nil
       end
 
-      # Verify recollq is reachable; raise loudly otherwise. Presence is
-      # judged by whether the binary *ran* (no +Errno::ENOENT+), not by exit
-      # status: +recollq -h+ exits non-zero by design, so a zero-exit probe
-      # would false-negative on a perfectly good install.
+      # Why this index can't answer a search right now, for a human to act
+      # on; +nil+ when it can. A built index holding no documents is not
+      # ready either: every search would come back empty.
       #
-      # @raise [RuntimeError] if the binary is missing
-      def self.check_binaries!
-        Pikuri::Subprocess.spawn(BINARY, '-h', chdir: '/').wait
-      rescue Errno::ENOENT
-        raise install_hint
-      end
-
-      # Non-raising *usability* probe — for callers that select a backend
-      # among several and want the one that can actually serve searches.
-      # Stricter than {.check_binaries!}: it requires both the +recollq+
-      # binary *and* a built index ({INDEX_DIR} under {.confdir}), because
-      # an installed-but-never-indexed recoll errors ("Xapian index open
-      # error") on every query — so it must not win backend selection over
-      # a working alternative. See {.check_binaries!} for why exit status is
-      # ignored for the binary half.
+      #   Recoll.unavailable_reason
+      #   # => "no index in /home/u/.recoll yet. Build one with `recollindex`."
       #
-      # @return [Boolean]
-      def self.available?
-        return false unless File.directory?(File.join(confdir, INDEX_DIR))
+      # @return [String, nil]
+      def self.unavailable_reason
+        result = Pikuri::Subprocess.spawn(BINARY, '-F', 'url', '-n', '1', ANY_DOCUMENT, chdir: '/').wait
+        unless result.status.success?
+          return "no index in #{confdir} yet. Build one with `recollindex`." unless File.directory?(File.join(confdir, INDEX_DIR))
 
-        Pikuri::Subprocess.spawn(BINARY, '-h', chdir: '/').wait
-        true
+          return "the index in #{confdir} doesn't answer: #{result.output.strip.lines.last&.strip}"
+        end
+        return nil if result.output.each_line.any? { |line| decode_base64(line.strip)&.start_with?('file://') }
+
+        "the index in #{confdir} holds no documents. Check `topdirs` in " \
+          "#{File.join(confdir, CONFIG_FILE)}, then rerun `recollindex`."
       rescue Errno::ENOENT
-        false
+        "the '#{BINARY}' command is missing. Install the 'recoll' package, then build an index " \
+          'with `recollindex`.'
       end
 
       # Join backslash-continued lines, then read the +topdirs+ value from
@@ -307,15 +303,6 @@ module Pikuri
           "outside them are not found — search those files' text directly instead."
       end
       private_class_method :generic_limitation
-
-      # @return [String]
-      def self.install_hint
-        "fileindex_search / fileindex_read require '#{BINARY}' on PATH — the " \
-          "recoll full-text indexer's headless query CLI (package 'recoll'). " \
-          'Install it and build an index (recollindex), or wire these tools ' \
-          'only on hosts that have it.'
-      end
-      private_class_method :install_hint
     end
   end
 end

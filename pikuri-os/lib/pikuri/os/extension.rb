@@ -43,20 +43,13 @@ module Pikuri
     #
     # == Degradation
     #
-    # The file-index tools need a usable index backend. The extension wires
-    # them on the first of {FILE_INDEX_BACKENDS} that is
-    # {LocalSearch.available? usable} — {LocalSearch} (GNOME, zero-setup),
-    # then {Recoll} (DE-independent, but only with a built index). When none
-    # is usable it logs and omits the tools — the agent still constructs and
-    # works (bash + file tools).
+    # The file-index tools run on the index {FileIndex.pick} finds ready.
+    # When none is, the extension logs each index's reason and omits the
+    # tools: the agent still works through bash and the file tools.
     class Extension
       include Pikuri::Agent::Extension
 
       LOGGER = Pikuri.logger_for('Os::Extension')
-
-      # @return [Array<Module>] file-index backends in preference order; the
-      #   first one whose +#available?+ is true backs the fileindex tools.
-      FILE_INDEX_BACKENDS = [LocalSearch, Recoll].freeze
 
       # @param filesystem [Pikuri::Workspace::Filesystem] the host fs view
       #   for the file tools and bash (typically
@@ -72,13 +65,11 @@ module Pikuri
       # @param memory [MachineMemory] the MACHINE.md reader.
       # @param system_info [SystemInfo] the boot-time machine facts.
       # @param file_index_backends [Array<Module>] file-index backends in
-      #   preference order; defaults to {FILE_INDEX_BACKENDS}. The first
-      #   usable one backs the fileindex tools; if none is usable they are
-      #   omitted.
+      #   preference order, handed to {FileIndex.pick}.
       def initialize(filesystem:, confirmer:,
                      sandbox: Pikuri::Code::Bash::Sandbox::NONE, plan_mode: nil,
                      memory: MachineMemory.new, system_info: SystemInfo.new,
-                     file_index_backends: FILE_INDEX_BACKENDS)
+                     file_index_backends: FileIndex::BACKENDS)
         @filesystem = filesystem
         @confirmer = confirmer
         @sandbox = sandbox
@@ -103,16 +94,7 @@ module Pikuri
                           plan_mode: @plan_mode
                         ))
 
-        backend = @file_index_backends.find(&:available?)
-        if backend
-          c.add_tool FileindexSearch.new(backend: backend)
-          c.add_tool FileindexRead.new(backend: backend)
-        else
-          tried = @file_index_backends.map(&:label).join(' / ')
-          LOGGER.warn("no usable file index (tried #{tried}); fileindex_search / " \
-                      'fileindex_read disabled on this host.')
-        end
-
+        add_file_index_tools(c)
         nil
       end
 
@@ -128,6 +110,16 @@ module Pikuri
       end
 
       private
+
+      # @param c [Pikuri::Agent::Configurator]
+      # @return [void]
+      def add_file_index_tools(c)
+        backend = FileIndex.pick(@file_index_backends)
+        c.add_tool FileindexSearch.new(backend: backend)
+        c.add_tool FileindexRead.new(backend: backend)
+      rescue FileIndex::Unavailable => e
+        LOGGER.warn("#{e.message}\nfileindex_search / fileindex_read are off on this host.")
+      end
 
       # System-prompt line shown when MACHINE.md doesn't exist yet, so the
       # agent still knows where to record durable facts.

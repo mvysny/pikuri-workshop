@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-LOCALSEARCH_AVAILABLE = Pikuri::Os::LocalSearch.available? unless defined?(LOCALSEARCH_AVAILABLE)
-
 RSpec.describe Pikuri::Os::FileindexSearch do
   # Stub the LocalSearch backend so these run without the binary.
   def stub_backend_search(&block)
@@ -127,23 +125,15 @@ RSpec.describe Pikuri::Os::FileindexSearch do
 
   it 'appends the backend limitations to the tool description' do
     fake = Module.new do
-      def self.check_binaries! = nil
       def self.limitations = 'BACKEND BLIND SPOTS HERE'
     end
     tool = described_class.new(backend: fake)
     assert_includes tool.description, 'BACKEND BLIND SPOTS HERE'
   end
 
-  if LOCALSEARCH_AVAILABLE
-    it 'constructs as a Pikuri::Tool named fileindex_search' do
-      tool = described_class.new(backend: backend)
-      assert_kind_of Pikuri::Tool, tool
-      assert_equal 'fileindex_search', tool.name
-    end
-  else
-    it 'raises a clear error at construction when the backend binary is missing' do
-      err = assert_raises(RuntimeError) { described_class.new(backend: backend) }
-      assert_includes err.message, 'localsearch'
-    end
+  it 'constructs as a Pikuri::Tool named fileindex_search' do
+    tool = described_class.new(backend: backend)
+    assert_kind_of Pikuri::Tool, tool
+    assert_equal 'fileindex_search', tool.name
   end
 end

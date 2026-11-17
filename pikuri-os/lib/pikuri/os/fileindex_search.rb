@@ -7,12 +7,11 @@ module Pikuri
     # snippet the index provides and the size of its indexed text, so the
     # model can tell a file it may read whole from one it should search
     # with +fileindex_read+'s +pattern+. A {Pikuri::Tool} in the
-    # {Pikuri::Workspace::Search::Grep} shape (shells out through the backend,
-    # fails loud at construction if the binary is missing).
+    # {Pikuri::Workspace::Search::Grep} shape, shelling out through the
+    # backend.
     #
-    # The +backend:+ is a stateless module satisfying the file-index duck
-    # type (see {#initialize}) — {LocalSearch} or {Recoll}, whichever
-    # {Extension} finds usable. Backend-specific text (the blind-spot note,
+    # The +backend:+ is the stateless module {FileIndex.pick} returns —
+    # {LocalSearch} or {Recoll}. Backend-specific text (the blind-spot note,
     # the error label) is read from the backend, so a new index arm ships
     # its own without touching the tool.
     #
@@ -62,15 +61,12 @@ module Pikuri
         - Output is truncated to #{MAX_BYTES_LABEL}; narrow the query if it ends in a truncation marker.
       DESC
 
-      # @param backend [Module] a file-index backend ({LocalSearch} /
-      #   {Recoll}) — must respond to +#search+, +#read_text+,
-      #   +#check_binaries!+, +#limitations+, +#label+ and define a
-      #   +CommandError+.
-      # @raise [RuntimeError] if the backend's binary isn't on +PATH+.
+      # @param backend [Module] a ready file-index backend, from
+      #   {FileIndex.pick}; this tool uses its +search+, +limitations+,
+      #   +label+ and +CommandError+.
       # @return [FileindexSearch]
       def initialize(backend:)
         @backend = backend
-        backend.check_binaries!
         super(
           name: 'fileindex_search',
           description: "#{DESCRIPTION}\n#{backend.limitations}",

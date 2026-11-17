@@ -182,53 +182,57 @@ RSpec.describe Pikuri::Os::Recoll do
     end
   end
 
-  describe '.available?' do
-    # available? requires BOTH a built index and the binary; drive it with a
-    # confdir tmpdir that does/doesn't contain an xapiandb.
-    def with_confdir(indexed:)
+  describe '.unavailable_reason' do
+    # Spawn is stubbed; the confdir decides whether a never-built index is
+    # told apart from a broken one.
+    def reason_for(success: true, output: '', indexed: true)
       Dir.mktmpdir do |confdir|
         Dir.mkdir(File.join(confdir, 'xapiandb')) if indexed
         original_env = ENV['RECOLL_CONFDIR']
         ENV['RECOLL_CONFDIR'] = confdir
+        original = stub_spawn(success: success, output: output)
         begin
-          yield
+          [described_class.unavailable_reason, confdir]
         ensure
+          restore_spawn(original)
           ENV['RECOLL_CONFDIR'] = original_env
         end
       end
     end
 
-    it 'is true when the index exists and recollq runs (ignoring its non-zero -h exit)' do
-      with_confdir(indexed: true) do
-        original = stub_spawn(success: false, output: 'Usage: recollq')
-        begin
-          assert described_class.available?
-        ensure
-          restore_spawn(original)
-        end
-      end
+    # recollq's -F url output: a banner, then one base64 token per hit.
+    def url_output(*urls)
+      "Recoll query: Query((<alldocuments> FILTER T*))\n#{urls.size} results (printing  1 max):\n" +
+        urls.map { |url| "#{Base64.strict_encode64(url)} \n" }.join
     end
 
-    it 'is false when there is no built index, even though recollq is present' do
-      with_confdir(indexed: false) do
-        original = stub_spawn(success: false, output: 'Usage: recollq')
-        begin
-          refute described_class.available?
-        ensure
-          restore_spawn(original)
-        end
-      end
+    it 'is nil when the index holds a document' do
+      assert_nil reason_for(output: url_output('file:///home/u/docs/a.txt')).first
     end
 
-    it 'is false (no raise) when the binary is missing' do
-      with_confdir(indexed: true) do
-        original = Pikuri::Subprocess.method(:spawn)
-        Pikuri::Subprocess.define_singleton_method(:spawn) { |*_a, **_k| raise Errno::ENOENT, 'recollq' }
-        begin
-          refute described_class.available?
-        ensure
-          Pikuri::Subprocess.define_singleton_method(:spawn, original)
-        end
+    it 'says the index is empty, naming the config to fix, when it holds no document' do
+      reason, confdir = reason_for(output: "Recoll query: Query((<alldocuments> FILTER T*))\n0 results\n")
+      assert_includes reason, "the index in #{confdir} holds no documents"
+      assert_includes reason, "#{confdir}/recoll.conf"
+    end
+
+    it 'says to run recollindex when no index was ever built' do
+      reason, confdir = reason_for(success: false, indexed: false, output: 'Xapian index open error: …')
+      assert_equal "no index in #{confdir} yet. Build one with `recollindex`.", reason
+    end
+
+    it "quotes recollq's last line when a built index doesn't answer" do
+      reason, = reason_for(success: false, output: ":2:../rcldb/rcldb.cpp:241::Db::open: …\nXapian index open error: corrupt\n")
+      assert_includes reason, "doesn't answer: Xapian index open error: corrupt"
+    end
+
+    it 'names the package when recollq is missing' do
+      original = Pikuri::Subprocess.method(:spawn)
+      Pikuri::Subprocess.define_singleton_method(:spawn) { |*_a, **_k| raise Errno::ENOENT, 'recollq' }
+      begin
+        assert_includes described_class.unavailable_reason, "Install the 'recoll' package"
+      ensure
+        restore_spawn(original)
       end
     end
   end

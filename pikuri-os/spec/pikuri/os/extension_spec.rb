@@ -21,13 +21,12 @@ RSpec.describe Pikuri::Os::Extension do
   end
 
   # A file-index backend satisfying the duck type the fileindex tools need,
-  # without spawning any real indexer (check_binaries! would shell out).
-  def stub_backend(available:)
+  # without spawning any real indexer.
+  def stub_backend(available:, label: 'stub')
     Module.new do
-      define_singleton_method(:available?)     { available }
-      define_singleton_method(:check_binaries!) { nil }
-      define_singleton_method(:limitations)    { 'STUB LIMITS' }
-      define_singleton_method(:label)          { 'stub' }
+      define_singleton_method(:unavailable_reason) { available ? nil : "#{label} is not ready" }
+      define_singleton_method(:limitations)        { 'STUB LIMITS' }
+      define_singleton_method(:label)              { label }
     end
   end
 
@@ -66,18 +65,17 @@ RSpec.describe Pikuri::Os::Extension do
     end
 
     it 'picks the first usable backend in priority order' do
-      c = build_configurator
-      first  = stub_backend(available: false)
-      second = stub_backend(available: true)
-      chosen = nil
-      second.define_singleton_method(:check_binaries!) do
-        chosen = :second
-        nil
-      end
-      configure!(c, backends: [first, second])
+      second = stub_backend(available: true, label: 'second')
+      with_singleton(Pikuri::Os::FileindexSearch, :new) do |orig|
+        chosen = nil
+        Pikuri::Os::FileindexSearch.define_singleton_method(:new) do |**kwargs|
+          chosen = kwargs[:backend]
+          orig.call(**kwargs)
+        end
 
-      assert_equal :second, chosen, 'should skip the unavailable backend and use the next usable one'
-      assert_includes c.tools.map(&:name), 'fileindex_search'
+        configure!(build_configurator, backends: [stub_backend(available: false), second])
+        assert_same second, chosen, 'should skip the unready backend and use the next one'
+      end
     end
 
     it 'contributes the machine facts and the memory affordance via system_prompt_snippets' do
@@ -160,6 +158,20 @@ RSpec.describe Pikuri::Os::Extension do
       assert_includes names, 'read'
       refute_includes names, 'fileindex_search'
       refute_includes names, 'fileindex_read'
+    end
+
+    it "logs each backend's reason" do
+      logger = described_class::LOGGER
+      warnings = []
+      with_singleton(logger, :warn) do
+        logger.define_singleton_method(:warn) { |message| warnings << message }
+        configure!(build_configurator, backends: [stub_backend(available: false, label: 'localsearch'),
+                                                  stub_backend(available: false, label: 'recoll')])
+      end
+
+      assert_equal 1, warnings.size
+      assert_includes warnings.first, '- localsearch: localsearch is not ready'
+      assert_includes warnings.first, '- recoll: recoll is not ready'
     end
   end
 end

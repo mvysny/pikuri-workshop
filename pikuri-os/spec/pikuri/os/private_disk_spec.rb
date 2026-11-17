@@ -20,7 +20,6 @@ RSpec.describe 'whole-machine workspace is private' do
 
   it 'agrees with what the file-index tools already declare about the same disk' do
     backend = Module.new do
-      def self.check_binaries!; end
       def self.limitations = ''
     end
     ws = Pikuri::Workspace::Workspace.new(filesystem: whole_disk(private: true))
@@ -38,7 +37,6 @@ RSpec.describe 'whole-machine workspace is private' do
     # private changes *who is named*, not what is concluded. Pinned so a future
     # reader does not mistake the declaration for a severity change.
     backend = Module.new do
-      def self.check_binaries!; end
       def self.limitations = ''
     end
     verdicts = [false, true].map do |declared|

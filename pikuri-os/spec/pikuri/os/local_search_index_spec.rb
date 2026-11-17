@@ -79,10 +79,24 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
     assert_nil described_class.read_text("#{@index.corpus}/nope.txt")
   end
 
+  it 'is ready once the index holds a file' do
+    assert_nil described_class.unavailable_reason
+  end
+
   it 'serves the fileindex_search tool end to end' do
     out = Pikuri::Os::FileindexSearch.search(query: 'zebra', folder: "#{@index.corpus}/alpha",
                                              backend: described_class).to_s
     assert_includes out, "#{@index.corpus}/alpha/a.txt  (66 B of text)\n  The quick >>zebra<< jumps"
     assert_includes out, 'Found 1 file'
+  end
+end
+
+RSpec.describe Pikuri::Os::LocalSearch, 'against an empty private index' do
+  before(:all) { @index = PrivateLocalSearch.new({}).start if PrivateLocalSearch.usable? }
+  after(:all) { @index&.stop }
+  before { skip 'no localsearch-3 / dbus-daemon / tinysparql on this host' unless @index }
+
+  it 'is not ready, though the index answers' do
+    assert_includes described_class.unavailable_reason, 'the index holds no files yet'
   end
 end

@@ -121,8 +121,8 @@ cases are *already* covered by the wired `grep`/`glob` (scoped, exact,
 zero-setup, blind to none of it). So recoll's marginal value over the
 shipped `localsearch` + grep pairing is a thin slice: fast indexed,
 stemmed, ranked search over *large non-code corpora* outside GNOME's
-indexed set. That thinness is why {Pikuri::Os::Extension}'s
-`FILE_INDEX_BACKENDS` order encodes "localsearch if you have it": recoll
+indexed set. That thinness is why {Pikuri::Os::FileIndex}'s
+`BACKENDS` order encodes "localsearch if you have it": recoll
 is the fallback for the **non-GNOME host** (no `localsearch` at all) or
 the large non-code corpus wanting fast indexed ranking grep would scan
 too slowly.
