@@ -8,12 +8,13 @@ module Pikuri
     #
     #   LocalSearch.search(query: 'lease', limit: 10, folder: '/home/u/Documents')
     #   # => [{ path: '/home/u/Documents/Housing/lease-agreement.pdf',
-    #   #       snippet: 'Residential Lease Agreement Landlord: …' }, …]
+    #   #       snippet: 'Residential >>Lease<< Agreement Landlord: …' }, …]
     #   LocalSearch.read_text('/home/u/Documents/Housing/lease-agreement.pdf')
     #   # => "Residential Lease Agreement\nLandlord: …"   (nil when not indexed)
     #
-    # Hits are ranked by relevance, one per file, with the one snippet the
-    # index keeps; a file matches by its name or its extracted text. PDFs
+    # Hits are ranked by relevance, one per file, each with one snippet of
+    # about {SNIPPET_WORDS} words around the match, matched words marked
+    # +>>like this<<+; a file matches by its name or its extracted text. PDFs
     # and office docs come for free: the index extracted their text, so
     # {.read_text} needs no extractor here.
     #
@@ -42,6 +43,14 @@ module Pikuri
       #   index under; querying it starts the daemon through D-Bus activation.
       DBUS_SERVICE = 'org.freedesktop.LocalSearch3'
 
+      # @return [Integer] words of context in a snippet: enough to tell an
+      #   invoice from a book that mentions one without reading either.
+      SNIPPET_WORDS = 40
+
+      # @return [Array(String, String)] what wraps each matched word in a
+      #   snippet, so the model sees which words hit.
+      MATCH_MARKERS = ['>>', '<<'].freeze
+
       # The ranked, folder-scoped search. A file matches by name (first
       # branch, no snippet) or by extracted text (second branch); +MAX+ over
       # the group keeps the better rank and the non-empty snippet.
@@ -59,7 +68,7 @@ module Pikuri
             ?elem fts:match ~query ;
               nie:isStoredAs ?f .
             BIND (fts:rank(?elem) AS ?rank)
-            BIND (fts:snippet(?elem, "", "", "…", 12) AS ?snippet)
+            BIND (fts:snippet(?elem, "#{MATCH_MARKERS[0]}", "#{MATCH_MARKERS[1]}", "…", #{SNIPPET_WORDS}) AS ?snippet)
           }
           ?f nie:url ?url .
           FILTER (tracker:available(nie:dataSource(?f)))

@@ -34,7 +34,7 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
     hits = search('zebra')
     assert_equal ['alpha/a.txt', 'beta/b.md', 'beta2/e.txt', "#{ODD}/d.txt"], relative(hits)
     b = hits.find { |hit| hit[:path].end_with?('/b.md') }
-    assert_equal 'A zebra, a mouse, and "quoted, commas" here.', b[:snippet]
+    assert_equal 'A >>zebra<<, a mouse, and "quoted, commas" here.', b[:snippet]
   end
 
   it 'limits a search to one folder, by whole path components' do
@@ -48,6 +48,13 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
   it 'ranks the better match first, before the limit applies' do
     hits = search('otter', limit: 1)
     assert_equal ['rank/many.txt'], relative(hits)
+  end
+
+  it 'cuts a long text to a snippet of SNIPPET_WORDS words around the match' do
+    one = search('otter').find { |hit| hit[:path].end_with?('/one.txt') }
+    assert one[:snippet].start_with?('One >>otter<< among many'), one[:snippet]
+    assert one[:snippet].end_with?('…'), one[:snippet]
+    assert_equal described_class::SNIPPET_WORDS, one[:snippet].delete_suffix('…').split.size
   end
 
   it 'matches word stems' do
@@ -66,7 +73,7 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
   it 'serves the fileindex_search tool end to end' do
     out = Pikuri::Os::FileindexSearch.search(query: 'zebra', folder: "#{@index.corpus}/alpha",
                                              backend: described_class).to_s
-    assert_includes out, "#{@index.corpus}/alpha/a.txt\n  The quick zebra jumps"
+    assert_includes out, "#{@index.corpus}/alpha/a.txt\n  The quick >>zebra<< jumps"
     assert_includes out, 'Found 1 file'
   end
 end

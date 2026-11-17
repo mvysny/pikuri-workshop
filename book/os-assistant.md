@@ -284,7 +284,8 @@ two-step shape as `vectordb_search` → `vectordb_read` from
 
 - **`fileindex_search`** finds files whose contents match your words —
   inside PDFs and office docs included — and returns each path with the
-  one short snippet the index provides. It's honest about being a
+  one snippet the index provides (with `localsearch`, some 40 words
+  around the match, matched words marked `>>like this<<`). It's honest about being a
   *locator*: the index reports at most one match per file, so the tool
   doesn't pretend to show the whole story. Hits come best match first,
   and an optional `folder` keeps the search inside one folder, so a
