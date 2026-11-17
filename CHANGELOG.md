@@ -6,6 +6,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 ## [Unreleased]
 
 - `fileindex_search` on localsearch shows about 40 words around each match instead of 12, the matched words marked `>>like this<<`.
+- `fileindex_search` shows each file's indexed text size and answers a file passed as `folder` with a pointer to `fileindex_read`, whose new `pattern` returns just the matching lines with their line numbers; both backends' `search` hits carry `text_size:`.
 - `fileindex_search` ranks hits best first and takes an optional `folder` to search under; `Pikuri::Os::LocalSearch` now queries the index through the `tinysparql` CLI (a dependency of Debian/Ubuntu's `localsearch` package) instead of `localsearch search`, and `search(folder:)` joins both backends' duck type.
 - `Pikuri::Memory::Mem0Server` runs the stack on podman when it is installed, through a private `podman system service` it starts and stops itself, and falls back to docker (`runtime:` forces either).
 - **Breaking:** `Pikuri::Memory::Mem0Server.new(llm_model:)` is now `extraction_model:`, a `Mem0Server::ExtractionModel` (`name:`, `params:`) whose `params` mem0 sends with every extraction call, so the chat model can extract with thinking off; `bin/pikuri-memory` defaults to exactly that (`extraction_model` / `extraction_params` override it).

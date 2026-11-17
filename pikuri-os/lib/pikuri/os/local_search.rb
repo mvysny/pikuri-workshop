@@ -8,7 +8,8 @@ module Pikuri
     #
     #   LocalSearch.search(query: 'lease', limit: 10, folder: '/home/u/Documents')
     #   # => [{ path: '/home/u/Documents/Housing/lease-agreement.pdf',
-    #   #       snippet: 'Residential >>Lease<< Agreement Landlord: …' }, …]
+    #   #       snippet: 'Residential >>Lease<< Agreement Landlord: …',
+    #   #       text_size: 4211 }, …]
     #   LocalSearch.read_text('/home/u/Documents/Housing/lease-agreement.pdf')
     #   # => "Residential Lease Agreement\nLandlord: …"   (nil when not indexed)
     #
@@ -53,12 +54,15 @@ module Pikuri
 
       # The ranked, folder-scoped search. A file matches by name (first
       # branch, no snippet) or by extracted text (second branch); +MAX+ over
-      # the group keeps the better rank and the non-empty snippet.
+      # the group keeps the better rank and the non-empty snippet. The
+      # +OPTIONAL+ measures the file's stored text whichever branch matched;
+      # a file indexed by name only leaves it unbound.
       #
       # @return [String]
       SEARCH_QUERY = <<~SPARQL
         SELECT (CONCAT("v:", ENCODE_FOR_URI(?url)) AS ?u)
                (CONCAT("v:", ENCODE_FOR_URI(MAX(?snippet))) AS ?s)
+               (CONCAT("v:", STR(MAX(?length))) AS ?n)
         WHERE {
           {
             ?f fts:match ~query .
@@ -71,6 +75,11 @@ module Pikuri
             BIND (fts:snippet(?elem, "#{MATCH_MARKERS[0]}", "#{MATCH_MARKERS[1]}", "…", #{SNIPPET_WORDS}) AS ?snippet)
           }
           ?f nie:url ?url .
+          OPTIONAL {
+            ?stored nie:isStoredAs ?f ;
+              nie:plainTextContent ?text .
+            BIND (STRLEN(?text) AS ?length)
+          }
           FILTER (tracker:available(nie:dataSource(?f)))
           FILTER (STRSTARTS(?url, ~prefix))
         }
@@ -130,15 +139,18 @@ module Pikuri
       # @param limit [Integer] max files returned
       # @param folder [String, nil] absolute folder to search under; +nil+
       #   searches the whole index
-      # @return [Array<Hash>] +[{ path: String, snippet: String|nil }, …]+,
-      #   best first, one per file
+      # @return [Array<Hash>] +[{ path: String, snippet: String|nil,
+      #   text_size: Integer|nil }, …]+, best first, one per file;
+      #   +text_size+ is the stored text's length in characters (SPARQL has
+      #   no byte length; the two differ only by the non-ASCII share), +nil+
+      #   for a file indexed by name only
       # @raise [CommandError] if tinysparql exits non-zero
       def self.search(query:, limit:, folder: nil)
         prefix = folder ? "#{file_uri(folder).chomp('/')}/" : 'file:///'
         raw = run(SEARCH_QUERY, query: query, prefix: prefix, limit: limit)
-        parse_rows(raw).map do |url, snippet|
+        parse_rows(raw).map do |url, snippet, length|
           snippet = snippet&.gsub(/\s+/, ' ')&.strip
-          { path: path_of(url), snippet: (snippet unless snippet.to_s.empty?) }
+          { path: path_of(url), snippet: (snippet unless snippet.to_s.empty?), text_size: length&.to_i }
         end
       end
 

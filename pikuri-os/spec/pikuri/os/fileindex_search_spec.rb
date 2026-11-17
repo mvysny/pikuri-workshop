@@ -22,15 +22,15 @@ RSpec.describe Pikuri::Os::FileindexSearch do
       assert_equal 'Error: empty query.', described_class.search(query: '   ', backend: backend).to_s
     end
 
-    it 'renders path + snippet per hit and a one-match-per-file disclaimer' do
+    it 'renders path, text size and snippet per hit and a one-match-per-file disclaimer' do
       original = stub_backend_search do |query:, limit:, folder:|
-        [{ path: '/home/u/a.pdf', snippet: 'alpha beta' },
-         { path: '/home/u/b.txt', snippet: nil }]
+        [{ path: '/home/u/a.pdf', snippet: 'alpha beta', text_size: 176_531 },
+         { path: '/home/u/b.rb', snippet: nil, text_size: nil }]
       end
       begin
         out = described_class.search(query: 'beta', limit: 10, backend: backend).to_s
-        assert_includes out, "/home/u/a.pdf\n  alpha beta"
-        assert_includes out, '/home/u/b.txt'
+        assert_includes out, "/home/u/a.pdf  (172.4 kB of text)\n  alpha beta\n"
+        assert_includes out, "/home/u/b.rb  (no indexed text)\n"
         assert_includes out, 'one match shown per file'
         assert_includes out, 'Found 2 files'
       ensure
@@ -94,6 +94,17 @@ RSpec.describe Pikuri::Os::FileindexSearch do
                      described_class.search(query: 'x', folder: 'Documents', backend: backend).to_s
         assert_equal 'Error: no such folder: /nonexistent/pikuri',
                      described_class.search(query: 'x', folder: '/nonexistent/pikuri', backend: backend).to_s
+      ensure
+        restore_backend_search(original)
+      end
+    end
+
+    it 'answers a file passed as folder with a pointer to fileindex_read' do
+      original = stub_backend_search { |**| raise 'backend must not run' }
+      begin
+        out = described_class.search(query: 'x', folder: __FILE__, backend: backend).to_s
+        assert out.start_with?("Error: #{__FILE__} is a file, not a folder."), out
+        assert_includes out, 'fileindex_read'
       ensure
         restore_backend_search(original)
       end

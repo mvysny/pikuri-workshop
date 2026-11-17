@@ -4,7 +4,9 @@ module Pikuri
   module Os
     # The +fileindex_search+ tool — a fast, cheap keyword lookup over a
     # desktop file index, returning matching paths each with the *single*
-    # snippet the index provides. A {Pikuri::Tool} in the
+    # snippet the index provides and the size of its indexed text, so the
+    # model can tell a file it may read whole from one it should search
+    # with +fileindex_read+'s +pattern+. A {Pikuri::Tool} in the
     # {Pikuri::Workspace::Search::Grep} shape (shells out through the backend,
     # fails loud at construction if the binary is missing).
     #
@@ -34,6 +36,10 @@ module Pikuri
       # @return [String] human-readable form of {MAX_BYTES}.
       MAX_BYTES_LABEL = "#{MAX_BYTES / 1024} KB"
 
+      # @return [String] how much text one +fileindex_read+ call returns,
+      #   the yardstick a hit's text size is read against.
+      READ_PAGE_LABEL = Pikuri::Tool.format_bytes(Pikuri::Extractor::PAGE_MAX_BYTES)
+
       # @return [String] opencode-shape description (summary + Usage),
       #   backend-neutral. The *runtime* tool description is this constant
       #   plus the backend's +#limitations+, appended at construction (see
@@ -50,6 +56,7 @@ module Pikuri
         - Keyword match (and word stems); type the actual words that would appear in the file.
         - Pass `folder` to search only under one folder (subfolders included) — the way to find a common word inside one project instead of across the whole disk.
         - The index returns at most ONE match per file and may be slightly stale — this is a locator, not the full story. To read a file's full, current text, read it (see fileindex_read).
+        - Each file shows the size of its indexed text. fileindex_read returns up to #{READ_PAGE_LABEL} per call, so a smaller file reads whole in one call; in a bigger one, find the lines you need with fileindex_read's `pattern` first.
         - Cheap: it queries a prebuilt index rather than walking the filesystem, so it barely touches the disk of the machine the user is on — fine to run many times to narrow down.
         - Only indexed folders are covered; system paths like /etc or /var are not — search those with a text/regex tool instead.
         - Output is truncated to #{MAX_BYTES_LABEL}; narrow the query if it ends in a truncation marker.
@@ -113,6 +120,13 @@ module Pikuri
           rescue ArgumentError => e # "~nosuchuser"
             return Pikuri::Tool::Result.error("bad folder '#{folder}': #{e.message}")
           end
+          # A file as folder reads as "every match in this file", which the
+          # index can't answer: it keeps one snippet per file.
+          if File.file?(folder)
+            return Pikuri::Tool::Result.error("#{folder} is a file, not a folder. The index shows only one " \
+                                              'match per file; to see every match in this file, read its ' \
+                                              'full text with fileindex_read.')
+          end
           return Pikuri::Tool::Result.error("no such folder: #{folder}") unless File.directory?(folder)
         end
 
@@ -135,9 +149,13 @@ module Pikuri
         Pikuri::Tool::Result.error("#{backend.label}: #{content}#{marker}")
       end
 
-      # @return [String] +"<path>"+ or +"<path>\n  <snippet>"+
+      # @param hit [Hash] +{ path:, snippet:, text_size: }+ from the backend
+      # @return [String] +"<path>  (<size> of text)"+, then +"\n  <snippet>"+
+      #   when there is one
       def self.render_hit(hit)
-        hit[:snippet] && !hit[:snippet].empty? ? "#{hit[:path]}\n  #{hit[:snippet]}" : hit[:path]
+        size = hit[:text_size] ? "#{Pikuri::Tool.format_bytes(hit[:text_size])} of text" : 'no indexed text'
+        head = "#{hit[:path]}  (#{size})"
+        hit[:snippet] && !hit[:snippet].empty? ? "#{head}\n  #{hit[:snippet]}" : head
       end
       private_class_method :render_hit
 

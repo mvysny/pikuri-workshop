@@ -56,10 +56,12 @@ RSpec.describe Pikuri::Os::LocalSearch do
   end
 
   describe '.search' do
-    it 'maps rows to paths and one-line snippets' do
-      out = "Results:\n  v:file%3A%2F%2F%2Fa%2Fb%2520c.txt, v:alpha%0A%20beta\n  v:file%3A%2F%2F%2Fd.txt, v:\n"
+    it 'maps rows to paths, one-line snippets and text sizes' do
+      out = "Results:\n  v:file%3A%2F%2F%2Fa%2Fb%2520c.txt, v:alpha%0A%20beta, v:812\n" \
+            "  v:file%3A%2F%2F%2Fd.rb, v:, (null)\n"
       with_spawn(success: true, output: out) do
-        assert_equal [{ path: '/a/b c.txt', snippet: 'alpha beta' }, { path: '/d.txt', snippet: nil }],
+        assert_equal [{ path: '/a/b c.txt', snippet: 'alpha beta', text_size: 812 },
+                      { path: '/d.rb', snippet: nil, text_size: nil }],
                      described_class.search(query: 'beta', limit: 5)
       end
     end

@@ -51,13 +51,16 @@ class PrivateLocalSearch
   end
 
   # @param files [Hash{String => String}] corpus-relative path => content;
-  #   all must be plain text, since {#start} waits for each one's text.
-  def initialize(files)
+  #   plain text, since {#start} waits for each one's text
+  # @param name_only [Array<String>] those of +files+ the index keeps by
+  #   name only (source code), whose text {#start} doesn't wait for
+  def initialize(files, name_only: [])
     @files = files
+    @name_only = name_only
   end
 
-  # Write the corpus, boot the private bus and wait until every file's text
-  # is in the index.
+  # Write the corpus, boot the private bus and wait until every file is in
+  # the index, with its text unless it is +name_only+.
   #
   # @return [self]
   # @raise [RuntimeError] if the index doesn't hold every file within {TIMEOUT}
@@ -134,15 +137,24 @@ class PrivateLocalSearch
   # @return [void]
   def wait_for_text
     deadline = Time.now + TIMEOUT
-    count = 0
+    want = [@files.size, @files.size - @name_only.size]
+    urls = @files.keys.map { |rel| "\"#{Pikuri::Os::LocalSearch.file_uri(File.join(@corpus, rel))}\"" }.join(' ')
     loop do
-      out, = Open3.capture2e('tinysparql', 'query', '-b', Pikuri::Os::LocalSearch::DBUS_SERVICE, '-q',
-                             'SELECT (CONCAT("v:", STR(COUNT(?t))) AS ?n) WHERE { ?e nie:plainTextContent ?t }')
-      count = Pikuri::Os::LocalSearch.parse_rows(out).first&.first.to_i
-      return if count >= @files.size
-      raise "private index holds text of #{count}/#{@files.size} files after #{TIMEOUT}s" if Time.now > deadline
+      have = [count("VALUES ?u { #{urls} } ?f nie:url ?u"), count('?e nie:plainTextContent ?t')]
+      return if have.zip(want).all? { |h, w| h >= w }
+      if Time.now > deadline
+        raise "private index holds #{have[0]}/#{want[0]} files, text of #{have[1]}/#{want[1]}, after #{TIMEOUT}s"
+      end
 
       sleep 0.2
     end
+  end
+
+  # @param pattern [String] a SPARQL graph pattern
+  # @return [Integer] how many solutions it has
+  def count(pattern)
+    out, = Open3.capture2e('tinysparql', 'query', '-b', Pikuri::Os::LocalSearch::DBUS_SERVICE, '-q',
+                           "SELECT (CONCAT(\"v:\", STR(COUNT(*))) AS ?n) WHERE { #{pattern} }")
+    Pikuri::Os::LocalSearch.parse_rows(out).first&.first.to_i
   end
 end

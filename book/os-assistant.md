@@ -285,7 +285,8 @@ two-step shape as `vectordb_search` → `vectordb_read` from
 - **`fileindex_search`** finds files whose contents match your words —
   inside PDFs and office docs included — and returns each path with the
   one snippet the index provides (with `localsearch`, some 40 words
-  around the match, matched words marked `>>like this<<`). It's honest about being a
+  around the match, matched words marked `>>like this<<`) and the size
+  of its text, so the model knows whether a file fits one read. It's honest about being a
   *locator*: the index reports at most one match per file, so the tool
   doesn't pretend to show the whole story. Hits come best match first,
   and an optional `folder` keeps the search inside one folder, so a
@@ -294,7 +295,12 @@ two-step shape as `vectordb_search` → `vectordb_read` from
   by path — which is why `pikuri-os` asks the index in SPARQL instead.)
 - **`fileindex_read`** then returns a file's full extracted text,
   line-paged exactly like the `read` tool, with no extractor of its
-  own (the index did the extraction at index time).
+  own (the index did the extraction at index time). The search hit
+  names no line, so a long file gets a `pattern` too: only the
+  matching lines come back, numbered, and the model reads around the
+  one it wants. A 172 kB handbook PDF takes four reads to page
+  through; a `pattern` finds its five lines that mention an invoice
+  in one.
 
 Each index has a blind spot, and the tool's description tells the
 model which one it's working with. `localsearch` covers your home and

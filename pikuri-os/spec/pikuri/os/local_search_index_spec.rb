@@ -11,12 +11,14 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
     next unless PrivateLocalSearch.usable?
 
     @index = PrivateLocalSearch.new(
-      'alpha/a.txt' => "The quick zebra jumps over the lazy dog near Prague.\nSecond line.\n",
+      { 'alpha/a.txt' => "The quick zebra jumps over the lazy dog near Prague.\nSecond line.\n",
       'beta/b.md' => 'A zebra, a mouse, and "quoted, commas" here.',
       'beta2/e.txt' => 'A zebra in the sibling folder whose name extends beta.',
       "#{ODD}/d.txt" => "A zebra in an oddly named folder.\nIts second line.\n",
       'rank/many.txt' => 'otter otter otter otter otter',
-      'rank/one.txt' => "One otter among #{'many other plain words ' * 40}."
+      'rank/one.txt' => "One otter among #{'many other plain words ' * 40}.",
+      'code/walrus.rb' => "puts 'source code is indexed by name only'\n" },
+      name_only: ['code/walrus.rb']
     ).start
   end
 
@@ -35,6 +37,13 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
     assert_equal ['alpha/a.txt', 'beta/b.md', 'beta2/e.txt', "#{ODD}/d.txt"], relative(hits)
     b = hits.find { |hit| hit[:path].end_with?('/b.md') }
     assert_equal 'A >>zebra<<, a mouse, and "quoted, commas" here.', b[:snippet]
+    assert_equal 'A zebra, a mouse, and "quoted, commas" here.'.length, b[:text_size]
+  end
+
+  it 'reports no text size for a file indexed by name only' do
+    hits = search('walrus')
+    assert_equal ['code/walrus.rb'], relative(hits)
+    assert_nil hits.first[:text_size]
   end
 
   it 'limits a search to one folder, by whole path components' do
@@ -73,7 +82,7 @@ RSpec.describe Pikuri::Os::LocalSearch, 'against a private index' do
   it 'serves the fileindex_search tool end to end' do
     out = Pikuri::Os::FileindexSearch.search(query: 'zebra', folder: "#{@index.corpus}/alpha",
                                              backend: described_class).to_s
-    assert_includes out, "#{@index.corpus}/alpha/a.txt\n  The quick >>zebra<< jumps"
+    assert_includes out, "#{@index.corpus}/alpha/a.txt  (66 B of text)\n  The quick >>zebra<< jumps"
     assert_includes out, 'Found 1 file'
   end
 end

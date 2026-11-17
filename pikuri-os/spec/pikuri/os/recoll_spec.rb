@@ -21,21 +21,24 @@ RSpec.describe Pikuri::Os::Recoll do
     Pikuri::Subprocess.define_singleton_method(:spawn, original)
   end
 
-  # One recollq -F 'url abstract' data line: two base64 tokens.
-  def field_line(url, abstract)
-    "#{Base64.strict_encode64(url)} #{Base64.strict_encode64(abstract)}\n"
+  # One recollq -F 'url abstract dbytes' data line: three base64 tokens,
+  # an empty field printing as an empty one.
+  def field_line(url, abstract, dbytes = '0')
+    "#{[url, abstract, dbytes].map { |field| Base64.strict_encode64(field) }.join(' ')} \n"
   end
 
   describe '.parse_search_output' do
     it 'decodes base64 url + abstract, keeps spaces, de-dupes by path' do
       raw = +"Recoll query: Query(brown)\n2 results\n"
-      raw << field_line('file:///home/u/My Notes/todo.txt', 'a brown fox...')
+      raw << field_line('file:///home/u/My Notes/todo.txt', 'a brown fox...', '308')
       raw << field_line('file:///home/u/report.pdf', '')
       raw << field_line('file:///home/u/My Notes/todo.txt', 'dup')
       hits = described_class.parse_search_output(raw)
       assert_equal ['/home/u/My Notes/todo.txt', '/home/u/report.pdf'], hits.map { |h| h[:path] }
       assert_equal 'a brown fox...', hits[0][:snippet]
+      assert_equal 308, hits[0][:text_size]
       assert_nil hits[1][:snippet]
+      assert_nil hits[1][:text_size]
     end
 
     it 'skips the recollq banner lines (not valid base64 for a file:// url)' do

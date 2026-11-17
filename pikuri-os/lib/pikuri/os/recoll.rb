@@ -19,7 +19,7 @@ module Pikuri
     # is invisible. The measured survey behind the pick-one-per-host order
     # is in +pikuri-os/design/architecture.md+.
     #
-    # {.search} asks +recollq -F 'url abstract'+ for two base64-encoded
+    # {.search} asks +recollq -F 'url abstract dbytes'+ for three base64-encoded
     # fields per line (recoll's own recommended machine shape) so paths and
     # snippets with spaces/brackets/newlines survive with no escaping
     # guesswork. {.read_text} uses +recollq -d+, which dumps a document's
@@ -103,7 +103,7 @@ module Pikuri
         env && !env.empty? ? File.expand_path(env) : File.expand_path('~/.recoll')
       end
 
-      # Run +recollq -F 'url abstract' -n <limit>+ and parse the results.
+      # Run +recollq -F 'url abstract dbytes' -n <limit>+ and parse the results.
       # A +folder+ becomes a +dir:"<folder>"+ clause, which recoll matches by
       # whole path components (+/a/sp+ does not match +/a/sp ace+).
       #
@@ -111,8 +111,9 @@ module Pikuri
       # @param limit [Integer]
       # @param folder [String, nil] absolute folder to search under; +nil+
       #   searches the whole index
-      # @return [Array<Hash>] +[{ path: String, snippet: String|nil }, …]+,
-      #   de-duplicated by path
+      # @return [Array<Hash>] +[{ path: String, snippet: String|nil,
+      #   text_size: Integer|nil }, …]+, de-duplicated by path; +text_size+
+      #   is the extracted text's bytes (+dbytes+), +nil+ when there is none
       # @raise [CommandError] if recollq exits non-zero, or +folder+ contains
       #   a +"+ (recoll's query language cannot quote one)
       def self.search(query:, limit:, folder: nil)
@@ -121,7 +122,7 @@ module Pikuri
 
           query = "#{query} dir:\"#{folder}\""
         end
-        result = Pikuri::Subprocess.spawn(BINARY, '-F', 'url abstract', '-n', limit.to_s, query,
+        result = Pikuri::Subprocess.spawn(BINARY, '-F', 'url abstract dbytes', '-n', limit.to_s, query,
                                           chdir: '/').wait
         unless result.status.success?
           stderr = result.output.strip
@@ -132,23 +133,26 @@ module Pikuri
         parse_search_output(result.output)
       end
 
-      # Parse +recollq -F 'url abstract'+ output into hits. Each data line is
-      # two base64 tokens (url, abstract); recollq's +"Recoll query: …"+ /
+      # Parse +recollq -F 'url abstract dbytes'+ output into hits. Each data
+      # line is three base64 tokens (url, abstract, text bytes); an empty field
+      # still prints a token. recollq's +"Recoll query: …"+ /
       # +"N results"+ banner lines are skipped because their first token
       # isn't valid base64 for a +file://+ URL.
       #
       # @param raw [String]
-      # @return [Array<Hash>] +[{ path:, snippet: }, …]+ de-duped by path
+      # @return [Array<Hash>] +[{ path:, snippet:, text_size: }, …]+ de-duped
+      #   by path
       def self.parse_search_output(raw)
         hits = []
         raw.each_line do |line|
-          url_b64, abstract_b64 = line.split(/\s+/, 2)
+          url_b64, abstract_b64, dbytes_b64 = line.chomp.split(/ /)
           url = decode_base64(url_b64)
           next unless url&.start_with?('file://')
 
-          snippet = decode_base64(abstract_b64.to_s.strip)
-          snippet = snippet&.strip
-          hits << { path: url.delete_prefix('file://'), snippet: (snippet unless snippet.to_s.empty?) }
+          snippet = decode_base64(abstract_b64.to_s)&.strip
+          size = decode_base64(dbytes_b64.to_s).to_i
+          hits << { path: url.delete_prefix('file://'), snippet: (snippet unless snippet.to_s.empty?),
+                    text_size: (size if size.positive?) }
         end
         hits.uniq { |hit| hit[:path] }
       end

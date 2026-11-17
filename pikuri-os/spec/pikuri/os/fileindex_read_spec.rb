@@ -73,6 +73,58 @@ RSpec.describe Pikuri::Os::FileindexRead do
     end
   end
 
+  describe '.read with a pattern' do
+    def grep(pattern, **kwargs)
+      text = "Kettle & Co.\nInvoice #4471\nItem: kettle\nTotal: EUR 506.50\nPaid by invoice, not card\n"
+      original = stub_backend_read { |_path| text }
+      described_class.read(path: '/x', pattern: pattern, backend: backend, **kwargs)
+    ensure
+      restore_backend_read(original)
+    end
+
+    it 'returns only the matching lines, numbered as a read numbers them, ignoring case' do
+      result = grep('invoice')
+      assert_includes result.to_s, "     2\tInvoice #4471\n     5\tPaid by invoice, not card\n"
+      refute_includes result.to_s, 'kettle'
+      assert_includes result.to_s, 'Found 2 matching lines (the indexed text has 5 lines).'
+      assert_equal 'Found 2 lines', result.summary
+    end
+
+    it 'searches from offset on' do
+      out = grep('invoice', offset: 3).to_s
+      refute_includes out, '#4471'
+      assert_includes out, "     5\tPaid by invoice"
+      assert_includes out, 'Found 1 matching line from line 3 on'
+    end
+
+    it 'stops at limit matches and names the offset to continue from' do
+      out = grep('k|invoice', limit: 2).to_s
+      assert_includes out, "     1\tKettle"
+      assert_includes out, "     2\tInvoice"
+      refute_includes out, 'Item'
+      assert_includes out, 'same `pattern` and offset=3 for the rest'
+    end
+
+    it 'says so when nothing matches' do
+      result = grep('refund')
+      assert_equal 'No lines match /refund/ (the indexed text has 5 lines).', result.to_s
+      assert_equal 'Found 0 lines', result.summary
+    end
+
+    it 'rejects a malformed pattern without reading the file' do
+      original = stub_backend_read { |_path| raise 'must not read' }
+      begin
+        assert_includes described_class.read(path: '/x', pattern: '(', backend: backend).to_s, 'Error: bad pattern:'
+      ensure
+        restore_backend_read(original)
+      end
+    end
+
+    it 'treats an empty pattern as a plain read' do
+      assert_includes grep('').to_s, "     3\tItem: kettle"
+    end
+  end
+
   if LOCALSEARCH_AVAILABLE
     it 'constructs as a Pikuri::Tool named fileindex_read' do
       tool = described_class.new(backend: backend)
