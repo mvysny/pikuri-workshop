@@ -19,7 +19,9 @@ third: a real gap in meaning, a question that shares no word with its
 answer. That's the one miss this chapter fixes, and pikuri measured
 both what fixing it buys and what it costs, with Ornith-1.5 and the
 bge-m3 embedder on a laptop's integrated GPU. This book didn't re-run
-those numbers.
+those numbers; the eval's script and every run's transcript
+[stay in pikuri's git](https://github.com/mvysny/pikuri/tree/37685483377234556e8bf0c5b6f986fbd6c31b0c/design/ideas/fileindex-replaces-rag),
+at the commit this repo's `Gemfile` pins.
 
 **What it buys: a question in another language.** Asked in Finnish for
 the rent due date in an English lease, the vector agent ranked the
