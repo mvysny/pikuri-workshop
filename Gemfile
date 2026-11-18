@@ -4,6 +4,8 @@ source 'https://rubygems.org'
 
 # The workshop gems, each in its own subdirectory with its own gemspec.
 gemspec path: 'pikuri-extractors'
+gemspec path: 'pikuri-vectordb'
+gemspec path: 'pikuri-rag'
 gemspec path: 'pikuri-skills'
 gemspec path: 'pikuri-tasks'
 gemspec path: 'pikuri-memory'
@@ -18,18 +20,15 @@ gemspec path: 'pikuri-stemmers'
 # the Gemfile says which pikuri this was built against. Move it by editing
 # PIKURI_REF to a commit that is already pushed, then `bundle install`.
 # The gems a workshop gemspec doesn't name are the demo binaries' and the
-# specs' choices: web tools, the PDF extractor, Thunderbird for
-# pikuri-computer, vectordb for the shared Qdrant image pin, and rag for
-# pikuri-stemmers' spec through a real FTS5 index.
-PIKURI_REF = '51fec91455ebdbca3390e167495ffacedb10b9ba'
+# specs' choices: web tools, the PDF extractor for pikuri-corpus and
+# vectordb's line-range spec, and Thunderbird for pikuri-computer.
+PIKURI_REF = '43ecf1e085e452d7023997ce9596d5663bf6ef8e'
 git 'https://github.com/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-fileindex'
   gem 'pikuri-pdf'
-  gem 'pikuri-rag'
   gem 'pikuri-subagents'
   gem 'pikuri-thunderbird'
-  gem 'pikuri-vectordb'
   gem 'pikuri-web'
   gem 'pikuri-workspace'
 end

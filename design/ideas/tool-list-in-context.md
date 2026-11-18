@@ -80,7 +80,7 @@ window, and the asymmetry is the argument at any window size.)
    coding agent's list" case is this pattern's to answer, though no
    bundled persona does it: pikuri-vectordb ships corpus tools and no
    persona, and the host that wants one wires it
-   (`pikuri:D_corpus_trust_declaration`).
+   (`D_corpus_trust_declaration`).
 
 Which bounds the scope honestly: **this is a feature for a future
 general-purpose host** (a `pikuri-tui` that wires everything because it

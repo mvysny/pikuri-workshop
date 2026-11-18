@@ -460,7 +460,7 @@ build — deferred until the v1 API shape settles:
 - **`@private` wiring** lives in the future federation/assistant gem, not
   here — the capability gem ships the pieces, the federation gem wires the
   agent, as pikuri-vectordb ships corpus tools and no persona
-  (`pikuri:D_corpus_trust_declaration`).
+  (`D_corpus_trust_declaration`).
 
 ### Open follow-ups
 

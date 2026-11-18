@@ -121,7 +121,7 @@ module Pikuri
       # The container CLI a new instance drives: +podman+ if on +PATH+, else
       # +docker+ (which may be missing too — the probe then falls back to
       # the host CLIs). The same rule as +Pikuri::Memory::Mem0Server.runtime+
-      # and pikuri's +VectorDb::Server::Container.runtime+, by convention.
+      # and +Pikuri::VectorDb::Server::Container.runtime+, by convention.
       #
       # @return [String] +"podman"+ or +"docker"+
       def self.runtime

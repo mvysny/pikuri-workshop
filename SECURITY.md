@@ -99,6 +99,13 @@ firing on every edit (fatigue) and bound the blast radius when it's bypassed.
   project's build files to learn its classpath; a hostile `build.gradle` runs as you, on
   your host, outside any sandbox today. `pikuri-lsp` starts only the servers your config
   names, rooted at the workspace.
+- **The corpus — more copies of your files, one of them open on loopback.** `pikuri-vectordb`
+  and `pikuri-rag` hold no egress leg: their tools only read the index. What they add is
+  copies. `--qdrant` keeps every chunk in a pinned Qdrant container published on `127.0.0.1`
+  with no auth, so anything that reaches your loopback can read the indexed corpus, as with
+  mem0 above; rag's keyword index is the same text again, in an SQLite file you own. And the
+  embedder reads every chunk at index time, so pointing it at a remote provider ships your
+  whole corpus there.
 - **Stemmers — C code in the pikuri process.** `pikuri-stemmers`' Finnish stemmer hands
   libvoikko every word of your notes and of every search the model writes, unsandboxed. It
   sees one word at a time, and SQLite already reads the same words in the same process, so

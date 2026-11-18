@@ -1,10 +1,10 @@
 # pikuri-workshop
 
 The power tools for [pikuri](https://github.com/mvysny/pikuri), a small Ruby AI assistant:
-a shell, a coding agent, language servers, MCP servers, Agent Skills, durable memory and an
-OS assistant, plus what a chat app needs to host many conversations and save them. Each is a
-gem you wire à la carte. The tools that run code you didn't write run in a cage, and the book
-says what the cage buys and where it stops.
+a shell, a coding agent, language servers, MCP servers, Agent Skills, semantic search over
+your files, durable memory and an OS assistant, plus what a chat app needs to host many
+conversations and save them. Each is a gem you wire à la carte. The tools that run code you
+didn't write run in a cage, and the book says what the cage buys and where it stops.
 
 pikuri itself is what you can safely leave lying around the house: no shell, no stranger's
 code, nothing that holds all three legs of the lethal trifecta. This is the workshop, and its
@@ -23,6 +23,8 @@ first; [the workshop's](book/README.md) picks up where it ends.
 | [`pikuri-tasks`](pikuri-tasks/README.md) | a per-agent task list for long multi-step work |
 | [`pikuri-memory`](pikuri-memory/README.md) | durable cross-conversation memory backed by mem0 |
 | [`pikuri-extractors`](pikuri-extractors/README.md) | office, EPUB and RTF documents to Markdown, in a networkless container |
+| [`pikuri-vectordb`](pikuri-vectordb/README.md) | search your files by meaning: embeddings, a reranker, an index in memory or in Qdrant, and `bin/pikuri-corpus` |
+| [`pikuri-rag`](pikuri-rag/README.md) | a keyword index beside the vectors, for exact words and every match |
 | [`pikuri-stemmers`](pikuri-stemmers/README.md) | keyword search in languages other than English: Finnish |
 | [`pikuri-conversations`](pikuri-conversations/README.md) | many live conversations for a chat app, each its own agent on its own threads, saved and resumed |
 

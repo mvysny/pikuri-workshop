@@ -1,0 +1,263 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Dev / demo entry point — runs from a source checkout only. The pikuri
+# gem ships as a library; this script is not installed by `gem install
+# pikuri-vectordb`. It exists to demonstrate local-corpus vector search:
+# a single chat agent whose only tools are `vectordb_search` (semantic
+# recall over an indexed corpus), `vectordb_read` (read one indexed
+# document in full by its source path) and `calculator`. It has NO
+# egress — no web search, no page fetch — by design: the corpus may hold
+# private data, and an agent that can read it must not also be able to
+# send it out. That single rule keeps the lethal trifecta off this agent
+# (the security chapter) no matter what the corpus holds, and is why a
+# prompt-injected document has no hand to act with — vectordb_search and
+# vectordb_read are both inbound-only. The default corpus is the +book/+
+# directory inside this checkout, so the reader can ask the agent about
+# the very book they're reading.
+#
+# What the corpus *is* — confidential? your own writing? — is the host's
+# to declare, and --private / --trusted below do it. They move only what
+# the printed map says, which is the point: with no egress leg the verdict
+# stays silent either way.
+#
+# Same Bundler bootstrap pattern as the other bundled bins so callers
+# don't need the `bundle exec` ceremony.
+ENV['BUNDLE_GEMFILE'] ||= File.expand_path('../../Gemfile', __dir__)
+
+require 'bundler/setup'
+require 'digest'
+require 'optparse'
+require 'yaml'
+require 'reline' # line editing + history for the interactive prompt
+
+require 'pikuri-core'
+require 'pikuri-vectordb'
+# Checkout-mode-only require (this gem's gemspec doesn't declare it —
+# bins run from the monorepo Gemfile): plugs PDF extraction into the
+# Extractor registry below so a PDF corpus indexes alongside the
+# Markdown / plain-text formats core handles natively.
+require 'pikuri-pdf'
+
+# Example-only config: the LLM connection + provider API keys live verbatim
+# in a YAML file the user owns — no CLI flags, never the environment (see
+# AGENTS.md "Environment is not a secret store"). Shared by convention across
+# the example scripts; chmod 600 it. Absent file ⇒ {} ⇒ built-in defaults.
+examples_config_path = File.expand_path('~/.pikuri-examples-config.yaml')
+examples_config = File.exist?(examples_config_path) ? (YAML.safe_load_file(examples_config_path) || {}) : {}
+
+llm_server      = examples_config['llm_server'] || 'http://localhost:8080'
+model           = examples_config['llm_model'] || 'ornith-ai/Ornith-1.5-35B-A3B-GGUF:Q4_K_M'
+embed_model     = examples_config['embed_model'] || 'nomic-ai/nomic-embed-text-v1.5-GGUF:Q8_0'
+reranker_server = examples_config['reranker_server'] # nil ⇒ defaults to +llm_server+ below
+reranker_model  = examples_config['reranker_model'] || 'gpustack/bge-reranker-v2-m3-GGUF:Q8_0'
+use_reranker    = true
+source          = File.expand_path('../../book', __dir__)
+streaming       = false
+watch           = false
+use_qdrant      = false
+# The corpus's trifecta declaration, both off by default — see
+# Pikuri::VectorDb::Corpus#private? / #trusted?. Flags rather than
+# hardcoded values because --source points this demo at your own folder:
+# trusted: true is honest for the bundled book/ (pikuri wrote it) and a lie
+# for an arbitrary path, so the default run prints the pessimistic map.
+corpus_private  = false
+corpus_trusted  = false
+
+custom_prompt = nil
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: pikuri-corpus [options] [initial message...]'
+  opts.separator ''
+  opts.separator 'Options:'
+  opts.on('--no-reranker', 'Skip the reranker; use vector-only top-k') { use_reranker = false }
+  opts.on('--source PATH', "Corpus path to index (default: #{source})") { |v| source = v }
+  opts.on('--watch', 'Keep the index live: reindex files as they change on disk (auto-watch daemon)') { watch = true }
+  opts.on('--private', 'Declare the corpus as holding sensitive data (adds the private trifecta leg to the printed map)') { corpus_private = true }
+  opts.on('--trusted', 'Declare every source in the corpus as your own, reviewed in the form the model reads it (drops the untrusted leg) — read Corpus#trusted? before using this on your own folder') { corpus_trusted = true }
+  opts.on('--qdrant', 'Persist the index in a self-managed Qdrant container (requires podman or docker) instead of in-RAM InMemory') { use_qdrant = true }
+  opts.on('--system-prompt FILE', "Replace the built-in system prompt with FILE's contents " \
+                                  '(extensions still append their own sections).') do |v|
+    custom_prompt = File.read(v).rstrip
+  end
+  opts.on('-h', '--help', 'Print this help and exit') do
+    puts opts
+    exit
+  end
+end
+
+begin
+  parser.parse!
+rescue OptionParser::InvalidOption, OptionParser::MissingArgument => e
+  warn e.message
+  warn parser
+  exit 2
+end
+
+# One llama-server in router mode serves all three models: chat, embedder
+# and reranker. Each builds its own connection from +llm_server+ (each
+# normalizes a trailing +/v1+); the +reranker_server+ config key pins the
+# reranker to its own llama-server instead of sharing the router's swap budget.
+api_key         = examples_config.fetch('llm_api_key', 'not-needed')
+reranker_server ||= llm_server
+
+# Explicit opt-in (requiring pikuri-pdf alone changes nothing): from
+# here on the Extractor registry — and so the Corpus, the Watcher,
+# and vectordb_read — handles PDFs in the corpus.
+Pikuri::Extractors::PDF.register
+
+cancel_flag = Pikuri::Agent::Control::Cancellable.new
+
+system_prompt = custom_prompt || Pikuri.prompts(:'pikuri-corpus', :'agent-loop')
+system_prompt += "\n\nCurrent date: #{Time.now.strftime('%Y-%m-%d')}"
+system_prompt += "\nIndexed corpus root: #{source}"
+
+reranker = use_reranker ? Pikuri::VectorDb::Reranker::LlamaServer.new(
+  server:   reranker_server,
+  model:    reranker_model,
+  api_key:  examples_config['llm_api_key']
+) : nil
+
+embedder = Pikuri::VectorDb::Embedder.new(server: llm_server, model: embed_model, api_key: api_key)
+
+# Backend choice, via the uniform Server protocol: pick a supervisor,
+# ensure it's running, open a client on it. InMemory (default) is the
+# null supervisor — RAM-only stores, re-indexed from scratch every run.
+# --qdrant instead spins up a self-managed podman/docker container
+# (routed through Pikuri::Subprocess, teardown registered with
+# Pikuri::Finalizers) and persists the embeddings to disk — so a corpus
+# you index once stays indexed across runs.
+server_class = use_qdrant ? Pikuri::VectorDb::Server::Qdrant : Pikuri::VectorDb::Server::InMemory
+
+# One collection per corpus root, not one fixed name: a persistent backend
+# keeps whatever it was given, so a shared name would serve yesterday's
+# --source under today's --private / --trusted declaration (the collection
+# clause of Corpus#trusted?). Collections under the old fixed name are
+# orphaned, not migrated — a reindex rebuilds in minutes.
+corpus_key = File.exist?(source) ? File.realpath(source) : File.expand_path(source)
+collection = "pikuri-corpus-#{Digest::SHA256.hexdigest(corpus_key)[0, 12]}"
+
+begin
+  server  = server_class.ensure_running
+  backend = server.client(collection: collection)
+rescue StandardError => e
+  warn "Could not start #{server_class.name.split('::').last}: #{e.message}"
+  warn 'Is podman or docker installed and working? Drop --qdrant to use the in-memory backend.' if use_qdrant
+  exit 1
+end
+
+# One corpus: the agent's tools and the optional --watch
+# daemon share it. The extension indexes nothing on its own — population is the host's
+# call. This demo deliberately starts WITHOUT auto-indexing: the exercise
+# is to ask the agent to index the corpus (it calls vectordb_reindex).
+# With InMemory that means an empty corpus every run; with --qdrant
+# the index may already be populated from a previous run. Pass --watch to
+# have the Watcher build the index in the background and keep it live.
+corpus = Pikuri::VectorDb::Corpus.new(backend: backend, source: source, embedder: embedder,
+                                      private: corpus_private, trusted: corpus_trusted)
+vectordb_ext = Pikuri::VectorDb::Extension.new(corpus: corpus, reranker: reranker)
+
+# Run one agent turn, trapping SIGINT only for the duration of the turn.
+# Ctrl+C during a turn flips the agent's Cancellable flag — the next
+# tool-call boundary raises Cancelled, which we rescue below to return to
+# the prompt. Outside a turn (at the `> ` input) the default handler is
+# restored so Ctrl+C still exits the REPL the way it did before.
+def run_turn(agent, message)
+  agent.cancellable&.reset!
+  prev_trap = trap('INT') { agent.cancellable&.cancel! }
+  agent.run_loop(user_message: message)
+rescue Pikuri::Agent::Control::Cancellable::Cancelled
+  # Notice already rendered by the Terminal listener; nothing else to do.
+rescue RubyLLM::ContextLengthExceededError => e
+  warn "\nContext window exhausted: #{e.message}"
+  warn 'The conversation has grown too large for the model. Start a fresh question.'
+  exit 1
+ensure
+  trap('INT', prev_trap || 'DEFAULT')
+end
+
+agent = Pikuri::Agent.new(
+  transport: Pikuri::Agent::ChatTransport.from_openai_server(server: llm_server, model: model, api_key: api_key),
+  system_prompt: system_prompt,
+  cancellable: cancel_flag,
+  streaming: streaming
+) do |c|
+  c.add_listener Pikuri::Agent::Listener::Terminal.new(streaming: streaming)
+  c.add_listener Pikuri::Agent::Listener::TokenLog.new
+  # Calculator is the only non-corpus tool: harmless (no egress, no
+  # untrusted input) and it keeps the demo honest — "what's 1837 *
+  # 4291?" shows the agent reaching past the corpus when warranted.
+  # The web tools (web_search / web_scrape / fetch) are deliberately
+  # absent: with the corpus as a stand-in for private data, an egress
+  # tool on this same agent would complete the lethal trifecta.
+  c.add_tool Pikuri::Tool::CALCULATOR
+  # VectorDb::Extension registers +vectordb_search+, +vectordb_read+
+  # and +vectordb_reindex+ and nothing more — it does not index. The
+  # corpus starts empty; the agent fills it by calling
+  # +vectordb_reindex+ when the user asks (or the --watch daemon
+  # below fills it in the background).
+  c.add_extension vectordb_ext
+end
+
+# Optional auto-watch daemon (--watch). Host-owned: its lifetime is this
+# process, not the agent, so it's built here rather than inside the
+# Agent.new block. It registers with Pikuri::Finalizers, so even on an
+# unclean exit the listener is stopped at process teardown; we also close
+# it explicitly below. The daemon's worker thread calls backend.replace_source
+# while the agent's turn calls backend.query — InMemory's monitor makes
+# that concurrency safe.
+watcher = nil
+if watch
+  watcher = Pikuri::VectorDb::Watcher.new(corpus: corpus).start
+end
+
+begin
+  # Capability + trifecta map, printed unconditionally. These are teaching
+  # binaries and the map is half the lesson; a production host puts it behind
+  # an explicit ask instead.
+  puts agent.trifecta.render
+  puts
+  puts 'Pikuri Corpus: chat agent with semantic recall over an indexed corpus (no internet access).'
+  puts "Corpus: #{source}"
+  puts "Backend: #{use_qdrant ? 'Qdrant (persistent)' : 'InMemory (RAM-only)'}"
+  # backend.count is 0 for a fresh InMemory and for a persistent
+  # collection that's never been indexed; positive for a corpus persisted
+  # by a previous run.
+  already_indexed = backend.count
+  if already_indexed.positive?
+    puts "Index already populated (#{already_indexed} chunk(s) from a previous run). Ask away — or say \"reindex\" to refresh."
+  elsif !watch
+    puts 'The corpus is NOT indexed yet. Ask me to "index the corpus" first (I will run vectordb_reindex), then ask away.'
+  end
+  if watch
+    puts "Watching #{source} — reindexing files as they change. If the index is empty it's building in the background now (give it a moment)."
+  end
+  puts 'Try: "What does the pikuri guide say about how the RESEARCHER persona stops a prompt-injected web page from making it run bash?"'
+  puts 'Press Ctrl+C or Ctrl+D to quit.'
+
+  run_turn(agent, ARGV.join(' ')) unless ARGV.empty?
+
+  loop do
+    line = Reline.readline('> ', true) # arrow-key history + line editing
+    break if line.nil? # Ctrl+D / EOF on empty line
+
+    message = line.chomp
+    next if message.strip.empty?
+
+    run_turn(agent, message)
+  end
+rescue Interrupt
+  # Ctrl+C — fall through to clean exit
+ensure
+  # Teardown in reverse of open order: stop the indexing daemon first
+  # (halt writes), release the agent's resources, close the index, then
+  # the server (a podman/docker supervisor removes its container; the
+  # InMemory null supervisor drops the stores). Pikuri::Finalizers
+  # backstops the docker case on an unclean exit — same LIFO order.
+  watcher&.close
+  agent.close
+  corpus.close
+  server.close
+end
+
+puts
+puts 'Goodbye'

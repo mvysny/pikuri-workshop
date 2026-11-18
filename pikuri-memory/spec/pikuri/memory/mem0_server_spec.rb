@@ -159,13 +159,9 @@ describe Pikuri::Memory::Mem0Server do
 
   describe 'DEFAULT_QDRANT_IMAGE' do
     it "matches pikuri-vectordb's Qdrant::IMAGE, so a host running both keeps one image" do
-      # The gems don't depend on each other; this guard lives on the workshop
-      # side because the workshop may see pikuri, never the other way round.
-      begin
-        require 'pikuri-vectordb'
-      rescue LoadError
-        skip 'pikuri-vectordb not in this bundle'
-      end
+      # Neither gem depends on the other; the spec reaches vectordb through
+      # the monorepo's top-level Gemfile.
+      require 'pikuri-vectordb'
 
       assert_equal Pikuri::VectorDb::Server::Qdrant::IMAGE,
                    Pikuri::Memory::Mem0Server::DEFAULT_QDRANT_IMAGE

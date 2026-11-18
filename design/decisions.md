@@ -1889,10 +1889,427 @@ which isolates only what that server isolates per session — see `SECURITY.md`.
 
 ---
 
+## D_rag_gem — Why is hybrid retrieval a new gem on top of the vector primitive rather than a mode of it?
+
+**Context.** `vectordb_search` answers *precision*: top-k chunks, reranked,
+a snippet each. A small corpus of short notes where any omission matters
+(the briefing agent's hand-curated customer notes) asks two questions
+cosine retrieval structurally cannot answer. *Completeness* — "every note
+mentioning Acme" — because top-k is a sample and cosine has no calibrated
+zero, so no cutoff can be documented as a promise. *Exactness* — "invoice
+#4471", a customer's name — because proper nouns, IDs and rare tokens are
+what embedders rank badly, and the note holding the literal string can rank
+below one merely discussing invoices. Neither is a shortcoming to patch on
+the vector side: the field's settled answer is hybrid retrieval, a keyword
+index (BM25 / full-text) beside the vectors, fused by reciprocal rank — and a
+keyword *listing* where the question is a set rather than a ranking. The
+sqlite3 gem already in the lockfile ships FTS5 with a working `porter`
+tokenizer, so the keyword half costs no new dependency.
+
+**Decision.** A new gem, `pikuri-rag`, depending on `pikuri-vectordb` and
+consuming only its documented ducks (`Backend`, `Embedder`, `Chunker`,
+`Corpus`, `Watcher`, `Reranker`, `Tools::Read` / `Tools::Reindex` under
+`family: 'rag'`). It ships one `rag_*` tool family — `rag_search` (hybrid
+top-k, fused, optionally reranked), `rag_search_keywords` (every matching document by
+stemmed token match: `source`, match count, size; no cutoff), `rag_read`,
+`rag_reindex` — and a **`Backend` composed of two stores**: `Backend::Fts5`
+(the FTS5 keyword store, the only class in the gem that speaks SQL) held
+beside the host's vector store inside `Backend::Hybrid`, which fans writes
+out to both and keeps their reads separate. So the vectordb `Corpus` and
+`Watcher` are reused byte-for-byte: one extraction per file, one hash.
+Stemming is FTS5's built-in `porter`, English; other languages are a
+`stemmer:` duck on the extension (`D_ruby_stemming`), not a `languages:` array.
+`pikuri-vectordb` is repositioned in the same move — from "agentic RAG" to
+*topical retrieval over long documents*, the primitive the system is built
+on. The two extensions are mutually exclusive on one agent.
+
+**Alternatives rejected.**
+
+- **FTS5 inside `pikuri-vectordb`.** Genuinely close — a hundred lines
+  behind the same `Backend` seam, and pikuri's `AGENTS.md` bounded-gem rule admits a
+  gem on cohesive lib code *or* a novel threat model, so this was never
+  forbidden. Rejected on three grounds: a `vectordb_find` that never touches
+  a vector, backed by SQLite, is the moment the gem stops being what its
+  name says (name a gem after what it refuses to become — `pikuri-vectordb`
+  refuses to become a retrieval system, `pikuri-rag` refuses to become a
+  connector platform); the two tool sets are exclusive, not additive, and
+  two exclusive extensions in one gem hides that in a pre-registration guard
+  where two gems show it at the dependency line; and the split keeps
+  `pikuri-vectordb/design/architecture.md`'s closed threat model closed. The new gem's
+  threat model is *not* novel (same corpus legs, inbound-only, same
+  membership gate on the reader) — it qualifies on cohesive lib code alone,
+  and its header says so rather than inventing a design/architecture.md it has not earned.
+- **A composite indexer** — a `Rag::Indexer` wrapping SQLite plus the
+  vectordb `Corpus`, handed to the `Watcher` (which is duck-typed over five
+  methods, so this needs no vectordb change either). Rejected as the larger
+  cut: the vectordb `Corpus` extracts, chunks, hashes and embeds inside
+  private methods and hands finished `Chunk`s to the backend, so a sibling
+  indexer re-reads and re-extracts every file and has to merge two
+  `reconcile_plan` manifests. Composing at the backend gets one extraction
+  for free, and because both stores hold the same `Chunk`s, fusion is
+  textbook reciprocal rank over chunk ids and the existing `Reranker`
+  composes on the fused list unchanged.
+- **One class doing both** — the original shape, and how this shipped
+  first: a single `Backend::Hybrid` owning the SQLite connection, the SQL,
+  the lock *and* the composition. Split on review, because every private
+  method in it was either SQL or fan-out, so the seam was already there.
+  Three concrete payoffs, none of them tidiness: the keyword store is now
+  testable with no vector backend in the file at all; both manifests are
+  real, so the both-stores rule intersects two peers instead of filtering
+  one by the other's source list; and "a third index is a third store, not
+  another wrapper" became true rather than aspirational. The `Sharing:`
+  postures got sharper too — the lock lives in the store that needs it, and
+  `Hybrid` holds no state.
+- **Merging the two gems, or cutting `pikuri-vectordb` to a library** (dropping
+  `VectorDb::Extension`, `vectordb_search` and `bin/pikuri-corpus`, whose only users
+  are each other). The split is the book's order — rag adds FTS5 and fusion on a box
+  the reader already knows — and a merged gem would teach both at once and make every
+  retrieval user read the hybrid half. `pikuri-corpus` is the vectordb chapter's one
+  runnable agent, and the one place `private:` / `trusted:` are flags to flip.
+- **One tool with a `mode:` flag** instead of `rag_search` + `rag_search_keywords`.
+  Rejected: the two make different promises (relevance ordering vs.
+  completeness) with different output shapes (snippets vs. a listing), and
+  a model choosing between them by flag value is a model reading a
+  parameter description instead of a tool name.
+- **Naming the pair `rag_search` + `rag_find`**, as it shipped first.
+  Renamed 2026-11-13 after the owner read a transcript and couldn't tell
+  them apart: *search* and *find* are synonyms, so the names said nothing
+  the descriptions didn't. The specialist is now named by its mechanism,
+  `rag_search_keywords`, and the default keeps the plain `rag_search`, as
+  `web_search` and `vectordb_search` do in their families: a model scanning
+  names picks the plain one unless it needs exact words or every document.
+  Each description's first line carries the promise (a ranked sample vs.
+  the complete set). Rejected on the way: `rag_search_hybrid` (jargon, and
+  it forced the sibling `rag_read` / `rag_reindex` to be told the search
+  tool's name instead of deriving it), `rag_search_ranked` (an output shape
+  beside a mechanism, and the keyword listing is sorted too),
+  `rag_search_embeddings` (the hybrid leg is keywords too) and
+  `rag_find_all` ("all" of what?).
+- **A document-level recall mode on the vector index** — rank documents by
+  aggregated chunk score, return every `source`. This was the deferral
+  `design/ideas/vectordb-deferrals.md` carried. Rejected because it is honest but
+  useless for the question: cosine cannot say *which* documents mention
+  Acme however the output is shaped, so "every indexed source ranked" is a
+  file listing ordered by relevance. Its four forks dissolve under FTS:
+  cutoff-vs-everything becomes boolean match, chunk-to-document aggregation
+  becomes `GROUP BY source`, the reranker bypass is automatic, and the
+  corpus-shape precondition ("the agent reads them in full") becomes a
+  usage line on `rag_search_keywords`.
+- **`grep` + `file_list` from `pikuri-workspace` bolted onto the corpus
+  agent.** It composes (`Search::Grep`'s workspace-relative paths equal
+  `Chunk.source`, so the membership gate passes a grep hit, and read-only
+  needs no confirmer), but it patches a retrieval shortcoming from outside
+  the gem that owns retrieval, `file_list` composes only over a flat corpus,
+  and it has no stemming.
+- **`trigram` as the default tokenizer** — language-agnostic and
+  inflection-tolerant as a substring match. Rejected as default: it matches
+  inside longer words and needs three-character terms; it stays the named
+  fallback for a language Snowball lacks.
+
+**Consequences.**
+
+- **A keyword index inherits the *chunk* as its unit of truth** from the
+  vector pipeline it decorates, so every document-level promise has to be
+  reassembled explicitly. The plan had `rag_search_keywords` juxtapose terms into one
+  FTS5 `MATCH` and `GROUP BY source`, relying on FTS5's implicit AND — but
+  that AND is *row*-scoped, and a row is a chunk, so the listing omitted any
+  document whose terms landed in different chunks: every note past a couple
+  of kilobytes under the default 512-token chunker, failing as "no such
+  document" about a document that plainly contained both words. Exactly the
+  silent omission the tool exists to prevent, and invisible in a demo whose
+  notes were all under 300 bytes. The AND moved up a level instead
+  ({Pikuri::Rag::Query.terms} + {Pikuri::Rag::Backend::Hybrid#find}).
+- `design/ideas/vectordb-deferrals.md`'s recall-mode bullet is deleted when the
+  gem lands; two gems each promising completeness in different ways is the
+  duplication the doc rules exist to prevent.
+- The briefing agent was the first host needing completeness: shipping it
+  with search + read only would bite on the first "everything about Acme",
+  the consensus predicted. It now searches the desktop's file index instead,
+  whose `fileindex_search` counts every match (`pikuri:D_briefing_wiring`).
+- Pre-registration guards both ways: `Rag::Extension` refuses any
+  `vectordb_*` or `rag_*` name already registered, and `VectorDb::Extension`
+  learns to refuse `rag_*`, so exclusivity holds whichever the host wires
+  second.
+- The three "agentic RAG" phrasings (pikuri's `AGENTS.md` inventory, the extension
+  header, the gemspec summary) are reworded to the primitive framing, and
+  `book/vectordb.md` gains a pointer where it says "no keyword index
+  underneath".
+
+---
+
+## D_rrf_tuning — Why does `rag_search` fuse with `k` 5 over ten results a leg, not the textbook 60 over fifty?
+
+**Context.** Measured on a Finnish statute corpus (`../courts`: 4 acts, 165 chunks, bge-m3,
+Voikko-stemmed FTS5, 41 questions — 28 lay paraphrases, 13 section references and terms of art;
+`../courts/bin/embedder-eval`), fusion at `k` 60 over 50-deep legs put a gold section in the top
+5 for 31 questions — *fewer* than the vector leg alone (35). With 60, any chunk both legs list
+anywhere in their top 50 outscores a chunk one leg ranks first (2/(60+50) > 1/61), so three
+sections the vector leg had at #1 fused to #6, #22 and #31, past the reranker's reach.
+
+**Decision.** `RRF_K` 5, and each leg contributes its top `LEG_K` = 10, reranker or not: 37/41,
+two more than the vector leg alone. The keyword leg earns its place as a voter — it lifts a
+vector #7 or #8 into the top 5 when it agrees near its own top — rather than by finding what the
+vector leg misses, which it never did on this corpus. The reranker now scores ≤ 20 documents,
+which cost bge-reranker-v2-m3 22 s a question on a CPU and 1.7 s on a GPU, the price a host
+weighs before wiring one (`reranker:` defaults to `nil`).
+
+**Alternatives rejected.**
+
+- **Hand the model both legs unfused** (each leg's top 3, interleaved, labelled): 35/41 — a
+  quota gives the keyword leg three slots whether it has anything or not, so it lands on
+  vector-only. Its one edge is MRR, 0.77 vs 0.63: each leg's #1 always leads, so the gold is
+  at #1 more often. That only matters if the model reads from the top, and it mostly doesn't.
+  In a pick test (Ornith-1.5, thinking off, shown one search result per question and asked
+  which hit answers it, 3 repeats), each leg's top 10 interleaved was right 98/123 against
+  the fused top 5's 91: about two questions, at ~3× the context, and it never answered
+  "none".
+- **Label each fused hit with the legs that found it** ("meaning #1, keyword #4"), the other
+  half of that proposal, or **with its cosine**. Same pick test: bare, `(cosine=…)` and
+  labelled each scored 91/123, right on the same questions; the model picks by the snippet,
+  not the number beside it. With thinking on, one run over the 17 questions whose gold sat
+  below #1 scored 12, 14 and 15 of 17, unconfirmed. So hits print no score at all
+  ({Pikuri::VectorDb::Tools::Search}).
+- **Pin the vector leg's #1 first**, keeping the fused top 5. Gold at #1 rises from 20/41 to
+  29/41 and MRR to 0.77 with recall unchanged, but the pick test gained 93/123 against 91:
+  the model already finds a lower gold (38 of 51 picks), and a pinned wrong #1 misleads it
+  about as often as a pinned right one helps.
+- **Only one knob.** `k` 5 at depth 50: 34/41. Depth 10 at `k` 60: 36/41. Depth does most of
+  the work; agreement deep in both lists is the noise.
+- **Keep 60, because every stack does.** It comes from the original paper's pilot over TREC
+  runs, many systems' lists fused at once; two unlike legs, one much stronger, is a different
+  problem — and here it measurably lost to the vector leg alone.
+
+**Consequences.** One corpus, one embedder: a weaker embedder or a much larger corpus may move
+the optimum, and `../courts/bin/embedder-eval` reruns the comparison.
+
+---
+
+## D_chunk_line_ranges — Why does a search hit cite a line range of the extracted text, and only as text?
+
+**Context.** A hit was `source (score=…)` plus a 500-character snippet. Over a long document — a
+1500-line manual, a statute, a contract PDF — the snippet rarely holds the whole answer, and the
+agent answered from the fragment plus training data. The workaround on the corpus side, one file
+per section so the path stands in for a position, bends every corpus to the retrieval layer.
+
+**Decision.** Every chunk carries `first_line:` / `last_line:` ({Pikuri::VectorDb::Chunk}), both
+`rag_search` legs store them, hits print `lines a-b`, `rag_search_keywords` lists first lines, and the paged
+readers number their lines the same way, so a range is a ready `offset:`. "Line" is
+{Pikuri::Extractor}'s == Lines: LF only, 1-based, over the *extracted* text, which the `Corpus`
+and the readers both see through the one registry. A program reads positions from
+`Chunk#metadata` / `Rag::Backend::DocumentMatch` through the library API, never from tool output.
+
+**Alternatives rejected.**
+
+- **Structured data in the tool result** for host programs. Tools are for the model ("One tool
+  return type"), and a host parsing `lines a-b` out of `content` would turn presentation into an
+  API. A host wanting positions writes its own tool over the backend.
+- **The start line only.** A window can begin at the tail of one section and carry the match
+  into the next, so a "section containing line N" reader would hand over the wrong one. The end
+  costs one integer.
+- **Lines of the file's bytes.** For PDF and office files those are container lines, not what
+  `rag_read` pages. Checked, not assumed: every extractor numbers `extract` and `extract_lines`
+  identically, since pikuri-pdf defines one as the other joined and HTML and the docker arm are
+  windowed from `extract`'s own string.
+- **CR as a break too**, as Python's `splitlines()` and universal newlines and Java's
+  `readLine()` do. The readers page by Ruby's `each_line`, so it would renumber every page; the
+  definition instead names the readers that disagree.
+- **Verbatim chunk text** with its newlines. It lets document text forge a hit header
+  ({Pikuri::VectorDb::Chunker::FixedWindow}).
+- **Trimming the overlap off the printed range.** It would claim the match is not in the shared
+  lines, which can be false.
+- **One `lines: [a, b]` key.** Two scalars need no backend to accept arrays in its metadata, and
+  mirror the FTS5 columns.
+
+**Consequences.** A range is stale between a file edit and the watcher's reindex, the caveat
+`vectordb_read` already carries. The `line_ranges_spec`s in pikuri-vectordb and pikuri-rag, and
+vectordb's `pdf_line_ranges_spec` over pikuri-pdf, are the guard, each pinning one range by hand,
+because chunker and reader could agree on the same wrong count.
+
+---
+
+## D_corpus_trust_declaration — Why does the corpus declare `private:` / `trusted:` while the tools only derive?
+
+**Context.** The three `vectordb_*` tools hardcoded
+`private: false, untrusted: :hard`, with `Tools::Search`'s own comment naming
+the gap and pointing at `Workspace::Filesystem#private?` as the shape to
+copy. Neither value is the tool's to know: whether a corpus holds the user's
+own words or a web crawl, and whether it is confidential or public, are
+properties of the *data* — the two axes pikuri's `book/trifecta-detector.md`
+§"Who declares each leg" assigns to the user. The concrete casualty is a
+hand-curated confidential notes folder, graded "1 of 3 legs (untrusted); no
+private leg found": one leg, but the wrong one, over-warned on untrusted and
+under-warned on private. Not a defense either way — `untrusted` and `private`
+are read by `Trifecta::Report` and nothing else, and the detector never
+blocks. The reason to fix it is the one `Pikuri::Trifecta`'s header names: an
+agent printing the wrong leg teaches its operator the map is wrong.
+
+**Decision.** The declaration lives on `Corpus.new(private:, trusted:)`,
+beside the `source` it vouches for, both defaulting off, and each extension
+derives one `TrifectaLegs` from it for `Search` and `Read` — the shape
+`Workspace::Read` already uses. Three earlier
+entries were checked and none is contradicted: `pikuri:D_bundle_trust_grading` is the
+precedent (trust declared per root as a plain value, host answers, tool
+derives) and its principle — *a trust claim is about that root, not about "the
+repo"* — decides this; `D_lsp_trifecta_legs` supplies the test and the corpus
+passes it, since `Corpus` walks exactly `source`, `vectordb_search` returns
+only chunks that walk produced and `vectordb_read` is rooted at
+`corpus.root`, so the vouching and the reach are the same set (the corpus is
+the `read` case, not the `lsp` case); and `pikuri:D_no_static_poisoned_flag` rejects a
+node-level flag that would *restate a derived value* and silence propagation,
+where this is the *input* to the derivation on the one axis the framework
+cannot determine.
+
+**What `trusted: true` means** is the substance of the change, and it is
+three clauses, not "I wrote this folder": every source was reviewed by you *in
+the form the model will read it*, nobody else writes into that folder, and the
+backend collection holds only what this folder filled it with. The first is
+the **rendering gap** — for plain text the reviewed artifact and the indexed
+artifact are the same bytes, but for a PDF or DOCX the extraction carries
+white-on-white text, hidden-text attributes, off-page glyphs, comments,
+tracked changes, form fields and metadata that a human reading the rendered
+document never saw. Vouching for a rendered PDF is the ingest mirror of the
+`:unreviewed` egress rung ("approving `curl` approves a program, and the bytes
+it sends are computed after the click"). The recipe needs no new code:
+convert with `Pikuri::Extractor.extract`, read the output in an editor, index
+the *output* and leave the original outside the corpus — the author-not-approver property of
+pikuri's `private-context-taint` idea, applied to ingest. The second clause exists
+because trust is a claim about who can *write*, not about current content: with
+a `Watcher` a file that lands later is indexed within seconds, so a shared
+Nextcloud folder, a team Drive, a scanner's output directory or a mail
+client's attachment folder each falsify the flag the moment someone else drops
+a file in (`pikuri:D_write_custody_axis` names the same synced-folder fact on the
+write side and judged it not to be a leg; on the read side it decides whether
+the flag can be honest at all). The third covers a reused persistent
+collection: the same-set argument covers the index `Corpus` builds from
+`source`, not whatever a persistent backend already holds.
+
+**And `Tools::Reindex` declares `TrifectaLegs::NONE`**, independent of both
+flags — a second correction in the quiet direction. Its observation is a chunk
+count, a "no indexable files" line, or an infrastructure error; per-file
+failures, the only place a corpus-authored filename or an extractor's stderr
+would surface, go to the logger and never reach the model. No corpus bytes, no
+filenames, no model-chosen query: `Workspace::Write`'s case, not `glob`'s, and
+pikuri's detector chapter draws the private-leg line exactly between those two. The
+old comment ("the observation reports what was indexed, and filenames are
+corpus-authored") was simply false — the tool has never returned filenames. No
+verdict moves, because `Search` / `Read` keep whatever `Reindex` had.
+
+**Alternatives rejected.**
+
+- **Keep the unconditional `:hard`.** Rejected on `pikuri:D_bundle_trust_grading`'s
+  argument verbatim: it over-warns exactly the operator who did the curation
+  work, and an ignored smoke alarm is the failure mode `Pikuri::Trifecta`'s own
+  header names.
+- **Declare on `Extension` instead of `Corpus`.** Rejected: an extension is
+  one agent's view of the corpus, so two agents over one folder could declare
+  it differently, and the `Corpus` is what the host builds once per folder and
+  what holds `source`.
+- **Hand the extension a `Filesystem`.** Rejected twice: `pikuri:D_bundle_trust_grading`
+  already settled that a host answers with a *value*, and a corpus root is a
+  path, not a workspace — a `Filesystem` would drag in `readable:` roots the
+  index never walks, breaking the same-set test that makes the declaration
+  honest in the first place.
+- **Derive `Reindex`'s legs too, for symmetry.** Rejected: no corpus bytes
+  reach its observation, so a leg there would be a leg the tool does not hold.
+  Symmetry is not evidence.
+- **Refuse non-text sources under `trusted: true`** (raise, or skip with a
+  warning). Rejected: pikuri refuses a declaration only where it *cannot* be
+  honest — pikuri-code's `Code::WholeDisk` rejects `trusted:` because a whole-host reach
+  is never all user-authored — and a user-authored PDF *can* be honest. A
+  refusal on file extension also buys false safety (a text file hides an
+  injection perfectly well with zero-width characters or an HTML comment; the
+  gap is smaller, not zero) and is the over-securing slope: the user who
+  exports their own notes to PDF routes around the flag, and the map then lies
+  pessimistically for everyone who did the work.
+- **Per-format grading** — the flag vouches for plain text only, extracted
+  sources grade `:hard` regardless. Rejected: legs are static per tool and
+  search returns chunks from every source, so one PDF takes the whole tool set
+  to `:hard` anyway — the multi-source union rule's outcome with extra
+  machinery — and it moves an axis the "who declares" table assigns to the user
+  back onto the framework.
+- **A boot-time warning** on a non-text source under `trusted: true`. Rejected
+  for the detector's own reason: a warning that fires on every Word-writing
+  user is the false alarm that gets the map muted.
+- **Reconcile the persistent collection at boot even without a watcher**, so a
+  stale collection converges on `source`. *Deferred, not rejected* — it is the
+  principled fix for the third clause, but it is a behaviour change for every
+  persistent wiring and a cost at every boot. The demo's derived collection
+  name covers the case that exists; reopen if a real host reuses one collection
+  across sources.
+
+**Consequences.**
+
+- **A text-only mode for trusted corpora is the recorded fallback** — the flag
+  would skip extracted formats with a logged warning unless the host opts them
+  in, making the safe path the default path at the cost of a three-valued flag.
+  Not now: a reopen needs evidence that the *documentation* failed, not a
+  symmetry argument.
+- **`bin/pikuri-corpus` derives its collection name from the corpus path**
+  (`pikuri-corpus-<12 hex of the realpath>`) instead of one hardcoded name, so
+  switching `--source` can never serve yesterday's folder under today's
+  declaration. Collections persisted under the old name are orphaned, not
+  migrated — it is a demo, and a reindex rebuilds in minutes.
+- **No bundled corpus-quarantine persona** (a no-egress "librarian" child
+  holding the corpus tools for a parent with egress). It can't be wired as a
+  boundary: `Extension#configure` puts `vectordb_search` on the parent too, and
+  a per-tool choice of pool is a knob nothing needs. It never protected the
+  private data, since the private leg propagates *up* through a sub-agent at
+  full strength, and over a trusted corpus there is nothing untrusted to
+  summarize away. An agent holding a corpus and egress weakens the egress
+  instead, as `pikuri:D_secretary_wiring` does.
+- **Multi-source indexing must carry the flag per source.** When several roots
+  share one collection, trust follows the `Bundle::Base` rule — one unvouched
+  root indexed into the collection takes the whole tool set to `:hard`, and
+  `private` is true if any root claims it — and because `TrifectaLegs` is
+  declared once at tool construction, the legs are computed from the source
+  list at `#configure`. Design that API with the per-source flag in it from day
+  one. There is no whole-host analogue to guard in v1 (one bounded root), so no
+  refusal is needed yet.
+- **`Tools::Search` / `Tools::Read` take a required `legs:` with no default**,
+  since a default would be a second copy of the derivation, and `#configure`
+  already refuses to run alongside a pre-registered `vectordb_*` tool.
+
+---
+
+## D_ruby_stemming — Why stem in Ruby behind a duck, with compounds split only into the index, and ship no language here?
+
+**Context.** `D_rag_gem` shipped `porter`, English only, and named the seam for the rest: a
+`stemmer:` duck. Finnish came first, and it inflects and compounds: unstemmed, `rag_search_keywords katu`
+misses *kadulla*, and *kone* misses *tietokoneella*. Stock FTS5 has no other stemmer, and the
+prebuilt `sqlite3` gem cannot load a tokenizer extension.
+
+**Decision.** A {Pikuri::Rag::Stemmer} runs in Ruby on both sides of a plain FTS5 table, with
+`porter` kept after it, so English in a mixed corpus still stems as long as the stemmer answers a
+word it does not know with itself. The duck has two stemming methods: `index_stems` is a superset
+of `stems`, so compound parts are indexed beside the whole lemma but never searched for — *kone*
+finds *tietokone*, and `rag_search_keywords tietokone` stays exact. An index records its stemmer's
+id and schema version, and on a mismatch empties itself for `Hybrid`'s both-stores rule to refill.
+pikuri-rag ships only `Stemmer::Identity`. Finnish is `pikuri-stemmers` (`D_voikko_stemmer`):
+each language is a native library and a dictionary the host installs, so it lives in a gem that
+takes the library as a handle and requires none, and the next ones (Hunspell for Slovak and
+Czech, Snowball for a language with no dictionary) join it there.
+
+**Alternatives rejected.**
+
+- **Splitting the query too** would make `rag_search_keywords tietokone` list every note mentioning *kone*.
+- **Raising on a mismatch.** `Fts5.new` opens the store, so the host would not boot and
+  the `rag_reindex` the message named would be unreachable. The rebuild instead costs one full
+  re-embed per stemmer change.
+- **Keeping the Finnish stemmer in pikuri-rag.** Its one root was a `pikuri-briefing --finnish`
+  flag, and a gem of native-library languages only grows; `D_voikko_stemmer` has the rest.
+
+**Consequences.**
+
+- pikuri-rag depends on no stemming library; the seam's consumer is `pikuri-stemmers`.
+- The keyword file roughly doubles, `stems` stored beside `text`.
+- Unmeasured on a real corpus: the bm25 cost of the indexed parts.
+
+---
+
 ## D_voikko_stemmer — Why Voikko for Finnish, and why a gem of stemmers that requires no language library?
 
-**Context.** pikuri-rag stems in Ruby behind a `stemmer:` duck (`pikuri:D_ruby_stemming`), ships
-only `Stemmer::Identity`, and leaves languages here. Finnish inflects and compounds: unstemmed,
+**Context.** pikuri-rag stems in Ruby behind a `stemmer:` duck (`D_ruby_stemming`), ships
+only `Stemmer::Identity`, and leaves languages to this gem. Finnish inflects and compounds: unstemmed,
 `rag_search_keywords katu` misses *kadulla*, and *kone* misses *tietokoneella*.
 
 **Decision.** {Pikuri::Stemmers::Voikko} indexes dictionary forms through the MIT `voikko` gem,

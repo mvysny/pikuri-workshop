@@ -1,0 +1,615 @@
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":19.2}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":19.2}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":19.2}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":19.2}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":8.7}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":20.5}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":20.5}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":20.4}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[2,5],"pick":5,"correct":true,"reply":"5","seconds":19.8}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":38.1}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":54.1}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":61.7}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":25.7}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":55.8}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":24.7}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":26.7}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":27.4}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":27.4}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":26.4}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":38.8}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":54.5}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":60.5}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":74.5}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":39.0}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":25.2}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":24.9}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":25.3}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":24.9}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":22.1}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":7.9}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":31.5}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":31.5}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":30.1}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":19,"gold_hits":[],"pick":5,"correct":false,"reply":"5","seconds":84.0}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":19,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":60.0}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":59.4}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":6.9}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":16.4}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":16.4}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":11.6}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":4.7}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[2],"pick":1,"correct":false,"reply":"1","seconds":19.9}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[2],"pick":0,"correct":false,"reply":"0","seconds":18.4}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[2],"pick":3,"correct":false,"reply":"3","seconds":27.7}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":19,"gold_hits":[1,16],"pick":16,"correct":true,"reply":"16","seconds":73.2}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":19,"gold_hits":[1,16],"pick":16,"correct":true,"reply":"16","seconds":64.5}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":19,"gold_hits":[1,16],"pick":16,"correct":true,"reply":"16","seconds":79.8}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":16.3}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":19.5}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":19.5}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":19.7}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":19.3}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":18.6}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":15.9}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":24.0}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":48.6}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":56.2}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":38.2}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":5.9}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":17.5}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":20.1}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":20.2}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":20.2}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":19,"gold_hits":[],"pick":5,"correct":false,"reply":"5","seconds":312.1}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":17.7}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":18.0}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":22.5}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":29.9}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":42.1}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":61.0}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":88.4}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[],"pick":5,"correct":false,"reply":"5","seconds":82.7}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":67.2}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":22.1}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":28.1}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":27.3}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":23.0}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":24.8}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":26.8}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":28.4}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":62.8}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":20,"gold_hits":[1,19],"pick":19,"correct":true,"reply":"19","seconds":68.0}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":20,"gold_hits":[1,19],"pick":19,"correct":true,"reply":"19","seconds":77.4}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":36.8}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":9.4}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":26.9}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":20,"gold_hits":[1,19],"pick":19,"correct":true,"reply":"19","seconds":75.5}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":20.0}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":22.7}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":22.7}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":38.7}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":30.7}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":19,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":64.8}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[2],"pick":2,"correct":true,"reply":"2","seconds":64.8}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":19,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":42.3}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":19,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":53.3}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":19.9}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":22.2}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[2,4],"pick":1,"correct":false,"reply":"1","seconds":20.6}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":20.6}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":12.1}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":19.7}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":30.1}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":30.1}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":38.7}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":14,"gold_hits":[2,4],"pick":2,"correct":true,"reply":"2","seconds":62.5}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":14,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":48.7}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":37.2}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":14,"gold_hits":[2,4],"pick":2,"correct":true,"reply":"2","seconds":66.7}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":22.9}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":25.8}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":25.6}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":26.5}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":26.5}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":25.2}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":24.1}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":44.8}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":58.3}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":63.0}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":31.8}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":73.5}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":19.8}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":10.2}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":24.4}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":24.4}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":24.0}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":30.0}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":44.8}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":63.8}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":56.1}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":64.6}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":46.6}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":30.5}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":35.5}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.3}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.1}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.1}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.2}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.2}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":34.0}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":46.8}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":58.9}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":39.8}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":59.5}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":26.9}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":21.0}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[3],"pick":2,"correct":false,"reply":"2","seconds":14.1}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":22.2}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[3],"pick":2,"correct":false,"reply":"2","seconds":25.4}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":25.6}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[3],"pick":2,"correct":false,"reply":"2","seconds":28.8}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":31.5}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":40.5}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":16,"gold_hits":[6,14],"pick":6,"correct":true,"reply":"6","seconds":52.7}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":16,"gold_hits":[6,14],"pick":6,"correct":true,"reply":"6","seconds":65.4}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":16,"gold_hits":[6,14],"pick":6,"correct":true,"reply":"6","seconds":61.3}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":46.2}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":25.3}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":21.9}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":25.0}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":27.8}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":25.0}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":26.5}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":39.0}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[2,3],"pick":3,"correct":true,"reply":"3","seconds":55.2}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":16,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":61.5}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":16,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":75.4}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":16,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":39.6}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":25.8}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.9}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":24.4}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.9}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":20.9}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":8.9}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":37.8}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":37.8}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":38.6}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":17,"gold_hits":[1,7],"pick":1,"correct":true,"reply":"1","seconds":61.9}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":17,"gold_hits":[1,7],"pick":1,"correct":true,"reply":"1","seconds":53.0}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":17,"gold_hits":[1,7],"pick":1,"correct":true,"reply":"1","seconds":61.8}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":61.7}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":32.0}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":24.0}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":25.3}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":25.3}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":25.3}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":26.8}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":39.1}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":58.0}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":16,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":62.5}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":16,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":47.2}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":16,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":83.5}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":28.3}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":21.3}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":14.2}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":22.1}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":25.6}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":25.6}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":28.8}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":31.7}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":39.3}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":12,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":51.5}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":12,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":57.6}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":12,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":48.9}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":35.0}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":19.0}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":9.7}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":23.0}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":23.0}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":23.2}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":28.5}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":45.2}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[4],"pick":4,"correct":true,"reply":"4","seconds":53.9}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":17,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":57.0}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":17,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":75.1}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":17,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":43.7}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":38.9}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":28.2}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":22.5}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":24.9}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":26.1}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":32.2}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":30.4}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":48.8}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":43.7}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":17,"gold_hits":[10],"pick":7,"correct":false,"reply":"7","seconds":64.0}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":17,"gold_hits":[10],"pick":2,"correct":false,"reply":"2","seconds":55.1}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":42.1}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":17,"gold_hits":[10],"pick":2,"correct":false,"reply":"2","seconds":53.7}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":30.3}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":28.0}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":25.7}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":27.0}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":27.0}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":25.9}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":24.5}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":44.6}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":16,"gold_hits":[2,7,10],"pick":10,"correct":true,"reply":"10","seconds":65.7}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":16,"gold_hits":[2,7,10],"pick":10,"correct":true,"reply":"10","seconds":67.4}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":34.5}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":16,"gold_hits":[2,7,10],"pick":10,"correct":true,"reply":"10","seconds":81.8}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":14.6}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":8.0}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":20.1}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":24.4}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":25.0}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":25.1}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":25.5}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":15.5}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":17,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":57.9}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[5],"pick":4,"correct":false,"reply":"4","seconds":54.1}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[5],"pick":1,"correct":false,"reply":"1","seconds":17.4}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":17,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":62.7}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":17,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":78.1}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[5],"pick":4,"correct":false,"reply":"4","seconds":23.5}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[5],"pick":4,"correct":false,"reply":"4","seconds":25.0}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[5],"pick":4,"correct":false,"reply":"4","seconds":27.8}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[5],"pick":4,"correct":false,"reply":"4","seconds":25.1}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[5],"pick":1,"correct":false,"reply":"1","seconds":26.7}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[5],"pick":1,"correct":false,"reply":"1","seconds":38.8}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[5],"pick":4,"correct":false,"reply":"4","seconds":57.4}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":17,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":62.4}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":17,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":46.2}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":17,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":82.2}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":26.9}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":16.3}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":10.3}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":26.7}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":24.6}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":24.3}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":30.4}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":40.3}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":13,"gold_hits":[3,4],"pick":2,"correct":false,"reply":"2","seconds":48.7}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,4],"pick":2,"correct":false,"reply":"2","seconds":56.7}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":13,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":63.1}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":13,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":39.4}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":27.1}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":31.8}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":24.8}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":25.3}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.3}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":27.9}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[5],"pick":3,"correct":false,"reply":"3","seconds":24.4}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":31.8}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[5],"pick":3,"correct":false,"reply":"3","seconds":37.9}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1],"pick":7,"correct":false,"reply":"7","seconds":58.8}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":42.8}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":11.0}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1],"pick":7,"correct":false,"reply":"7","seconds":59.3}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1],"pick":5,"correct":false,"reply":"5","seconds":79.7}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":21.3}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":26.4}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":29.2}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":29.2}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":28.2}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":39.8}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":59.9}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":70.7}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":49.3}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":30.8}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":90.6}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":23.9}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.1}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.5}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":32.4}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.3}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.3}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":32.3}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":39.8}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":13,"gold_hits":[5,7],"pick":5,"correct":true,"reply":"5","seconds":50.1}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":13,"gold_hits":[5,7],"pick":5,"correct":true,"reply":"5","seconds":55.6}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":13,"gold_hits":[5,7],"pick":5,"correct":true,"reply":"5","seconds":47.0}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":33.6}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":19.0}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":10.5}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":25.0}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":25.0}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":24.5}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":30.9}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":39.2}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":42.3}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":13,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":41.7}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":13,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":53.9}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":13,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":29.8}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":23.5}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":30.8}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":24.3}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":26.6}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":27.3}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":31.8}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":22.1}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":29.6}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":35.6}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"union10","repeat":1,"n_hits":13,"gold_hits":[1,3,13],"pick":3,"correct":true,"reply":"3","seconds":46.8}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"union10","repeat":0,"n_hits":13,"gold_hits":[1,3,13],"pick":3,"correct":true,"reply":"3","seconds":56.5}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":28.3}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":11.8}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"union10","repeat":2,"n_hits":13,"gold_hits":[1,3,13],"pick":3,"correct":true,"reply":"3","seconds":48.0}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":28.1}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":25.3}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":24.3}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":29.0}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":23.9}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":34.4}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":37.1}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[],"pick":5,"correct":false,"reply":"5","seconds":65.4}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":50.2}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":14.2}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[],"pick":5,"correct":false,"reply":"5","seconds":69.0}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[],"pick":5,"correct":false,"reply":"5","seconds":92.8}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":21.7}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":23.3}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":26.2}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":24.0}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":26.5}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":39.2}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":59.1}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":70.7}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[1],"pick":2,"correct":false,"reply":"2","seconds":49.2}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":30.7}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[1],"pick":2,"correct":false,"reply":"2","seconds":89.8}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":26.1}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":28.0}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":28.7}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":35.6}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":27.0}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":26.9}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":32.5}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"union10","repeat":0,"n_hits":19,"gold_hits":[17],"pick":17,"correct":true,"reply":"17","seconds":70.5}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":94.0}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"union10","repeat":1,"n_hits":19,"gold_hits":[17],"pick":17,"correct":true,"reply":"17","seconds":82.1}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":0,"correct":false,"reply":"0","seconds":21.7}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"union10","repeat":2,"n_hits":19,"gold_hits":[17],"pick":17,"correct":true,"reply":"17","seconds":79.0}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":0,"correct":false,"reply":"0","seconds":21.7}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":4,"correct":false,"reply":"4","seconds":30.1}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":0,"correct":false,"reply":"0","seconds":25.5}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":0,"correct":false,"reply":"0","seconds":30.5}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":0,"correct":false,"reply":"0","seconds":24.0}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":4,"correct":false,"reply":"4","seconds":22.1}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":29.8}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":33.0}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"union10","repeat":1,"n_hits":19,"gold_hits":[1,2],"pick":3,"correct":false,"reply":"3","seconds":56.0}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":42.6}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"union10","repeat":0,"n_hits":19,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":71.0}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":19.2}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"union10","repeat":2,"n_hits":19,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":69.8}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":31.1}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":31.1}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":25.2}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.6}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":24.8}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":35.4}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":38.1}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"union10","repeat":1,"n_hits":16,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":57.8}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":42.1}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"union10","repeat":2,"n_hits":16,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":61.2}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":14.0}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"union10","repeat":0,"n_hits":16,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":84.8}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":23.1}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":23.6}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":26.3}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":23.5}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":25.3}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":38.8}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[3,4],"pick":3,"correct":true,"reply":"3","seconds":58.7}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"union10","repeat":1,"n_hits":18,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":63.6}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"union10","repeat":2,"n_hits":18,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":47.8}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"union10","repeat":0,"n_hits":18,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":83.9}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":28.0}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":17.1}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":10.5}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":26.3}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.5}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.6}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.2}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":41.3}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":51.9}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":60.2}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":67.1}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":42.3}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":27.7}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":33.4}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":25.9}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":26.0}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":27.3}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":27.8}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":31.8}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":35.3}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":41.3}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"union10","repeat":1,"n_hits":17,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":57.0}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"union10","repeat":0,"n_hits":17,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":76.9}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"union10","repeat":2,"n_hits":17,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":58.3}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":53.1}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.1}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.1}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.0}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.4}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.8}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.9}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":33.8}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":42.1}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"union10","repeat":0,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":53.3}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"union10","repeat":2,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":55.1}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":42.9}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"union10","repeat":1,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":70.2}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":23.7}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":8.1}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":25.6}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":24.5}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":25.5}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":25.5}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":26.2}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":36.6}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":61.6}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":51.0}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":42.6}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":74.5}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":3,"correct":false,"reply":"3","seconds":11.6}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":21.6}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.4}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.4}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.0}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.3}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.9}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"union10","repeat":0,"n_hits":16,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":62.2}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":73.6}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"union10","repeat":2,"n_hits":16,"gold_hits":[1,2],"pick":3,"correct":false,"reply":"3","seconds":48.6}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"union10","repeat":1,"n_hits":16,"gold_hits":[1,2],"pick":3,"correct":false,"reply":"3","seconds":69.6}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":26.8}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":26.7}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":28.0}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.6}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":31.7}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":32.0}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":31.9}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":32.4}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":57.0}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"union10","repeat":1,"n_hits":15,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":64.9}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"union10","repeat":2,"n_hits":15,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":64.7}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"union10","repeat":0,"n_hits":15,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":78.6}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"none","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.8}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"none","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":22.9}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"none","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":15.3}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"cosine","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.3}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"cosine","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.0}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"cosine","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":28.6}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"labels","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":31.7}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"labels","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":34.3}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"labels","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":43.6}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"union10","repeat":0,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":52.2}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"union10","repeat":2,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":42.1}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"union10","repeat":1,"n_hits":14,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":53.2}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":24.3}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,5],"pick":5,"correct":true,"reply":"5","seconds":27.8}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,5],"pick":5,"correct":true,"reply":"5","seconds":27.8}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":11.5}
+{"q":"Voiko työnantaja irtisanoa minut sen takia, että olen usein sairaana?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,5],"pick":5,"correct":true,"reply":"5","seconds":38.8}
+{"q":"Kuinka pitkä koeaika saa olla, ja voiko sitä pidentää?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":14.0}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":18.7}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":20.4}
+{"q":"Olen ollut samassa firmassa kahdeksan vuotta. Kuinka paljon aikaisemmin minulle pitää kertoa, jos työt loppuvat?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":20.4}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":0,"correct":false,"reply":"0","seconds":23.3}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":0,"correct":false,"reply":"0","seconds":27.1}
+{"q":"Saako työnantaja passittaa minut kotiin ilman palkkaa, kun töitä ei ole tarpeeksi?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":0,"correct":false,"reply":"0","seconds":20.3}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":23.1}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":26.2}
+{"q":"Kuinka monta päivää etukäteen minulle on kerrottava, että joudun lomautetuksi?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":21.2}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":24.3}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":27.2}
+{"q":"Voinko lähteä töistä saman tien, jos pomo jättää palkkani maksamatta?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":21.3}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":22.6}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":25.3}
+{"q":"Mitä minulle maksetaan, jos minut potkittiin pihalle ilman kunnon syytä?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":20.2}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":23.4}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":27.1}
+{"q":"Saako entinen työnantaja estää minua menemästä kilpailijalle töihin?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":21.4}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":23.5}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":25.7}
+{"q":"Kuinka kauan saan olla kotona hoitamassa pientä lastani ennen kuin minun pitää palata töihin?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[2,4],"pick":3,"correct":false,"reply":"3","seconds":20.1}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":22.7}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":25.5}
+{"q":"Lapseni sairastui aamulla yllättäen. Saanko jäädä kotiin hoitamaan häntä?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":20.3}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":22.8}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":26.2}
+{"q":"Saanko palkkaa niiltä päiviltä, kun olen kipeänä?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":21.3}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":24.4}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.4}
+{"q":"Saako minut irtisanoa, kun olen raskaana?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":21.5}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[3],"pick":2,"correct":false,"reply":"2","seconds":23.4}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[3],"pick":3,"correct":true,"reply":"3","seconds":25.9}
+{"q":"Kuinka monta lomapäivää minulle kertyy kuukaudessa?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[3],"pick":1,"correct":false,"reply":"1","seconds":21.0}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":22.9}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":26.1}
+{"q":"Sairastuin juuri ennen kesälomaa. Siirtyykö lomani myöhemmäksi?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":21.2}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":23.8}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.6}
+{"q":"Kuka päättää, milloin pidän kesälomani?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":22.5}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":24.8}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":27.1}
+{"q":"Saanko rahana ne lomat, joita en ehtinyt pitää, kun työsuhde loppuu?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,5],"pick":1,"correct":true,"reply":"1","seconds":21.5}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":23.6}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":25.9}
+{"q":"Kuinka paljon ylitöitä työnantaja saa enintään teettää?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":20.2}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":22.7}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":25.2}
+{"q":"Paljonko ylitöistä pitää maksaa?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":20.1}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[3],"pick":0,"correct":false,"reply":"0","seconds":23.0}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[3],"pick":0,"correct":false,"reply":"0","seconds":25.9}
+{"q":"Onko minulla oikeus ruokataukoon, jos teen kahdeksan tunnin päivää?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[3],"pick":0,"correct":false,"reply":"0","seconds":21.3}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":23.1}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":25.8}
+{"q":"Montako tuntia pitää olla vapaata kahden työvuoron välissä?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[4,5],"pick":5,"correct":true,"reply":"5","seconds":20.3}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":22.3}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":26.2}
+{"q":"Lasketaanko työmatkaan kuluva aika työajaksi?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":21.9}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[5],"pick":1,"correct":false,"reply":"1","seconds":24.8}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[5],"pick":1,"correct":false,"reply":"1","seconds":27.9}
+{"q":"Yritys aikoo vähentää väkeä. Pitääkö sen ensin neuvotella henkilöstön kanssa?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[5],"pick":1,"correct":false,"reply":"1","seconds":22.5}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[2,4],"pick":1,"correct":false,"reply":"1","seconds":24.4}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[2,4],"pick":1,"correct":false,"reply":"1","seconds":27.3}
+{"q":"Kuinka kauan neuvotteluja pitää käydä ennen kuin voidaan irtisanoa kymmenen ihmistä?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[2,4],"pick":1,"correct":false,"reply":"1","seconds":22.5}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":25.3}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":29.1}
+{"q":"Mitä työntekijä saa korvaukseksi, jos työnantaja irtisanoo hänet neuvottelematta ensin?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":24.9}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":28.8}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":32.6}
+{"q":"Koskeeko yhteistoimintalaki meidän 30 hengen yritystämme?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":26.5}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":28.8}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":30.4}
+{"q":"Can my employer lay me off temporarily, and how much notice do I get?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[5],"pick":5,"correct":true,"reply":"5","seconds":24.5}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":26.0}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":27.4}
+{"q":"Am I paid when I'm off sick?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":21.4}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":23.1}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":26.7}
+{"q":"How many hours of rest do I need between two shifts?","kind":"paraphrase","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":21.9}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":25.0}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":27.9}
+{"q":"Mitä työsopimuslain 7 luvun 3 § sanoo?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[],"pick":3,"correct":false,"reply":"3","seconds":22.7}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":24.9}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":27.7}
+{"q":"TSL 6:6 – mitä se edellyttää työnantajalta?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":23.0}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[],"pick":0,"correct":false,"reply":"0","seconds":27.0}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[],"pick":2,"correct":false,"reply":"2","seconds":29.1}
+{"q":"Mitä työaikalain 5 luvun 19 §:ssä säädetään?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[],"pick":1,"correct":false,"reply":"1","seconds":22.9}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":23.9}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":0,"correct":false,"reply":"0","seconds":30.6}
+{"q":"YTL 3:23 neuvotteluaika","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":2,"correct":true,"reply":"2","seconds":28.2}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":36.0}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":46.8}
+{"q":"Soveltuuko laki 1333/2021 yritykseen, jossa on 15 työntekijää?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":37.6}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,4],"pick":1,"correct":true,"reply":"1","seconds":41.1}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,4],"pick":1,"correct":true,"reply":"1","seconds":43.2}
+{"q":"Takaisinottovelvollisuus irtisanomisen jälkeen","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,4],"pick":1,"correct":true,"reply":"1","seconds":31.9}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":35.6}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":39.0}
+{"q":"Miten työaikapankista sovitaan?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":30.8}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":35.6}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":36.4}
+{"q":"Lasketaanko varallaolo työajaksi?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1],"pick":1,"correct":true,"reply":"1","seconds":28.4}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":31.9}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":35.3}
+{"q":"Kilpailukieltosopimuksen korvaus työntekijälle","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":30.7}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,3],"pick":3,"correct":true,"reply":"3","seconds":35.1}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":40.4}
+{"q":"Milloin osa-aikainen sairauspoissaolo on mahdollinen?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,3],"pick":1,"correct":true,"reply":"1","seconds":32.9}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":36.2}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":37.2}
+{"q":"Säästövapaa – kuinka paljon lomaa saa säästää?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.6}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":29.7}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":33.4}
+{"q":"Kuinka monta tuntia jaksotyöaika saa olla kolmen viikon jaksossa?","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.6}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"vfirst","repeat":0,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":31.5}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"vfirst","repeat":1,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":27.8}
+{"q":"Lomautuksen ennakkoselvitys","kind":"exact","variant":"vfirst","repeat":2,"n_hits":5,"gold_hits":[1,2],"pick":1,"correct":true,"reply":"1","seconds":16.0}

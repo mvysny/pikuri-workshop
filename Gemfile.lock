@@ -1,7 +1,7 @@
 GIT
   remote: https://github.com/mvysny/pikuri.git
-  revision: 51fec91455ebdbca3390e167495ffacedb10b9ba
-  ref: 51fec91455ebdbca3390e167495ffacedb10b9ba
+  revision: 43ecf1e085e452d7023997ce9596d5663bf6ef8e
+  ref: 43ecf1e085e452d7023997ce9596d5663bf6ef8e
   specs:
     pikuri-core (0.1.0)
       faraday (~> 2.9)
@@ -18,9 +18,6 @@ GIT
     pikuri-pdf (0.1.0)
       pdf-reader (~> 2.15)
       pikuri-core (= 0.1.0)
-    pikuri-rag (0.1.0)
-      pikuri-vectordb (= 0.1.0)
-      sqlite3 (~> 2.9)
     pikuri-subagents (0.1.0)
       pikuri-core (= 0.1.0)
       pikuri-workspace (= 0.1.0)
@@ -30,9 +27,6 @@ GIT
       pikuri-core (= 0.1.0)
       sqlite3 (~> 2.9)
       tzinfo (~> 2.0)
-    pikuri-vectordb (0.1.0)
-      listen (~> 3.9)
-      pikuri-core (= 0.1.0)
     pikuri-web (0.1.0)
       faraday (~> 2.9)
       nokogiri (~> 1.19)
@@ -92,6 +86,14 @@ PATH
       pikuri-workspace (~> 0.1)
 
 PATH
+  remote: pikuri-rag
+  specs:
+    pikuri-rag (0.1.0)
+      pikuri-core (~> 0.1)
+      pikuri-vectordb (= 0.1.0)
+      sqlite3 (~> 2.9)
+
+PATH
   remote: pikuri-skills
   specs:
     pikuri-skills (0.1.0)
@@ -107,6 +109,13 @@ PATH
   remote: pikuri-tasks
   specs:
     pikuri-tasks (0.1.0)
+      pikuri-core (~> 0.1)
+
+PATH
+  remote: pikuri-vectordb
+  specs:
+    pikuri-vectordb (0.1.0)
+      listen (~> 3.9)
       pikuri-core (~> 0.1)
 
 GEM

@@ -3,10 +3,10 @@
 ## What this is
 
 The power tools for [pikuri](https://github.com/mvysny/pikuri), a small Ruby AI assistant:
-a shell, a coding agent, language servers, MCP servers, Agent Skills, durable memory and an
-OS assistant, plus what a chat app needs to host many conversations and save them. Each is a
-gem you wire à la carte. The tools that run code you didn't write run in a cage, and the book
-says what the cage buys and where it stops.
+a shell, a coding agent, language servers, MCP servers, Agent Skills, semantic search over
+your files, durable memory and an OS assistant, plus what a chat app needs to host many
+conversations and save them. Each is a gem you wire à la carte. The tools that run code you
+didn't write run in a cage, and the book says what the cage buys and where it stops.
 
 ## Promises
 
@@ -54,6 +54,8 @@ pikuri's gems from its repo at one pinned commit; the `Rakefile` fans out `rake 
 - `pikuri-tasks` — in-memory per-agent task list + four `task_*` tools.
 - `pikuri-memory` — durable cross-conversation memory backed by mem0 + `bin/pikuri-memory`.
 - `pikuri-extractors` — office/EPUB/RTF/PDF → Markdown for pikuri's `Extractor` registry via a one-shot networkless podman/docker container.
+- `pikuri-vectordb` — semantic search over a local corpus: chunker, embedder, reranker, an `InMemory` or Qdrant backend + `bin/pikuri-corpus`, the no-egress recall demo. Rules: `pikuri-vectordb/AGENTS.md`
+- `pikuri-rag` — hybrid retrieval: an FTS5 keyword index beside the vectors, fused by reciprocal rank, behind one `rag_*` tool family. Rules: `pikuri-rag/AGENTS.md`
 - `pikuri-stemmers` — a stemmer per language for pikuri-rag's `stemmer:` (Finnish via Voikko); each takes its library as a host-opened handle and requires none.
 - `pikuri-conversations` — host many live conversations (`Conversations`, `Conversation`: an agent each, turns on own threads; `Throttle`, requests in flight per server; `Titler`; `RateLimitedListener`, streamed deltas at a frame rate) and store them: `HistoryFile`, the stored form of pikuri's in-memory `History`, and `Store`, a folder per conversation.
 - `book/` — book 2, "the workshop"; `book/README.md` is the ToC and the single source of truth for chapter order.
