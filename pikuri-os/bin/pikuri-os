@@ -100,9 +100,9 @@ end
 # *your machine*, and WholeDisk with an empty denylist reaches your home
 # directory, your keys, your browser profile. Same domain argument that
 # makes a mailbox private without anyone declaring it — and the file-index
-# tools already hardcode it on exactly that reasoning
-# (Os::FileindexSearch), so leaving it off here made read/bash disagree
-# with fileindex about whether the same disk is sensitive.
+# tools' roots declare it on exactly that reasoning
+# (Os::Extension::FILE_INDEX_ROOTS), so leaving it off here made read/bash
+# disagree with fileindex about whether the same disk is sensitive.
 #
 # Deliberately an *attribution* fix, not a verdict one: fileindex already
 # supplied the private leg, so no verdict moves (silent here, soft with

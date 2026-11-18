@@ -41,15 +41,24 @@ module Pikuri
     # fail-loud probe) lives in the binary, so a differently-hosted client
     # can isolate differently.
     #
-    # == Degradation
+    # == File index
     #
-    # The file-index tools run on the index {FileIndex.pick} finds ready.
-    # When none is, the extension logs each index's reason and omits the
-    # tools: the agent still works through bash and the file tools.
+    # {Pikuri::Fileindex::Extension} over {FILE_INDEX_ROOTS}, on the index
+    # {Pikuri::Fileindex.pick} finds ready. When none is, the extension logs
+    # each index's reason and omits the tools: the agent still works through
+    # bash and the file tools.
     class Extension
       include Pikuri::Agent::Extension
 
       LOGGER = Pikuri.logger_for('Os::Extension')
+
+      # The whole disk, the same reach as +read+ and +bash+, so the file
+      # index reaches every folder the desktop indexed, a recoll +topdirs+
+      # outside +$HOME+ included. Private: it is the user's own machine.
+      # Never trusted: Downloads and mail attachments are on it.
+      #
+      # @return [Pikuri::Fileindex::Roots]
+      FILE_INDEX_ROOTS = Pikuri::Fileindex::Roots.new(dirs: ['/'], private: true)
 
       # @param filesystem [Pikuri::Workspace::Filesystem] the host fs view
       #   for the file tools and bash (typically
@@ -65,11 +74,11 @@ module Pikuri
       # @param memory [MachineMemory] the MACHINE.md reader.
       # @param system_info [SystemInfo] the boot-time machine facts.
       # @param file_index_backends [Array<Module>] file-index backends in
-      #   preference order, handed to {FileIndex.pick}.
+      #   preference order, handed to {Pikuri::Fileindex.pick}.
       def initialize(filesystem:, confirmer:,
                      sandbox: Pikuri::Code::Bash::Sandbox::NONE, plan_mode: nil,
                      memory: MachineMemory.new, system_info: SystemInfo.new,
-                     file_index_backends: FileIndex::BACKENDS)
+                     file_index_backends: Pikuri::Fileindex::BACKENDS)
         @filesystem = filesystem
         @confirmer = confirmer
         @sandbox = sandbox
@@ -114,10 +123,9 @@ module Pikuri
       # @param c [Pikuri::Agent::Configurator]
       # @return [void]
       def add_file_index_tools(c)
-        backend = FileIndex.pick(@file_index_backends)
-        c.add_tool FileindexSearch.new(backend: backend)
-        c.add_tool FileindexRead.new(backend: backend)
-      rescue FileIndex::Unavailable => e
+        backend = Pikuri::Fileindex.pick(FILE_INDEX_ROOTS, backends: @file_index_backends)
+        c.add_extension Pikuri::Fileindex::Extension.new(roots: FILE_INDEX_ROOTS, backend: backend)
+      rescue Pikuri::Fileindex::Unavailable => e
         LOGGER.warn("#{e.message}\nfileindex_search / fileindex_read are off on this host.")
       end
 

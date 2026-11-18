@@ -58,7 +58,8 @@ pieces, all of which **degrade rather than crash** except the first:
   with `bash` and the file tools.
   - GNOME's **`localsearch`** (the successor to Tracker) is already
     indexing your home on a GNOME desktop. `pikuri-os` queries it
-    through the **`tinysparql`** CLI, which Debian and Ubuntu install
+    through the **`tinysparql`** CLI (localsearch 3.8 or newer; the
+    older `tracker3` isn't supported), which Debian and Ubuntu install
     along with it. Check that it answers with
     `tinysparql query -b org.freedesktop.LocalSearch3 -q 'ASK { }'`
     (it prints `true`); `localsearch index` lists the folders it
@@ -280,7 +281,11 @@ once you've built its index.
 `pikuri-os` exposes the first of the two it finds usable as a
 **search → read-full pair**, the same
 two-step shape as `vectordb_search` → `vectordb_read` from
-[the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md):
+[the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md).
+Both tools come from pikuri's
+[`pikuri-fileindex`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-fileindex)
+gem, which makes the host name the folders they may reach; `pikuri-os`
+names `/`, the same whole disk `read` and `bash` reach:
 
 - **`fileindex_search`** finds files whose contents match your words —
   inside PDFs and office docs included — and returns each path with the
@@ -292,7 +297,10 @@ two-step shape as `vectordb_search` → `vectordb_read` from
   and an optional `folder` keeps the search inside one folder, so a
   common word in one project isn't buried under the rest of your home.
   (`localsearch`'s own `search` command can do neither — it sorts hits
-  by path — which is why `pikuri-os` asks the index in SPARQL instead.)
+  by path — which is why the gem asks the index in SPARQL instead.)
+  The answer ends with how many files match in all: "Found 2 files,
+  all shown", or "Showing 1 of 2 matching files", so the model knows
+  when there is nothing more to find.
 - **`fileindex_read`** then returns a file's full extracted text,
   line-paged exactly like the `read` tool, with no extractor of its
   own (the index did the extraction at index time). The search hit
@@ -307,7 +315,8 @@ model which one it's working with. `localsearch` covers your home and
 XDG folders but skips source trees and `.git` checkouts; `recoll`
 covers exactly the folders you configured, source code included, and
 nothing else. Neither indexes `/etc` or `/var`, so the agent reaches
-for `grep` there. And it's best-effort: when no index is usable the
+for `grep` there. Neither tool returns a file under a hidden folder,
+even one recoll indexed: `~/.config` is `read`'s job. And it's best-effort: when no index is usable the
 tools are simply not wired, and the agent falls back to `find`/`grep`.
 This is "spotlight" as two tools the LLM reaches for, and we got it
 from an index that already exists — which is also why a vector DB earns

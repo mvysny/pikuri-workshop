@@ -1,13 +1,15 @@
 GIT
   remote: https://codeberg.org/mvysny/pikuri.git
-  revision: 9b6a7e3f6b9af51dab7262f72f820fcfff323f31
-  ref: 9b6a7e3f6b9af51dab7262f72f820fcfff323f31
+  revision: 51fec91455ebdbca3390e167495ffacedb10b9ba
+  ref: 51fec91455ebdbca3390e167495ffacedb10b9ba
   specs:
     pikuri-core (0.1.0)
       faraday (~> 2.9)
       rainbow (~> 3.1)
       ruby_llm (~> 2.2)
       zeitwerk (~> 2.7)
+    pikuri-fileindex (0.1.0)
+      pikuri-core (= 0.1.0)
     pikuri-html (0.1.0)
       nokogiri (~> 1.19)
       pikuri-core (= 0.1.0)
@@ -86,6 +88,7 @@ PATH
     pikuri-os (0.1.0)
       pikuri-code (= 0.1.0)
       pikuri-core (~> 0.1)
+      pikuri-fileindex (~> 0.1)
       pikuri-workspace (~> 0.1)
 
 PATH
@@ -270,6 +273,7 @@ DEPENDENCIES
   pikuri-conversations!
   pikuri-core!
   pikuri-extractors!
+  pikuri-fileindex!
   pikuri-lsp!
   pikuri-mcp!
   pikuri-memory!
@@ -343,6 +347,7 @@ CHECKSUMS
   pikuri-conversations (0.1.0)
   pikuri-core (0.1.0)
   pikuri-extractors (0.1.0)
+  pikuri-fileindex (0.1.0)
   pikuri-html (0.1.0)
   pikuri-lsp (0.1.0)
   pikuri-mcp (0.1.0)

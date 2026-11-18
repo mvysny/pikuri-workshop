@@ -3,6 +3,7 @@
 require 'pikuri-core'
 require 'pikuri-workspace'
 require 'pikuri-code'
+require 'pikuri-fileindex'
 
 # Entry file for the pikuri-os gem: the OS-integration layer and home of
 # the +bin/pikuri-os+ demo — a single, local, network-severed
@@ -12,8 +13,8 @@ require 'pikuri-code'
 # memory a user-owned +MACHINE.md+ rather than mem0 — so this gem depends
 # on pikuri-code but NOT pikuri-mcp/-memory/-vectordb. The two cross-cutting
 # pieces (+FullFsNoNet+ sandbox, passive-command detector) live in
-# pikuri-code with the other OS-touching primitives. Design notes:
-# +pikuri-os/design/architecture.md+ (the file-index engine survey) and
+# pikuri-code with the other OS-touching primitives; the file search is
+# pikuri-fileindex's. Design notes: +pikuri-os/design/architecture.md+ and
 # book/os-assistant.md (the security narrative).
 Pikuri::PROMPT_DIRS << File.expand_path('../prompts', __dir__)
 

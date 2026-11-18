@@ -42,10 +42,7 @@ for the harder pieces still deferred.
 **Target platform:** Ubuntu 26.04 LTS or newer, GNOME desktop.
 
 Depends on `pikuri-core` (Agent + Tool framework), `pikuri-workspace`
-(file tools + confirmer), and `pikuri-code` (Bash + sandbox).
+(file tools + confirmer), `pikuri-code` (Bash + sandbox), and
+`pikuri-fileindex` (search over the desktop's file index).
 Deliberately **not** `pikuri-mcp` / `pikuri-memory` / `pikuri-vectordb`
 — severing those keeps the no-egress, audit-first posture honest.
-
-> Status: skeleton. The OS-specific surface (localsearch-backed
-> content search, `MACHINE.md` memory, boot grounding) and the binary
-> land incrementally.

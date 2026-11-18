@@ -17,11 +17,11 @@ Gem::Specification.new do |spec|
     errors, advise on configuration). It is the federation's privacy-
     first +@os+ member shipped standalone — no egress, no MCP, no cloud.
 
-    The gem holds the OS-specific surface (a localsearch-backed
-    content-search tool, a single-file +MACHINE.md+ resident memory,
-    and boot-time machine grounding) on top of pikuri-core's Agent +
-    Tool framework, pikuri-workspace's file tools, and pikuri-code's
-    Bash + sandbox. It deliberately does NOT depend on
+    The gem holds the OS-specific surface (a single-file +MACHINE.md+
+    resident memory and boot-time machine grounding) on top of
+    pikuri-core's Agent + Tool framework, pikuri-workspace's file
+    tools, pikuri-code's Bash + sandbox, and pikuri-fileindex's search
+    over the desktop's file index. It deliberately does NOT depend on
     pikuri-mcp/-memory/-vectordb: severing those keeps the no-egress,
     "small enough to audit" posture honest.
 
@@ -58,5 +58,6 @@ Gem::Specification.new do |spec|
   # binary's choices, reached through the root Gemfile, not this gem's.
   spec.add_dependency 'pikuri-code',      "= #{Pikuri::Workshop::VERSION}"
   spec.add_dependency 'pikuri-core',      Pikuri::Workshop::PIKURI
+  spec.add_dependency 'pikuri-fileindex', Pikuri::Workshop::PIKURI
   spec.add_dependency 'pikuri-workspace', Pikuri::Workshop::PIKURI
 end

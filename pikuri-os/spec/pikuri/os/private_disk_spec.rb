@@ -2,8 +2,8 @@
 
 # bin/pikuri-os and bin/pikuri-computer declare their WholeDisk workspace
 # `private: true`, because the disk they reach is the user's actual machine.
-# The file-index tools already hardcode that leg on the same reasoning
-# (see trifecta_legs_spec.rb); these assertions keep the *file* tools from
+# The file-index tools' roots declare that leg on the same reasoning
+# (Os::Extension::FILE_INDEX_ROOTS); these assertions keep the *file* tools from
 # drifting back to disagreeing with them about the very same disk.
 RSpec.describe 'whole-machine workspace is private' do
   def whole_disk(**flags)
@@ -19,12 +19,9 @@ RSpec.describe 'whole-machine workspace is private' do
   end
 
   it 'agrees with what the file-index tools already declare about the same disk' do
-    backend = Module.new do
-      def self.limitations = ''
-    end
     ws = Pikuri::Workspace::Workspace.new(filesystem: whole_disk(private: true))
 
-    assert_equal Pikuri::Os::FileindexSearch.new(backend: backend).trifecta_legs.private,
+    assert_equal Pikuri::Os::Extension::FILE_INDEX_ROOTS.legs.private,
                  Pikuri::Workspace::Read.new(workspace: ws).trifecta_legs.private
   end
 
@@ -36,13 +33,10 @@ RSpec.describe 'whole-machine workspace is private' do
     # fileindex already supplied the private leg, so declaring the workspace
     # private changes *who is named*, not what is concluded. Pinned so a future
     # reader does not mistake the declaration for a severity change.
-    backend = Module.new do
-      def self.limitations = ''
-    end
     verdicts = [false, true].map do |declared|
       ws = Pikuri::Workspace::Workspace.new(filesystem: whole_disk(private: declared))
       tools = { 'read' => Pikuri::Workspace::Read.new(workspace: ws).trifecta_legs,
-                'fileindex_search' => Pikuri::Os::FileindexSearch.new(backend: backend).trifecta_legs }
+                'fileindex_search' => Pikuri::Os::Extension::FILE_INDEX_ROOTS.legs }
       Pikuri::Trifecta.walk(
         Pikuri::Trifecta::Node.new(label: 'pikuri-os', tool_legs: tools)
       ).tree_verdict

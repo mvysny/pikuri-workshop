@@ -24,7 +24,7 @@ RSpec.describe Pikuri::Os::Extension do
   # without spawning any real indexer.
   def stub_backend(available:, label: 'stub')
     Module.new do
-      define_singleton_method(:unavailable_reason) { available ? nil : "#{label} is not ready" }
+      define_singleton_method(:unavailable_reason) { |folders:| available ? nil : "#{label} is not ready" }
       define_singleton_method(:limitations)        { 'STUB LIMITS' }
       define_singleton_method(:label)              { label }
     end
@@ -66,15 +66,36 @@ RSpec.describe Pikuri::Os::Extension do
 
     it 'picks the first usable backend in priority order' do
       second = stub_backend(available: true, label: 'second')
-      with_singleton(Pikuri::Os::FileindexSearch, :new) do |orig|
+      with_singleton(Pikuri::Fileindex::Search, :new) do |orig|
         chosen = nil
-        Pikuri::Os::FileindexSearch.define_singleton_method(:new) do |**kwargs|
+        Pikuri::Fileindex::Search.define_singleton_method(:new) do |**kwargs|
           chosen = kwargs[:backend]
           orig.call(**kwargs)
         end
 
         configure!(build_configurator, backends: [stub_backend(available: false), second])
         assert_same second, chosen, 'should skip the unready backend and use the next one'
+      end
+    end
+
+    it 'searches the whole disk' do
+      c = build_configurator
+      configure!(c)
+
+      search = c.tools.find { |tool| tool.name == 'fileindex_search' }
+      assert_includes search.description, "Searches only under these folders (subfolders included):\n- /\n"
+    end
+
+    it 'fixes both inbound legs on the file-index tools — whole-machine reach is the whole-disk case' do
+      c = build_configurator
+      configure!(c)
+
+      tools = c.tools.select { |tool| tool.name.start_with?('fileindex_') }
+      assert_equal 2, tools.size
+      tools.each do |tool|
+        assert tool.trifecta_legs.private, tool.name
+        assert_equal :hard, tool.trifecta_legs.untrusted, tool.name
+        assert_equal :no_egress, tool.trifecta_legs.egress_payload_review, tool.name
       end
     end
 

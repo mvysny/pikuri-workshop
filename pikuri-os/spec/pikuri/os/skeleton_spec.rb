@@ -1,9 +1,7 @@
 # frozen_string_literal: true
 
 # Skeleton smoke test: the gem requires cleanly, defines its namespace,
-# and pulls its sibling dependencies. Real per-component specs land
-# alongside each piece as it's added (LocalSearch tool, MACHINE.md
-# memory, boot grounding).
+# and pulls its sibling dependencies.
 describe 'pikuri-os skeleton' do
   it 'defines the Pikuri::Os namespace' do
     assert defined?(Pikuri::Os), 'Pikuri::Os should be defined after require'
