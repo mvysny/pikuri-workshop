@@ -3,8 +3,11 @@
 require 'pikuri-core'
 require 'pikuri-vectordb'
 
-# Entry file for the pikuri-rag gem: mounts a per-gem Zeitwerk loader at this
-# +lib/+, so +lib/pikuri/rag/extension.rb+ autoloads as +Pikuri::Rag::Extension+.
+# Entry file for the pikuri-rag gem: appends the gem's +prompts/+ to
+# +Pikuri::PROMPT_DIRS+ and mounts a per-gem Zeitwerk loader at this +lib/+, so
+# +lib/pikuri/rag/extension.rb+ autoloads as +Pikuri::Rag::Extension+.
+Pikuri::PROMPT_DIRS << File.expand_path('../prompts', __dir__)
+
 module Pikuri
   # Hybrid retrieval — a keyword index beside the vectors — as one +rag_*+ tool
   # family over a local corpus. Wire it and ask both kinds of question:

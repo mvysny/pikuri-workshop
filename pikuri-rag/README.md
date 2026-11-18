@@ -19,6 +19,15 @@ keyword index:
 This gem keeps the same chunks in an SQLite FTS5 index as well and
 merges the hits from both indexes into one ranking.
 
+Try both on one corpus from a source checkout. `pikuri-corpus` is a
+no-egress recall agent over this repo's `book/`; `--hybrid` swaps its
+`vectordb_*` tools for the four below:
+
+```sh
+./pikuri-rag/bin/pikuri-corpus            # vectors only
+./pikuri-rag/bin/pikuri-corpus --hybrid   # vectors + keywords
+```
+
 ## Wiring
 
 Your app builds one corpus per folder and gives each agent an extension

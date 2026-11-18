@@ -156,10 +156,12 @@ does exactly that). HTML extraction is a deferred follow-up.
 
 ## Demo: `pikuri-corpus`
 
-From a source checkout (not installed by `gem install`):
+From a source checkout (not installed by `gem install`). The bin lives in
+`pikuri-rag`, whose `--hybrid` flag adds the keyword index; without it,
+it runs this gem alone:
 
 ```sh
-./pikuri-vectordb/bin/pikuri-corpus --qdrant --watch
+./pikuri-rag/bin/pikuri-corpus --qdrant --watch
 ```
 
 A single recall agent over `book/` (this repo's book)

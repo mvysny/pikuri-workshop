@@ -23,8 +23,8 @@ first; [the workshop's](book/README.md) picks up where it ends.
 | [`pikuri-tasks`](pikuri-tasks/README.md) | a per-agent task list for long multi-step work |
 | [`pikuri-memory`](pikuri-memory/README.md) | durable cross-conversation memory backed by mem0 |
 | [`pikuri-extractors`](pikuri-extractors/README.md) | office, EPUB and RTF documents to Markdown, in a networkless container |
-| [`pikuri-vectordb`](pikuri-vectordb/README.md) | search your files by meaning: embeddings, a reranker, an index in memory or in Qdrant, and `bin/pikuri-corpus` |
-| [`pikuri-rag`](pikuri-rag/README.md) | a keyword index beside the vectors, for exact words and every match |
+| [`pikuri-vectordb`](pikuri-vectordb/README.md) | search your files by meaning: embeddings, a reranker, an index in memory or in Qdrant |
+| [`pikuri-rag`](pikuri-rag/README.md) | a keyword index beside the vectors, for exact words and every match, and `bin/pikuri-corpus`, a recall agent in either mode |
 | [`pikuri-stemmers`](pikuri-stemmers/README.md) | keyword search in languages other than English: Finnish |
 | [`pikuri-conversations`](pikuri-conversations/README.md) | many live conversations for a chat app, each its own agent on its own threads, saved and resumed |
 

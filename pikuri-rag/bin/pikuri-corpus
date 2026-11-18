@@ -1,20 +1,24 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Dev / demo entry point — runs from a source checkout only. The pikuri
-# gem ships as a library; this script is not installed by `gem install
-# pikuri-vectordb`. It exists to demonstrate local-corpus vector search:
-# a single chat agent whose only tools are `vectordb_search` (semantic
-# recall over an indexed corpus), `vectordb_read` (read one indexed
-# document in full by its source path) and `calculator`. It has NO
-# egress — no web search, no page fetch — by design: the corpus may hold
-# private data, and an agent that can read it must not also be able to
-# send it out. That single rule keeps the lethal trifecta off this agent
-# (the security chapter) no matter what the corpus holds, and is why a
-# prompt-injected document has no hand to act with — vectordb_search and
-# vectordb_read are both inbound-only. The default corpus is the +book/+
-# directory inside this checkout, so the reader can ask the agent about
-# the very book they're reading.
+# Dev / demo entry point — runs from a source checkout only; `gem install`
+# installs no bins. It demonstrates retrieval over a local corpus, both
+# halves of it, on one corpus:
+#
+#   pikuri-corpus            # vector search: vectordb_search / _read / _reindex
+#   pikuri-corpus --hybrid   # + a keyword index: rag_search, rag_search_keywords, ...
+#
+# It lives in pikuri-rag, not pikuri-vectordb, because --hybrid needs rag
+# and rag depends on vectordb, never the other way round.
+#
+# One chat agent whose only other tool is `calculator`. It has NO egress —
+# no web search, no page fetch — by design: the corpus may hold private
+# data, and an agent that can read it must not also be able to send it out.
+# That single rule keeps the lethal trifecta off this agent no matter what
+# the corpus holds, and is why a prompt-injected document has no hand to act
+# with: every corpus tool is inbound-only. The default corpus is the +book/+
+# directory inside this checkout, so the reader can ask the agent about the
+# very book they're reading.
 #
 # What the corpus *is* — confidential? your own writing? — is the host's
 # to declare, and --private / --trusted below do it. They move only what
@@ -33,6 +37,7 @@ require 'reline' # line editing + history for the interactive prompt
 
 require 'pikuri-core'
 require 'pikuri-vectordb'
+require 'pikuri-rag'
 # Checkout-mode-only require (this gem's gemspec doesn't declare it —
 # bins run from the monorepo Gemfile): plugs PDF extraction into the
 # Extractor registry below so a PDF corpus indexes alongside the
@@ -56,11 +61,12 @@ source          = File.expand_path('../../book', __dir__)
 streaming       = false
 watch           = false
 use_qdrant      = false
+hybrid          = false
 # The corpus's trifecta declaration, both off by default — see
 # Pikuri::VectorDb::Corpus#private? / #trusted?. Flags rather than
 # hardcoded values because --source points this demo at your own folder:
-# trusted: true is honest for the bundled book/ (pikuri wrote it) and a lie
-# for an arbitrary path, so the default run prints the pessimistic map.
+# trusted: true is honest for the bundled book/ (its authors wrote it) and
+# a lie for an arbitrary path, so the default run prints the pessimistic map.
 corpus_private  = false
 corpus_trusted  = false
 
@@ -69,7 +75,8 @@ parser = OptionParser.new do |opts|
   opts.banner = 'Usage: pikuri-corpus [options] [initial message...]'
   opts.separator ''
   opts.separator 'Options:'
-  opts.on('--no-reranker', 'Skip the reranker; use vector-only top-k') { use_reranker = false }
+  opts.on('--hybrid', 'Add a keyword index beside the vectors: the rag_* tools instead of vectordb_*') { hybrid = true }
+  opts.on('--no-reranker', 'Skip the reranker; use the top-k as ranked') { use_reranker = false }
   opts.on('--source PATH', "Corpus path to index (default: #{source})") { |v| source = v }
   opts.on('--watch', 'Keep the index live: reindex files as they change on disk (auto-watch daemon)') { watch = true }
   opts.on('--private', 'Declare the corpus as holding sensitive data (adds the private trifecta leg to the printed map)') { corpus_private = true }
@@ -145,16 +152,37 @@ rescue StandardError => e
   exit 1
 end
 
+# --hybrid pairs the vector store with an FTS5 keyword store, RAM with RAM
+# and a file beside Qdrant, so both survive a restart together. Both modes
+# share the Qdrant collection: the first --hybrid run finds the keyword file
+# missing and re-indexes every source, since a source counts as indexed only
+# when both stores hold it (Pikuri::Rag::Backend::Hybrid).
+keyword_store = nil
+if hybrid
+  keyword_store = if use_qdrant
+                    Pikuri::Paths.cache.tap(&:mkpath).join("#{collection}.sqlite3").to_s
+                  else
+                    Pikuri::Rag::Backend::Fts5::MEMORY_STORE
+                  end
+  backend = Pikuri::Rag::Backend::Hybrid.new(vectors: backend,
+                                             keywords: Pikuri::Rag::Backend::Fts5.new(store: keyword_store))
+end
+
 # One corpus: the agent's tools and the optional --watch
 # daemon share it. The extension indexes nothing on its own — population is the host's
 # call. This demo deliberately starts WITHOUT auto-indexing: the exercise
-# is to ask the agent to index the corpus (it calls vectordb_reindex).
+# is to ask the agent to index the corpus (it calls the reindex tool).
 # With InMemory that means an empty corpus every run; with --qdrant
 # the index may already be populated from a previous run. Pass --watch to
 # have the Watcher build the index in the background and keep it live.
 corpus = Pikuri::VectorDb::Corpus.new(backend: backend, source: source, embedder: embedder,
                                       private: corpus_private, trusted: corpus_trusted)
-vectordb_ext = Pikuri::VectorDb::Extension.new(corpus: corpus, reranker: reranker)
+corpus_ext = if hybrid
+               Pikuri::Rag::Extension.new(corpus: corpus, reranker: reranker)
+             else
+               Pikuri::VectorDb::Extension.new(corpus: corpus, reranker: reranker)
+             end
+family = hybrid ? Pikuri::Rag::Extension::FAMILY : 'vectordb'
 
 # Run one agent turn, trapping SIGINT only for the duration of the turn.
 # Ctrl+C during a turn flips the agent's Cancellable flag — the next
@@ -190,12 +218,11 @@ agent = Pikuri::Agent.new(
   # absent: with the corpus as a stand-in for private data, an egress
   # tool on this same agent would complete the lethal trifecta.
   c.add_tool Pikuri::Tool::CALCULATOR
-  # VectorDb::Extension registers +vectordb_search+, +vectordb_read+
-  # and +vectordb_reindex+ and nothing more — it does not index. The
-  # corpus starts empty; the agent fills it by calling
-  # +vectordb_reindex+ when the user asks (or the --watch daemon
-  # below fills it in the background).
-  c.add_extension vectordb_ext
+  # Either extension registers its tools and nothing more — it does not
+  # index. The corpus starts empty; the agent fills it by calling the
+  # reindex tool when the user asks (or the --watch daemon below fills it
+  # in the background).
+  c.add_extension corpus_ext
 end
 
 # Optional auto-watch daemon (--watch). Host-owned: its lifetime is this
@@ -216,9 +243,13 @@ begin
   # an explicit ask instead.
   puts agent.trifecta.render
   puts
-  puts 'Pikuri Corpus: chat agent with semantic recall over an indexed corpus (no internet access).'
+  recall = hybrid ? 'hybrid recall (meaning + keywords)' : 'semantic recall'
+  puts "Pikuri Corpus: chat agent with #{recall} over an indexed corpus (no internet access)."
   puts "Corpus: #{source}"
   puts "Backend: #{use_qdrant ? 'Qdrant (persistent)' : 'InMemory (RAM-only)'}"
+  if keyword_store
+    puts "Keyword index: #{keyword_store == Pikuri::Rag::Backend::Fts5::MEMORY_STORE ? 'in memory' : keyword_store}"
+  end
   # backend.count is 0 for a fresh InMemory and for a persistent
   # collection that's never been indexed; positive for a corpus persisted
   # by a previous run.
@@ -226,12 +257,12 @@ begin
   if already_indexed.positive?
     puts "Index already populated (#{already_indexed} chunk(s) from a previous run). Ask away — or say \"reindex\" to refresh."
   elsif !watch
-    puts 'The corpus is NOT indexed yet. Ask me to "index the corpus" first (I will run vectordb_reindex), then ask away.'
+    puts "The corpus is NOT indexed yet. Ask me to \"index the corpus\" first (I will run #{family}_reindex), then ask away."
   end
   if watch
     puts "Watching #{source} — reindexing files as they change. If the index is empty it's building in the background now (give it a moment)."
   end
-  puts 'Try: "What does the pikuri guide say about how the RESEARCHER persona stops a prompt-injected web page from making it run bash?"'
+  puts 'Try: "According to the workshop book, why is being in the docker group risky?"'
   puts 'Press Ctrl+C or Ctrl+D to quit.'
 
   run_turn(agent, ARGV.join(' ')) unless ARGV.empty?

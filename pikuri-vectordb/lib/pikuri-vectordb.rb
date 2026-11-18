@@ -2,11 +2,9 @@
 
 require 'pikuri-core'
 
-# Entry file for the pikuri-vectordb gem: appends the gem's +prompts/+ to
-# +Pikuri::PROMPT_DIRS+ and mounts a per-gem Zeitwerk loader at this +lib/+, so
-# +lib/pikuri/vector_db/extension.rb+ autoloads as
+# Entry file for the pikuri-vectordb gem: mounts a per-gem Zeitwerk loader at
+# this +lib/+, so +lib/pikuri/vector_db/extension.rb+ autoloads as
 # +Pikuri::VectorDb::Extension+.
-Pikuri::PROMPT_DIRS << File.expand_path('../prompts', __dir__)
 
 module Pikuri
   # Namespace for the local-corpus vector search feature. The host builds one
