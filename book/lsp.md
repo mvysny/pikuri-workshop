@@ -546,7 +546,7 @@ resolved or a `-sources.jar` nobody has ever diffed. The consequence is
 deliberate and worth knowing before it surprises you: on a *trusted* repo,
 adding a language server to a wiring that also has web access can light a
 trifecta leg that was dark before. [Measuring the
-trifecta](https://codeberg.org/mvysny/pikuri/src/branch/master/book/trifecta-detector.md) explains what that reads like at boot;
+trifecta](https://github.com/mvysny/pikuri/blob/master/book/trifecta-detector.md) explains what that reads like at boot;
 `pikuri-lsp/design/architecture.md` argues the declaration line by line.
 
 For the same reason, one thing is fixed and not configurable: the

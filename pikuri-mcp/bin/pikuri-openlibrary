@@ -22,7 +22,7 @@
 # private data, is structurally absent: no files, no memory, no token,
 # nothing of yours is wired in, so a misbehaving server has nothing to
 # exfiltrate. Keep it that way — pikuri's security chapter
-# (https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+# (https://github.com/mvysny/pikuri/blob/master/book/security.md)
 # says why, before you bolt more tools onto this agent.
 #
 # Prerequisite: build the server image once, from a pinned checkout you

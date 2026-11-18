@@ -1,7 +1,7 @@
 # pikuri-conversations
 
 Store, list and resume conversations of the
-[pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit. pikuri hands a
+[pikuri](https://github.com/mvysny/pikuri) AI-assistant toolkit. pikuri hands a
 conversation out as an in-memory `Pikuri::Agent::History` and never writes one to disk; a
 chat app that resumes across a restart needs this.
 

@@ -10,7 +10,7 @@ homed elsewhere, and is deliberately **not** repeated here:
   list: server execution, LLM-judge fallibility, token blast radius,
   plain HTTP, poisoned runtime responses) — is `book/mcp-revisited.md`.
   The defense-kit synthesis is pikuri's
-  [`book/security.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md);
+  [`book/security.md`](https://github.com/mvysny/pikuri/blob/master/book/security.md);
   the shipped defenses are `SECURITY.md`.
 - **The invariants** — the `Subprocess.spawn` stdio carve-out, why MCP
   tools bypass `Pikuri::Tool`, and the `env` credential channel — are

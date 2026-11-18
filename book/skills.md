@@ -116,7 +116,7 @@ pikuri will not run shell commands out of a command file, the way Claude Code's 
 does: a `.md` that arrives with a cloned repo would otherwise be arbitrary code execution
 behind a keystroke. Such a file is refused outright, and so is one declaring `allowed-tools:`,
 a narrowing pikuri can't honour. See
-[pikuri's trifecta chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/trifecta-detector.md)
+[pikuri's trifecta chapter](https://github.com/mvysny/pikuri/blob/master/book/trifecta-detector.md)
 for how a command's bytes are graded once they are in the conversation.
 
 ## A third answer: the model decides, once the project proves relevant
@@ -304,7 +304,7 @@ mentioned there.
 - **The model lacks a capability, not a rule:** an MCP server or a tool. The model feels that
   gap on its own.
 - **The work needs a different set of tools, or a separate context:** a persona, run as a
-  sub-agent ([pikuri's sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md)).
+  sub-agent ([pikuri's sub-agents chapter](https://github.com/mvysny/pikuri/blob/master/book/subagents.md)).
 
 What remains is a skill's real niche: a correction or a body of know-how that applies to
 *some* tasks, is too big to keep resident, and has a moment you can name, best of all as a

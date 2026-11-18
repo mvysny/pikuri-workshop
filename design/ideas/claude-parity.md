@@ -16,7 +16,7 @@ Related:
 
 - [`coding-agent.md`](coding-agent.md) — the sibling deferral list for
   `bin/pikuri-code`; this note's not-backported list points at it.
-- [`security-open-questions.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/security-open-questions.md) — the
+- [`security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md) — the
   security-posture preamble decision below is a prompt-shaped facet of
   that note's threat-model framing.
 
@@ -64,4 +64,4 @@ Related:
   monitoring are the far end of Claude's tool list and assume a daemon
   mode pikuri doesn't have (it's synchronous and request-scoped — see
   the Linux-first / out-of-scope notes in
-  [`../AGENTS.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/AGENTS.md)). Stay deferred.
+  [`../AGENTS.md`](https://github.com/mvysny/pikuri/blob/master/AGENTS.md)). Stay deferred.

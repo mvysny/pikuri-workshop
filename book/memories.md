@@ -8,7 +8,7 @@ it you're vegetarian and that your main project is a Ruby agent
 toolkit, quit, come back tomorrow, ask "what do you know about me?",
 and it answers from what you told it yesterday, though you never
 approved a single write. Where
-[pikuri's vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md)
+[pikuri's vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md)
 gave the agent recall *over a corpus you handed it*, memories are
 recall *of notes the agent took itself* — facts it extracted from your
 side of the conversation, stored, and surfaced back when they're
@@ -19,7 +19,7 @@ what's worth keeping).
 A memory store *is* private data by definition, accumulated passively
 and recalled automatically — and a private store plus an outbound leg
 is exactly the exfiltration risk
-[the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+[the security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md)
 names. So, like the OS assistant, the demo agent is safe because of
 the leg it lacks: its only tools are `recall` and a calculator, and it
 has no `web_search`, no `fetch`, no `bash`. Why that single absence is
@@ -63,10 +63,10 @@ nothing and injects nothing.
 slice hints there's more on a topic than the few facts it surfaced,
 the model calls `recall(topic: …)` to dig. This is the "mined, deep"
 mode — the model's own decision, the same Thought → Tool-call →
-Observation loop from [pikuri's first-conversation chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md), with memory sitting alongside
+Observation loop from [pikuri's first-conversation chapter](https://github.com/mvysny/pikuri/blob/master/book/chat.md), with memory sitting alongside
 `calculator` as a capability it reaches for when warranted.
 
-If that two-step shape feels familiar, it's the one [the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md) already
+If that two-step shape feels familiar, it's the one [the vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md) already
 ships: prefetch is to `recall` what `vectordb_search` (a cheap ranked
 slice) is to `vectordb_read` (pull the hit in full). Memory reuses the
 pattern, just with a different source — the agent's own notes — and a
@@ -97,7 +97,7 @@ needs a second model, which the next section sets up.
 
 ## Prerequisites: a non-reasoning extractor and the mem0 sidecar
 
-Two new pieces on top of [the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md)'s setup: one more model in your
+Two new pieces on top of [the vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md)'s setup: one more model in your
 llama.cpp router, and a small Docker stack for the store.
 
 ### 1. A non-reasoning extraction model
@@ -173,7 +173,7 @@ listens on a routable interface.
 
 That needs **`podman` or `docker` with a compose provider, `git`,
 and `socat`** on `PATH` — all part of
-[the prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md)'s rootless setup. Podman wins
+[the prerequisites chapter](https://github.com/mvysny/pikuri/blob/master/book/prerequisites.md)'s rootless setup. Podman wins
 when both are installed; compose then needs podman's API socket, so
 the supervisor runs a `podman system service` of its own for the
 stack's lifetime, on a socket no container mounts (one that could
@@ -191,7 +191,7 @@ There's a wrinkle worth thirty seconds, because it's a small
 security lesson in its own right. The extractor and embedder run
 *inside* the mem0 container, but the first-conversation chapter's `llama-server` binds
 the host's `127.0.0.1:8080` — and with
-[the prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md)'s rootless Docker, a container
+[the prerequisites chapter](https://github.com/mvysny/pikuri/blob/master/book/prerequisites.md)'s rootless Docker, a container
 **cannot reach services bound to your host's `127.0.0.1` at all**.
 That's not a bug to work around; it's rootless networking shipping
 `--disable-host-loopback` on purpose. Loopback-only services tend
@@ -432,7 +432,7 @@ about the *same* attribute invokes the recency rule.
 
 Everything above describes a feature that, on the wrong agent, would
 be a liability. A memory store is private data (one leg of the
-*lethal trifecta* [the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) names in full), and the
+*lethal trifecta* [the security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md) names in full), and the
 worse problem is the **write** side: auto-extraction feeds a turn to
 an LLM and asks what to save — and a turn can include tool
 observations. If this agent could fetch a web page, that page could
@@ -476,14 +476,14 @@ it by reading the tool list, not by trusting a filter. And it has the
 same limit. The moment you want *one* agent that remembers you, reads
 your notes, *and* browses the web, the private store has to be
 quarantined behind a sub-agent with no egress — the privilege
-separation from [the sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md). The safety scope here is
+separation from [the sub-agents chapter](https://github.com/mvysny/pikuri/blob/master/book/subagents.md). The safety scope here is
 a **hard boundary, not advice**: porting memory onto an egress-capable
 agent re-opens recall-poisoning, and you'd have to re-derive the
 mitigations (cap recall size, frame recalled text as untrusted, log
-every recall) before doing it. [The security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) makes the
+every recall) before doing it. [The security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md) makes the
 full argument. An assistant where memory, vector search and MCP share
 one agent, and the cuts have to be made, is still being worked out in
-[the apps built on pikuri](https://codeberg.org/mvysny/pikuri/src/branch/master/book/apps.md).
+[the apps built on pikuri](https://github.com/mvysny/pikuri/blob/master/book/apps.md).
 
 ## …and neither can the store
 

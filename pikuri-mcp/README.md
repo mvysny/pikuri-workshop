@@ -1,7 +1,7 @@
 # pikuri-mcp
 
 [Model Context Protocol](https://modelcontextprotocol.io) support
-for the [pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant
+for the [pikuri](https://github.com/mvysny/pikuri) AI-assistant
 toolkit.
 
 Adds:

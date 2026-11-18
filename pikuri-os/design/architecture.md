@@ -8,7 +8,7 @@ confirmed mutations + the passive-command detector) is **not** here:
 it graduated into the book's OS-assistant chapter and the Sandbox seam
 ([`../pikuri-code/AGENTS.md`](../../pikuri-code/AGENTS.md)) plus the
 Confirmer / Workspace seams
-([`../pikuri-workspace/AGENTS.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-workspace/AGENTS.md)). What remains for this file
+([`../pikuri-workspace/AGENTS.md`](https://github.com/mvysny/pikuri/blob/master/pikuri-workspace/AGENTS.md)). What remains for this file
 is what no single class owns:
 
 1. how file search pairs with the rest of the agent;
@@ -19,7 +19,7 @@ is what no single class owns:
 The file search is pikuri-fileindex's, wired by {Pikuri::Os::Extension}
 over the whole disk. Why keyword recall over the desktop's index and not
 embeddings, and why localsearch before recoll, is
-[pikuri-fileindex's architecture note](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-fileindex/design/architecture.md).
+[pikuri-fileindex's architecture note](https://github.com/mvysny/pikuri/blob/master/pikuri-fileindex/design/architecture.md).
 
 What pikuri-os adds is the fallback. The index misses source code and
 anything inside a git checkout, and a query worded differently from the
@@ -41,4 +41,4 @@ one-shotting, and verifies recall by *reading* (a man page beats a
 remembered flag). **Revisit** if longer causal chains show the active
 budget falling short. Why an MoE at all, and the same-tier and
 dedicated-box swaps, is the book's first-conversation chapter
-([`book/chat.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md) §"Why a mixture-of-experts model").
+([`book/chat.md`](https://github.com/mvysny/pikuri/blob/master/book/chat.md) §"Why a mixture-of-experts model").

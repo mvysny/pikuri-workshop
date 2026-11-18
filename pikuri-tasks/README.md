@@ -1,7 +1,7 @@
 # pikuri-tasks
 
 In-memory task list + four LLM-facing tools for the
-[pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit.
+[pikuri](https://github.com/mvysny/pikuri) AI-assistant toolkit.
 
 Provides:
 - `Pikuri::Tasks::List` — per-Agent in-memory list of

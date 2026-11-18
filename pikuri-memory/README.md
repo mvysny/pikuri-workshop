@@ -1,7 +1,7 @@
 # pikuri-memory
 
 Durable, cross-conversation memory for the
-[pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit:
+[pikuri](https://github.com/mvysny/pikuri) AI-assistant toolkit:
 facts about the user and their work that persist across
 conversations, backed by [mem0](https://github.com/mem0ai/mem0).
 

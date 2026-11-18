@@ -1,7 +1,7 @@
 # pikuri-extractors
 
 Additional document extractors for the
-[pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit:
+[pikuri](https://github.com/mvysny/pikuri) AI-assistant toolkit:
 office documents and PDFs → Markdown, converted preferably inside a
 one-shot **networkless container** (podman, or docker), so a malicious document
 downloaded from the web is parsed somewhere it can't phone home or
@@ -46,7 +46,7 @@ them; the only one that does is LibreOffice, a 2 GB+ image), and
 image OCR / audio transcription (need model downloads — point a
 multi-modal main LLM at images instead).
 
-**PDF: this gem or [pikuri-pdf](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-pdf) — pick one per
+**PDF: this gem or [pikuri-pdf](https://github.com/mvysny/pikuri/blob/master/pikuri-pdf) — pick one per
 wiring.** This gem parses PDFs inside the sandbox (poppler is native
 code chewing attacker-controlled bytes — exactly what the container
 is for) but re-converts the whole document on every paged read;

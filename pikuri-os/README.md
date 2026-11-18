@@ -1,7 +1,7 @@
 # pikuri-os
 
 Offline Linux/OS helper agent + OS-integration tools for the
-[pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit.
+[pikuri](https://github.com/mvysny/pikuri) AI-assistant toolkit.
 
 `pikuri-os` is the home of `bin/pikuri-os`: a single, local,
 **network-severed** agent that understands and operates the host OS —
@@ -36,7 +36,7 @@ machine), and the researcher — having no private data — can at worst leak
 that approved task plus the public pages it read. This is a *separate*
 network boundary from the bash sandbox, which **stays kernel-severed
 regardless**. Off by default; the agent stays networkless until you pass
-the flag. See [`design/ideas/more-confirmers.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/more-confirmers.md)
+the flag. See [`design/ideas/more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md)
 for the harder pieces still deferred.
 
 **Target platform:** Ubuntu 26.04 LTS or newer, GNOME desktop.

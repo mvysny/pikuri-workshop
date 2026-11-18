@@ -23,8 +23,8 @@ There is no demo either. The interesting behaviour lives in races a few millisec
 nobody can hit on purpose from a keyboard, so a demo would mostly show the happy path. Claims
 below were measured in the gem's specs, in a scratch script, or in the apps themselves, and each
 says which. The worked examples are the apps:
-[pikuri-webui](https://codeberg.org/mvysny/pikuri-webui) and
-[pikuri-tui](https://codeberg.org/mvysny/pikuri-tui) are both thin layers over this gem now, and
+[pikuri-webui](https://github.com/mvysny/pikuri-webui) and
+[pikuri-tui](https://github.com/mvysny/pikuri-tui) are both thin layers over this gem now, and
 read well after this chapter.
 
 ## Two shapes of agent
@@ -395,8 +395,8 @@ If you're building a chat app on pikuri:
 ## What's next
 
 The book ends here. From here, the apps read directly:
-[pikuri-webui](https://codeberg.org/mvysny/pikuri-webui) is the reference host, and
-[pikuri-tui](https://codeberg.org/mvysny/pikuri-tui) the smallest, one conversation in a
+[pikuri-webui](https://github.com/mvysny/pikuri-webui) is the reference host, and
+[pikuri-tui](https://github.com/mvysny/pikuri-tui) the smallest, one conversation in a
 terminal. The gem's own [architecture](../pikuri-conversations/design/architecture.md) has the
 state machine, the threads and a turn's steps, and `design/decisions.md` has why each is shaped
 the way it is.

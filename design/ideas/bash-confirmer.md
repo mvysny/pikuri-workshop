@@ -31,7 +31,7 @@ obey the same governing invariant (stated in "The invariant" below):
   fatigue — the passive-command detector" — what already ships; the
   OS-helper is one of the two agents that would use this note (the coding agent is the other, and the likelier winner — see
   below).
-- [`more-confirmers.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/more-confirmers.md) — the sibling
+- [`more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md) — the sibling
   confirmer questions still open (structured `Request` context, the
   ingest gate). That file is the **what-to-show / where-to-gate**
   axis; this note is the **fatigue +
@@ -53,7 +53,7 @@ stopped reading, so the injected forty-first prompt gets rubber-stamped.
 The allowlist's whole job is to make prompts **rare and meaningful**.
 
 Bash sits at the **weak end** of the confirmer-strength spectrum
-(pikuri's [security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+(pikuri's [security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md)
 §"The human gate, and why fatigue is the enemy") on *two* compounding axes at once: it's both **high-frequency**
 (the fatigue above) *and* **low-legibility** (a human often can't tell
 what a pipeline does), so even an un-fatigued bash approval is a weaker

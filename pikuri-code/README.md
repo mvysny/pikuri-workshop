@@ -1,12 +1,12 @@
 # pikuri-code
 
 In-repo coding-agent gem for the
-[pikuri](https://codeberg.org/mvysny/pikuri) AI-assistant toolkit,
+[pikuri](https://github.com/mvysny/pikuri) AI-assistant toolkit,
 in the spirit of Claude Code, opencode, or pi-code — but kept
 deliberately small so you can read the sources in an evening.
 
 Adds the shell-and-dev-loop layer on top of
-[`pikuri-workspace`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-workspace/README.md)'s filesystem
+[`pikuri-workspace`](https://github.com/mvysny/pikuri/blob/master/pikuri-workspace/README.md)'s filesystem
 tools:
 - `Pikuri::Code::Bash` — runs commands via the
   `Pikuri::Subprocess.spawn` chokepoint with `Confirmer` gating,
@@ -17,7 +17,7 @@ tools:
   current working directory.
 
 Wire-by-wire it's the same `Pikuri::Agent` as `pikuri-chat`
-(from [`pikuri-core`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-core/README.md)), with a different
+(from [`pikuri-core`](https://github.com/mvysny/pikuri/blob/master/pikuri-core/README.md)), with a different
 system prompt and a different toolset: `read`, `write`, `edit`,
 `grep`, `glob`, `bash`, plus the web tools and the calculator.
 Sub-agents are enabled, and any
@@ -99,7 +99,7 @@ model has glaring holes:
 In short: run it inside a Docker container, a dev container, a
 VM, a fresh user account — anywhere you'd be fine with a stranger
 having a shell. The sandboxing story is a known gap and tracked
-as future work (see [`design/ideas/security-open-questions.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/security-open-questions.md)); until it lands,
+as future work (see [`design/ideas/security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md)); until it lands,
 **assume the agent can do anything your user can do**, and
 approve prompts on that basis.
 

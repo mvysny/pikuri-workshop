@@ -1,7 +1,7 @@
 # Changelog
 
 All notable changes to the workshop gems. pikuri's own changes are in
-[its changelog](https://codeberg.org/mvysny/pikuri/src/branch/master/CHANGELOG.md).
+[its changelog](https://github.com/mvysny/pikuri/blob/master/CHANGELOG.md).
 
 ## [Unreleased]
 

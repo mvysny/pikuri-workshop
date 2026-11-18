@@ -1,6 +1,6 @@
 # pikuri-stemmers
 
-Stemmers for [pikuri-rag](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-rag/README.md)'s
+Stemmers for [pikuri-rag](https://github.com/mvysny/pikuri/blob/master/pikuri-rag/README.md)'s
 keyword search, one per language. Out of the box pikuri-rag stems English only; a stemmer from
 here lets "katu" find the note that says "kadulla".
 

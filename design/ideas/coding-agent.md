@@ -11,7 +11,7 @@ Related:
 - [`bash-confirmer.md`](bash-confirmer.md) — the permission-system
   deferral below is the coarse-modes-today half; that note is the
   session-grant / fatigue half of the same permission story.
-- [`security-open-questions.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/security-open-questions.md)
+- [`security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md)
   §"Permission model needs granularity" — the risk-tier / dry-run /
   time-bound wishlist the permission system would grow into.
 

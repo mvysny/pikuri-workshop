@@ -1,7 +1,7 @@
 # Security model
 
 The workshop's security posture in one page. [pikuri's
-`SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md) is the
+`SECURITY.md`](https://github.com/mvysny/pikuri/blob/master/SECURITY.md) is the
 baseline: trust in pikuri itself and in your LLM provider, the lethal trifecta, the
 privilege-separated sub-agents. This page adds what the workshop's gems
 change, and they change the headline: pikuri keeps every agent to at most two trifecta legs,
@@ -160,7 +160,7 @@ for show.
 
 ## See also
 
-- [pikuri's `SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md)
+- [pikuri's `SECURITY.md`](https://github.com/mvysny/pikuri/blob/master/SECURITY.md)
   — the baseline this page builds on.
 - [The coding agent, completed](book/code.md) — the teaching companion to this page: what
   each defense buys and where it stops, with all three legs present.

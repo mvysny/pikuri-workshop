@@ -10,7 +10,7 @@ changes get approved), `Bash` (running a real shell), and `Sandbox`
 (what that shell can actually touch) — cut the other way.
 
 There is one thesis sentence to carry through this chapter.
-[The security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) named the lethal trifecta —
+[The security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md) named the lethal trifecta —
 private data, untrusted content, a way to send bytes out — and said
 you defeat it by *structurally* removing a leg. pikuri's own agents
 did that by leaving tools out. This one can't: it holds a shell, and
@@ -30,7 +30,7 @@ it does differently.
 The chapter runs in three parts. **Part 1** builds the agent as described
 above — full disk, network severed. **Part 2** does the harder thing:
 it puts the network *back*, carefully, without handing the trifecta its
-third leg — and it's where [the sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md)'s sub-agents
+third leg — and it's where [the sub-agents chapter](https://github.com/mvysny/pikuri/blob/master/book/subagents.md)'s sub-agents
 earn their keep for privacy, not just parallelism. **Part 3** adds a
 *second* app — your local mail and calendar — and uses it to sharpen the
 trifecta itself: the difference between a leg being *present* and a leg
@@ -43,8 +43,8 @@ being *severe*.
 ## Prerequisites
 
 [The shell chapter](shell.md), and pikuri's
-[security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) and
-[sub-agents](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md) chapters.
+[security](https://github.com/mvysny/pikuri/blob/master/book/security.md) and
+[sub-agents](https://github.com/mvysny/pikuri/blob/master/book/subagents.md) chapters.
 `llama-server` running, `bundle install` done. Plus a few OS-level
 pieces, all of which **degrade rather than crash** except the first:
 
@@ -281,9 +281,9 @@ once you've built its index.
 `pikuri-os` exposes the first of the two it finds usable as a
 **search → read-full pair**, the same
 two-step shape as `vectordb_search` → `vectordb_read` from
-[the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md).
+[the vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md).
 Both tools come from pikuri's
-[`pikuri-fileindex`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-fileindex)
+[`pikuri-fileindex`](https://github.com/mvysny/pikuri/blob/master/pikuri-fileindex)
 gem, which makes the host name the folders they may reach; `pikuri-os`
 names `/`, the same whole disk `read` and `bash` reach:
 
@@ -476,7 +476,7 @@ recipient. That distinction is the lever the rest of Part 2 pulls.
 Given that, the design choice isn't *which* web tools the OS agent gets —
 it's that the OS agent gets **none** of them. All three live one level
 down, on a privilege-separated research sub-agent — the bundled
-`RESEARCHER` persona from [the sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md) — reached through
+`RESEARCHER` persona from [the sub-agents chapter](https://github.com/mvysny/pikuri/blob/master/book/subagents.md) — reached through
 the `agent` tool:
 
 ```ruby
@@ -493,7 +493,7 @@ c.add_extension Pikuri::SubAgent::Extension.new(
 tools are registered so *only a sub-agent* may see them — the parent LLM
 never holds `fetch`, and so has **no direct egress at all**. And
 `RESEARCHER` has the web tools but **no filesystem** — it can't read your
-disk. Line the legs up against [the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)'s trifecta:
+disk. Line the legs up against [the security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md)'s trifecta:
 
 - **The researcher** holds untrusted content + egress, but *not* private
   data — two legs, not three. Its `fetch` is unbounded, yes, but it has
@@ -580,7 +580,7 @@ risk lives.
 `r` lets you type what you want instead — "use the local docs, not the
 web" — and that comes back to the agent as the observation, a decline
 that steers instead of just ending. Richer confirmer shapes still on the list are in
-[`design/ideas/more-confirmers.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/more-confirmers.md).)
+[`design/ideas/more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md).)
 
 ## Two network boundaries, not one
 
@@ -603,7 +603,7 @@ Two boundaries, set independently; the flag moves only the second.
 
 A researcher that can't read the PDF it just found is half-blind, so
 `pikuri-os` registers a PDF text extractor into the extraction registry
-([the vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md) met that registry):
+([the vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md) met that registry):
 
 ```ruby
 require 'pikuri-pdf'
@@ -643,7 +643,7 @@ Part 2 *weakens* the third leg; it does not delete it. What remains:
 
 Sharper still — richer confirmers, an ingest-side gate on what the
 researcher returns — is future work in
-[`design/ideas/more-confirmers.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/more-confirmers.md).
+[`design/ideas/more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md).
 
 ---
 
@@ -692,7 +692,7 @@ Now the question.
 
 ## Presence: nothing flips here
 
-Line the new agent up against [the security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)'s trifecta and
+Line the new agent up against [the security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md)'s trifecta and
 all three legs are live — and *every one of them was already live in
 Part 2*. The private pool (your disk) was there. The untrusted content
 (logs, downloads) was there. The egress (the researcher's confirmed web
@@ -758,7 +758,7 @@ beside the egress tells you *how bad*. Part 1 → Part 2 was a presence move
 legs, a bigger pool, a richer channel). Reading a wiring means asking both
 questions, never just one.
 
-One refinement, which [Measuring the trifecta](https://codeberg.org/mvysny/pikuri/src/branch/master/book/trifecta-detector.md)
+One refinement, which [Measuring the trifecta](https://github.com/mvysny/pikuri/blob/master/book/trifecta-detector.md)
 makes precise: **a leg's *presence* is binary, but its *strength* is
 not.** The compose gate below is the case in point — it's a genuine
 egress leg (assembled, no partial credit) that is nonetheless weaker

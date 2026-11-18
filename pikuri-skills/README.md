@@ -1,7 +1,7 @@
 # pikuri-skills
 
 [Agent Skills standard](https://agentskills.io/specification)
-support for the [pikuri](https://codeberg.org/mvysny/pikuri)
+support for the [pikuri](https://github.com/mvysny/pikuri)
 AI-assistant toolkit — plus its human-invoked counterpart, slash
 commands.
 

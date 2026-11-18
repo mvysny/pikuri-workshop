@@ -6,7 +6,7 @@ skills and slash commands, language intelligence, a task list. This one puts it 
 and then does the accounting.
 
 The accounting is the point. pikuri ends on
-[a secretary](https://codeberg.org/mvysny/pikuri/src/branch/master/bin/pikuri-secretary) that
+[a secretary](https://github.com/mvysny/pikuri/blob/master/bin/pikuri-secretary) that
 reaches for all three trifecta legs and weakens each by construction: search hands back
 snippets, mail leaves only through a Thunderbird draft you send yourself, notes go to one folder
 with a diff you approve. A coding agent can't weaken its legs that way. It reads files somebody
@@ -58,7 +58,7 @@ Nearly every line is an extension, and each came from a chapter:
 | `Tasks::Extension` | the four `task_*` tools | [Task tracking](tasks.md) |
 | `Mcp::Extension` | `mcp_connect` and whatever the servers bring | [Your first MCP server](mcp.md), [MCPs revisited](mcp-revisited.md) |
 | `Lsp::Extension` | `lsp`, when the config names a server | [Language intelligence](lsp.md) |
-| `SubAgent::Extension` | the `agent` tool and its two personas | pikuri's [sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md); below |
+| `SubAgent::Extension` | the `agent` tool and its two personas | pikuri's [sub-agents chapter](https://github.com/mvysny/pikuri/blob/master/book/subagents.md); below |
 | `Code::GitRepoResearcher` | `git_repo_research`, a child agent that clones a repo and reads it | below |
 
 Three things hold it together.
@@ -83,7 +83,7 @@ tool, which is the point: a wiring bug found at boot, not on the first delegatio
 The block isn't all of the wiring, though. Before it, the bin asks up to three questions and
 checks one thing, each feeding a grade rather than a gate: does this project hold anything you'd
 mind leaking (the private leg, in pikuri's
-[trifecta chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/trifecta-detector.md));
+[trifecta chapter](https://github.com/mvysny/pikuri/blob/master/book/trifecta-detector.md));
 do its skill and command files match a commit, and did you write them (the
 [skills chapter](skills.md)); do you control its git config (the
 [shell chapter](shell.md#even-git-status-runs-code)).
@@ -171,7 +171,7 @@ Every defense in the book, against that verdict:
 | **The skills check** ([skills](skills.md#what-a-skill-can-reach-and-where-it-stops)) | A bundle no commit vouches for is graded untrusted, unasked. | A grade, not a gate; a skill's scripts run through `bash`, in the cage, no further. |
 | **MCP in a box** ([MCPs revisited](mcp-revisited.md)) | A stranger's server in a container with no capabilities, its token from the config file, narrowed to one host behind a proxy. | A container shares your kernel; a token does everything it's scoped for. |
 | **Language servers** ([language intelligence](lsp.md#the-server-itself-is-in-no-cage)) | Nothing spawns until a call needs it, and only servers your config names. | The server itself is in no cage, and ruby-lsp evaluates your `Gemfile` as you. |
-| **The trifecta banner** (pikuri's [trifecta chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/trifecta-detector.md)) | Says, at boot, which legs are present and where from. | Blocks nothing, by design. |
+| **The trifecta banner** (pikuri's [trifecta chapter](https://github.com/mvysny/pikuri/blob/master/book/trifecta-detector.md)) | Says, at boot, which legs are present and where from. | Blocks nothing, by design. |
 
 And what none of them touch:
 

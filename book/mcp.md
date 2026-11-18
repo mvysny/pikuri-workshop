@@ -25,7 +25,7 @@ automation, the threat model in detail) wait for [MCPs revisited](mcp-revisited.
 ## Why a public catalogue, in a container
 
 **Nothing private is wired in.** You met the lethal trifecta in
-[pikuri's security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md):
+[pikuri's security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md):
 private data, a way out, and content an attacker controls, all in one agent. This server talks
 to the public internet, an outbound leg, and the catalogue text it returns is content pikuri
 didn't author. Two legs. The third is missing on purpose: no file, no token, no memory, nothing
@@ -63,7 +63,7 @@ Two engines avoid that:
   daemon: each `podman run` is a child of the process that asked, so there is no socket to
   abuse.
 - **Rootless Docker**, which
-  [pikuri's prerequisites chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/prerequisites.md)
+  [pikuri's prerequisites chapter](https://github.com/mvysny/pikuri/blob/master/book/prerequisites.md)
   sets up. Its daemon runs as you, so "root" inside a container maps to plain you outside.
 
 Either way, a dependency that broke out of the container would land in your account: bad, but
@@ -205,7 +205,7 @@ Some prompts that exercise the shape:
 
 Each stresses the loop differently: title search, author search, an id-then-detail two-hop
 (`get_authors_by_name` → `get_author_info`), pure URL construction. Contrast it with
-[pikuri's vector-DB chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/vectordb.md):
+[pikuri's vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md):
 that was *semantic* search over *your private* corpus; this is *structured* lookup against a
 *public* catalogue, and not by accident the private-data leg is the one now absent.
 

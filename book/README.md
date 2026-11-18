@@ -1,6 +1,6 @@
 # The workshop
 
-Book 2. [pikuri's book](https://codeberg.org/mvysny/pikuri/src/branch/master/book/README.md)
+Book 2. [pikuri's book](https://github.com/mvysny/pikuri/blob/master/book/README.md)
 builds an assistant you can run on your host with your real data, safe because of what's
 *missing*. This one is about power, and most of it needs a cage: a shell, MCP servers, skills'
 scripts, language servers and the coding agent all run code you didn't write, and nothing can

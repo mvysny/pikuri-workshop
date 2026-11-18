@@ -62,7 +62,7 @@ Between 2 and 4 both repos hold the code, so edit neither copy in that window.
 
 ### Workshop references to rewrite
 
-- `pikuri-stemmers/README.md:3,25`: the codeberg link to pikuri-rag's README becomes
+- `pikuri-stemmers/README.md:3,25`: the pikuri-repo link to pikuri-rag's README becomes
   `../pikuri-rag/README.md`. The gemspec comment "Not pikuri-rag: a stemmer is a duck it
   calls" stays true.
 - `pikuri-memory/spec/pikuri/memory/mem0_server_spec.rb:161-170`: the
@@ -142,8 +142,8 @@ Between 2 and 4 both repos hold the code, so edit neither copy in that window.
   `chat.md#3-start-llama-server-in-multi-model-mode`. If pikuri drops the embedder and reranker
   presets from that chapter, this one owns them whole.
 - **Links:** relative links to `chat.md`, `prerequisites.md`, `secretary.md`, `security.md`
-  and `trifecta-detector.md` (`#who-declares-each-leg` included) become absolute codeberg
-  links; check that the anchors still exist after pikuri's rewrite. The links into
+  and `trifecta-detector.md` (`#who-declares-each-leg` included) become absolute links
+  into pikuri's GitHub repo; check that the anchors still exist after pikuri's rewrite. The links into
   `../design/ideas/vectordb-deferrals.md` and `../pikuri-vectordb/design/architecture.md` keep
   working because both move. vectordb.md:341's link to book 2's README becomes local.
 - **Measure, don't port.** Re-run every claim from the workshop checkout: boot `pikuri-corpus`,

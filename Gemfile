@@ -22,7 +22,7 @@ gemspec path: 'pikuri-stemmers'
 # pikuri-computer, vectordb for the shared Qdrant image pin, and rag for
 # pikuri-stemmers' spec through a real FTS5 index.
 PIKURI_REF = '51fec91455ebdbca3390e167495ffacedb10b9ba'
-git 'https://codeberg.org/mvysny/pikuri.git', ref: PIKURI_REF do
+git 'https://github.com/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-fileindex'
   gem 'pikuri-pdf'

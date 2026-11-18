@@ -14,9 +14,9 @@ threat model for `pikuri-mcp`: what wiring an MCP server in does and doesn't pro
 
 ## Prerequisites
 
-pikuri's [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md),
-[sub-agents](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md) and
-[security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) chapters, and
+pikuri's [first-conversation](https://github.com/mvysny/pikuri/blob/master/book/chat.md),
+[sub-agents](https://github.com/mvysny/pikuri/blob/master/book/subagents.md) and
+[security](https://github.com/mvysny/pikuri/blob/master/book/security.md) chapters, and
 this book's [shell](shell.md) and [MCP](mcp.md) chapters. `llama-server` running; `bundle
 install` done. Plus:
 
@@ -104,7 +104,7 @@ server holds a credential, and the rest of the chapter is about what it can do w
 
 ## Why a container?
 
-[pikuri's `SECURITY.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/SECURITY.md)
+[pikuri's `SECURITY.md`](https://github.com/mvysny/pikuri/blob/master/SECURITY.md)
 §"Code trust" settles the general posture in one bullet: an MCP server is untrusted code you
 didn't write, so it runs in a container. Three consequences specific to MCP:
 
@@ -430,7 +430,7 @@ still needs scoping, since what the token can do doesn't depend on who wrote the
 ## Threat model: what `pikuri-mcp` actually protects against
 
 The same exercise [the completed coding agent](code.md#the-accounting) does for the whole agent, mapped onto the MCP
-surface. [pikuri's security chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md)
+surface. [pikuri's security chapter](https://github.com/mvysny/pikuri/blob/master/book/security.md)
 is the synthesis behind it: the trifecta, the kit, the worked attacks.
 
 What the default configuration *does* protect:

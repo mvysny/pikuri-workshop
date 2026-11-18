@@ -11,8 +11,8 @@ design, each one's threat model, and the invariants that span
 {Pikuri::Code::ToolchainPaths} at once. In-flight notes and still-open
 questions live in [`../design/ideas/coding-agent.md`](../../design/ideas/coding-agent.md).
 
-The must-not-break half is already in this gem's [`AGENTS.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/AGENTS.md)
-(**Sandbox seam**) and [`../pikuri-workspace/AGENTS.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-workspace/AGENTS.md)
+The must-not-break half is already in this gem's [`AGENTS.md`](https://github.com/mvysny/pikuri/blob/master/AGENTS.md)
+(**Sandbox seam**) and [`../pikuri-workspace/AGENTS.md`](https://github.com/mvysny/pikuri/blob/master/pikuri-workspace/AGENTS.md)
 (**Workspace seam**); this file is the reasoning *behind* those
 one-liners, not a second copy of them.
 

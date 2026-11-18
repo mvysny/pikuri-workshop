@@ -2,7 +2,7 @@
 
 The settled design rationale and the load-bearing empirical findings
 behind `pikuri-memory`. This is the cross-cutting layer that fits
-neither the user-facing [`README.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/README.md) (how to run it) nor the
+neither the user-facing [`README.md`](https://github.com/mvysny/pikuri/blob/master/README.md) (how to run it) nor the
 per-class YARD headers (why each class does its one thing): *why mem0,
 why Qdrant, why a non-reasoning extractor, the threat model, and what's
 deferred to v2.*
@@ -16,7 +16,7 @@ A note on scope: some of this describes **`@private`** — an egress-free,
 no-untrusted-ingest assistant agent that *wires* memory + vectordb onto
 one agent. That agent does not exist yet: it belongs to an assistant app
 such as [Puri](https://github.com/mvysny/puri), and the federation it is
-part of is sketched in [`../design/ideas/assistant.md`](https://codeberg.org/mvysny/pikuri/src/branch/master/design/ideas/assistant.md).
+part of is sketched in [`../design/ideas/assistant.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/assistant.md).
 `pikuri-memory` ships the pieces.
 
 ## The three retrieval tiers

@@ -1,6 +1,6 @@
 # pikuri-workshop
 
-The power tools for [pikuri](https://codeberg.org/mvysny/pikuri), a small Ruby AI assistant:
+The power tools for [pikuri](https://github.com/mvysny/pikuri), a small Ruby AI assistant:
 a shell, a coding agent, language servers, MCP servers, Agent Skills, durable memory and an
 OS assistant, plus what a chat app needs to host many conversations and save them. Each is a
 gem you wire à la carte. The tools that run code you didn't write run in a cage, and the book
@@ -8,7 +8,7 @@ says what the cage buys and where it stops.
 
 pikuri itself is what you can safely leave lying around the house: no shell, no stranger's
 code, nothing that holds all three legs of the lethal trifecta. This is the workshop, and its
-tools need care. Read [pikuri's book](https://codeberg.org/mvysny/pikuri/src/branch/master/book/README.md)
+tools need care. Read [pikuri's book](https://github.com/mvysny/pikuri/blob/master/book/README.md)
 first; [the workshop's](book/README.md) picks up where it ends.
 
 ## The gems
@@ -26,7 +26,7 @@ first; [the workshop's](book/README.md) picks up where it ends.
 | [`pikuri-stemmers`](pikuri-stemmers/README.md) | keyword search in languages other than English: Finnish |
 | [`pikuri-conversations`](pikuri-conversations/README.md) | many live conversations for a chat app, each its own agent on its own threads, saved and resumed |
 
-Each depends on [`pikuri-core`](https://codeberg.org/mvysny/pikuri/src/branch/master/pikuri-core/README.md),
+Each depends on [`pikuri-core`](https://github.com/mvysny/pikuri/blob/master/pikuri-core/README.md),
 and some on other pikuri gems; nothing in pikuri depends on the workshop.
 
 ## Install
@@ -34,7 +34,7 @@ and some on other pikuri gems; nothing in pikuri depends on the workshop.
 Until the next release, ride both repos from git:
 
 ```ruby
-git 'https://codeberg.org/mvysny/pikuri.git', branch: 'master' do
+git 'https://github.com/mvysny/pikuri.git', branch: 'master' do
   gem 'pikuri-core'
 end
 git 'https://github.com/mvysny/pikuri-workshop.git', branch: 'master' do

@@ -1,6 +1,6 @@
 # The shell and its cage
 
-[pikuri's book](https://codeberg.org/mvysny/pikuri/src/branch/master/book/README.md) built
+[pikuri's book](https://github.com/mvysny/pikuri/blob/master/book/README.md) built
 assistants that are safe because of what they *lack*. A research agent with no file tools
 can't leak your files, and a mail agent with no network can't send your mail anywhere. This
 book starts with the tool that breaks that recipe: **a shell**.
@@ -24,9 +24,9 @@ file tools beside it, and the cage.
 
 ## Prerequisites
 
-pikuri's [first-conversation](https://codeberg.org/mvysny/pikuri/src/branch/master/book/chat.md),
-[sub-agents](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md) and
-[security](https://codeberg.org/mvysny/pikuri/src/branch/master/book/security.md) chapters.
+pikuri's [first-conversation](https://github.com/mvysny/pikuri/blob/master/book/chat.md),
+[sub-agents](https://github.com/mvysny/pikuri/blob/master/book/subagents.md) and
+[security](https://github.com/mvysny/pikuri/blob/master/book/security.md) chapters.
 `llama-server` running, `bundle install` done in the workshop checkout. Plus:
 
 - **`bubblewrap`** (`bwrap`), the cage. On Debian / Ubuntu: `sudo apt install bubblewrap`.
@@ -58,7 +58,7 @@ leaking?"* sets one line of the trifecta report it prints next; say no for the p
 end; say yes, it's your own fresh repo.
 
 Then comes the trifecta report from
-[pikuri's trifecta chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/trifecta-detector.md):
+[pikuri's trifecta chapter](https://github.com/mvysny/pikuri/blob/master/book/trifecta-detector.md):
 
 ```
 Trifecta: pikuri-code — 2 of 3 legs (untrusted, egress); no private leg found.

@@ -235,7 +235,7 @@ The list is an `Array<Item>` inside one `Pikuri::Tasks::List`, held by the
 - **Gone on `/clear`.** `/clear` closes the agent and builds a new one, with a new extension
   and an empty list: a plan is meaningless without the conversation that produced it.
 - **Not inherited by sub-agents.** This follows the rule from
-  [pikuri's sub-agents chapter](https://codeberg.org/mvysny/pikuri/src/branch/master/book/subagents.md):
+  [pikuri's sub-agents chapter](https://github.com/mvysny/pikuri/blob/master/book/subagents.md):
   sub-agents don't inherit extensions. A `file_miner` or `researcher` that `pikuri-code`
   spawns gets no task list. The parent's plan stays private to the parent, and a sub-agent
   focuses on its narrow job rather than the parent's whole workflow. A host that wants a

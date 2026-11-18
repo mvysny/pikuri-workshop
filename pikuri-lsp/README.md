@@ -1,6 +1,6 @@
 # pikuri-lsp
 
-Language intelligence for a [pikuri](https://codeberg.org/mvysny/pikuri)
+Language intelligence for a [pikuri](https://github.com/mvysny/pikuri)
 agent: the questions grep cannot answer — *where is this defined*, *who
 calls it*, *what does it inherit from* — asked of a real language server
 and relayed back verbatim.
