@@ -116,13 +116,13 @@ From 2 on, this copy is the live one; pikuri's stays frozen until Y deletes it.
 ### Running order and links in this book
 
 - **Before Memories.** `memories.md` builds on the vector-DB chapter (lines 11, 69 and 100:
-  "the two-step shape", "on top of the vector-DB chapter's setup"). Proposed order: … OS
-  assistant → vectordb → rag → Memories → MCP … (`Q_running_order`).
+  "the two-step shape", "on top of the vector-DB chapter's setup"). The order: … OS
+  assistant → containers → vectordb → rag → Memories → MCP … (`Q_running_order`).
 - **`book/README.md`'s intro** says most of the book needs a cage and that hosting needs none.
   Retrieval needs none either: no egress, and Qdrant is a container for persistence, not a
   cage. Add that sentence, plus the hand-off from book 1's recall chapter.
-- **`os-assistant.md:284,606`** cite pikuri's vectordb.md as something already read. Under the
-  proposed order that chapter comes after the OS assistant. :284 compares `pikuri-fileindex`'s
+- **`os-assistant.md:284,606`** cite pikuri's vectordb.md as something already read. Here
+  that chapter comes after the OS assistant. :284 compares `pikuri-fileindex`'s
   search → read pair with `vectordb_search` → `vectordb_read`, so point it at book 1's
   briefing instead. :606 says "the vector-DB chapter met that registry"; point it at wherever
   pikuri's rewrite introduces the `Extractor` registry. Thunderbird reads PDF attachments
@@ -156,8 +156,8 @@ From 2 on, this copy is the live one; pikuri's stays frozen until Y deletes it.
   `../design/ideas/vectordb-deferrals.md` and `../pikuri-vectordb/design/architecture.md` keep
   working because both move. vectordb.md:341's link to book 2's README becomes local.
 - **Measure, don't port.** Re-run every claim from the workshop checkout: boot `pikuri-corpus`,
-  run `--qdrant --watch`, and wire the PDF extractor. Commands like
-  `./pikuri-vectordb/bin/pikuri-corpus` work from this root unchanged.
+  run `--qdrant --watch` and `--hybrid`, and wire the PDF extractor. Commands keep their shape
+  from this root, as `./pikuri-rag/bin/pikuri-corpus` once the bin moves.
 - **Headings become link targets.** pikuri's rewritten recall chapter will link into these
   chapters, and renaming a heading then needs a pikuri-side fix. Settle the headings before
   pikuri links them.
@@ -167,7 +167,10 @@ From 2 on, this copy is the live one; pikuri's stays frozen until Y deletes it.
 Once Qdrant leaves pikuri, its prerequisites chapter loses "Containers: Podman, or rootless
 Docker" ("Meet containers", "Podman: the short path", "Docker, if you already have it"). Our
 chapters link it for the rootless setup: `mcp.md:66` and `memories.md:176,194`. The primer
-moves here (`Q_container_primer`).
+moves here as `containers.md`, just before vectordb, and those links become local
+(`Q_container_primer`). `mcp.md`'s "Podman, or rootless Docker" argues why the `docker` group
+is root, which is the primer's job, so that argument moves there too. mcp.md keeps its own
+point: a server that breaks out lands in your account, not root.
 
 ## Other
 
@@ -191,26 +194,23 @@ moves here (`Q_container_primer`).
   and rag.md adds one flag over the same corpus. vectordb.md then runs a bin from a gem it
   hasn't introduced yet, and one sentence says why. vectordb's README and
   `design/architecture.md` follow the bin. rag.md's "The watcher is on by default here" was
-  about briefing; on this bin the watcher is `--watch`. Rejected: a researcher over a library (`../courts` exists, but a
-  Finnish corpus is a hard demo for most readers), and a briefing fork here (one binary name in
-  two repos doing two things).
+  about briefing; on this bin the watcher is `--watch`. Rejected: a researcher over a library
+  (`../courts` exists, but a Finnish corpus is a hard demo for most readers), and a briefing
+  fork here (one binary name in two repos doing two things).
 - `Q_chapter_split`: **resolved** (owner, 2026-11-18): no split up front. This book takes both
   chapters whole and makes them read well here; pikuri then drops them and writes its own book
   around the file index. What both still say twice is accepted, and revisited later.
-- `Q_running_order`: vectordb and rag just before Memories, or as a retrieval block somewhere
-  else? Whatever the choice, the os-assistant back-references change.
-- `Q_container_primer`: where does pikuri's container section land?
-  - (a) In vectordb.md, the chapter where "containers first earn their keep", as in book 1.
-  - (b) A short `containers.md` of its own, just before the first chapter that runs a
-    container, which every container chapter links.
-  - (c) Grown into `mcp.md`'s existing "Podman, or rootless Docker" section, but Memories and
-    vectordb come before MCP.
-
-  Leaning (b), since five chapters use containers, but it depends on `Q_running_order`.
-- `Q_stemmers_fold`: with rag here, does `Pikuri::Stemmers::Voikko` fold back into rag as
-  `Rag::Stemmer::Voikko`? The placement reason is gone, but `D_voikko_stemmer`'s case still
-  holds (one gem for every language, the library injected and never required). Leaning keep:
-  a second rename in a month is churn and teaches nothing.
-- `Q_one_runtime_picker`: share one picker across the three gems? A shared one means a
-  cross-gem runtime dependency (pikuri-memory requiring pikuri-vectordb) to save about ten
-  lines. Leaning leave it.
+- `Q_running_order`: **resolved** (owner, 2026-11-18): … OS assistant → containers → vectordb →
+  rag → Memories → MCP …. Memories builds on the vector chapter's setup, so vectordb has to
+  come first; the os-assistant back-references change either way.
+- `Q_container_primer`: **resolved** (owner, 2026-11-18): a short `containers.md` of its own,
+  just before vectordb, whose `--qdrant` is the first container a reader starts here. Memories,
+  MCP and MCPs revisited link it instead of each explaining rootless podman. Rejected: inside
+  vectordb.md, as in book 1 (four other chapters would link into one chapter's middle), and
+  grown into `mcp.md` (Memories and vectordb come before it).
+- `Q_stemmers_fold`: **resolved** (owner, 2026-11-18): keep `Pikuri::Stemmers::Voikko` where
+  it is. The placement reason is gone, but `D_voikko_stemmer`'s case still holds (one gem for
+  every language, the library injected and never required), and a second rename in a month is
+  churn that teaches nothing.
+- `Q_one_runtime_picker`: **resolved** (owner, 2026-11-18): leave the three pickers. Sharing
+  one would make pikuri-memory require pikuri-vectordb at runtime to save about ten lines.
