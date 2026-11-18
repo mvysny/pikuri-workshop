@@ -1,10 +1,52 @@
 # pikuri-vectordb design notes
 
-The settled design rationale that fits neither the user-facing guide
+The settled design rationale that fits neither the user-facing book
 chapter ([`book/vectordb.md`](../../book/vectordb.md))
-nor the per-class YARD headers. Currently it holds one thing: the
-backend-engine survey behind Qdrant as the one persistent engine, and
-why Chroma was dropped.
+nor the per-class YARD headers: the threat model, which `pikuri-rag`
+shares unchanged, and the backend-engine survey behind Qdrant as the one
+persistent engine.
+
+## Threat model
+
+**No tool here sends anything out.** Every tool that returns corpus text
+carries `egress_payload_review: :no_egress`, so an agent wired with the
+corpus alone holds at most two legs: private data and untrusted content.
+The third leg comes only from what else the host wires. An agent that
+holds the corpus *and* egress is the host's choice, and the cure is to
+weaken the egress, as `pikuri:D_secretary_wiring` does, not to put the
+corpus behind a sub-agent (`D_corpus_trust_declaration`).
+
+**The two legs are declared, not guessed.** Whether a corpus is private,
+and whether every byte in it is yours, are properties of the data, so the
+host declares them once on `Corpus.new(private:, trusted:)` and
+`CorpusLegs.derive` turns them into the legs of every reading tool. Both
+default off, which prints the pessimistic map. The declaration decides
+what the boot map *prints*; it blocks nothing. `trusted: true` is three
+claims, and the extraction gap in the first one (a PDF's hidden text is
+present in what the model reads) is the one that bites:
+`Corpus#trusted?` has them, `D_corpus_trust_declaration` the reasoning.
+`vectordb_reindex` declares no legs at all: its result is a count, never
+corpus text or a filename.
+
+**The reader reads only what the index holds.** `vectordb_read`, and
+rag's `rag_read`, accept only a `source` the backend already indexed,
+checked before any disk access, with a path-containment check behind it.
+A poisoned chunk that says "read `../../.ssh/id_rsa`" names no indexed
+source and fails. So the corpus tools reach exactly the folder they
+index, which is what lets the declaration be honest.
+
+**What the stores add is copies.** `InMemory` lives in the process and is
+gone at exit. `--qdrant` keeps every chunk under `Paths.cache/qdrant` and
+serves it from a pinned container on `127.0.0.1` with no auth, so any
+process that reaches the host's loopback reads the indexed corpus: the
+same residual as `pikuri-memory`'s published API. rag's FTS5 index is the
+same text again, in memory or in an SQLite file the host names. And the
+embedder reads every chunk at index time, so an embedder on a remote
+provider receives the whole corpus.
+
+**Parsing is the extractor's problem, not this gem's.** A hostile PDF
+that exploits the parser attacks the `Pikuri::Extractor` that reads it,
+before any chunk exists. `trusted:` never means "safe to parse".
 
 ## Backend engines: Chroma vs Qdrant (survey 2026-06-02)
 

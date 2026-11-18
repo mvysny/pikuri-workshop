@@ -31,10 +31,6 @@ ships them must be numbered above the last version pikuri published.
 
 - **`bin/pikuri-corpus`'s default corpus is this repo's `book/` now**, not pikuri's, so the
   questions vectordb.md asks it change too ("Measure, don't port" below).
-- **rag's README sends its threat model to `pikuri-vectordb/design/architecture.md`**, which
-  holds only the engine survey; the model itself is in `Corpus#trusted?` and
-  `D_corpus_trust_declaration`. Here a gem's `design/architecture.md` owns its threat model,
-  so it belongs there. It was the same in pikuri.
 
 ## b) The book
 
