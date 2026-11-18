@@ -51,21 +51,10 @@ finds nothing to read. What it *can* still reach is the subject of
 
 ## Podman, or rootless Docker
 
-The engine matters as much as the box. Membership in the `docker` group is passwordless root
-in a trenchcoat: the default daemon runs as root, and anyone who can talk to its socket can ask
-for a container with your whole disk mounted inside (`docker run -v /:/host …`). Not just you at
-the keyboard: *any process running as your user* can open that socket, including the very npm
-tree we are boxing in.
-
-Two engines avoid that:
-
-- **Podman**, preferred when you have it (`sudo apt install podman`). It is rootless and has no
-  daemon: each `podman run` is a child of the process that asked, so there is no socket to
-  abuse.
-- **Rootless Docker**, which
-  [pikuri's prerequisites chapter](https://github.com/mvysny/pikuri/blob/master/book/prerequisites.md)
-  sets up. Its daemon runs as you, so "root" inside a container maps to plain you outside.
-
+The engine matters as much as the box. A rootful Docker daemon hands anything that can reach
+its socket a container with your whole disk mounted inside, and here that includes the very npm
+tree we are boxing in. [Containers](containers.md) sets up an engine without that hole: Podman,
+which has no daemon and so no socket to abuse, or rootless Docker, whose daemon runs as you.
 Either way, a dependency that broke out of the container would land in your account: bad, but
 not root, and no worse than running the server bare. This chapter writes `podman`; `docker`
 takes the same arguments, and `bin/pikuri-openlibrary` uses podman when it finds it on `PATH`,
@@ -205,7 +194,7 @@ Some prompts that exercise the shape:
 
 Each stresses the loop differently: title search, author search, an id-then-detail two-hop
 (`get_authors_by_name` → `get_author_info`), pure URL construction. Contrast it with
-[pikuri's vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md):
+[the vector-DB chapter](vectordb.md):
 that was *semantic* search over *your private* corpus; this is *structured* lookup against a
 *public* catalogue, and not by accident the private-data leg is the one now absent.
 

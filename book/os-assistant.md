@@ -279,9 +279,8 @@ no-egress posture. On any other desktop, `recoll` does the same job
 once you've built its index.
 
 `pikuri-os` exposes the first of the two it finds usable as a
-**search → read-full pair**, the same
-two-step shape as `vectordb_search` → `vectordb_read` from
-[the vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md).
+**search → read-full pair**, `fileindex_search` → `fileindex_read`,
+the same pair pikuri's book searches your notes with.
 Both tools come from pikuri's
 [`pikuri-fileindex`](https://github.com/mvysny/pikuri/blob/master/pikuri-fileindex)
 gem, which makes the host name the folders they may reach; `pikuri-os`
@@ -603,7 +602,7 @@ Two boundaries, set independently; the flag moves only the second.
 
 A researcher that can't read the PDF it just found is half-blind, so
 `pikuri-os` registers a PDF text extractor into the extraction registry
-([the vector-DB chapter](https://github.com/mvysny/pikuri/blob/master/book/vectordb.md) met that registry):
+([pikuri's recall chapter](https://github.com/mvysny/pikuri/blob/master/book/recall.md#whose-parser-reads-a-hostile-file) met that registry):
 
 ```ruby
 require 'pikuri-pdf'
@@ -863,9 +862,15 @@ work, not convenience.
 
 ## What's next
 
-`MACHINE.md` is memory you can see: every fact lands as a diff you
-approve. [Memories](memories.md) builds the opposite kind — mem0,
-capturing facts about you automatically, invisibly, across
-conversations — and finds that the trick which made this chapter's
-full-disk reads safe is the same one that makes *that* safe: an agent
-with no way to send bytes out.
+This agent found your files the way pikuri's book does, through the
+desktop's keyword index. The next chapters build search by *meaning*
+over a corpus you choose, the index that answers a question asked in
+other words or another language, and keep it in a container; so
+[Containers](containers.md) comes first, a short one.
+
+After them, [Memories](memories.md) builds the opposite of
+`MACHINE.md`. That file is memory you can see, every fact a diff you
+approve; mem0 captures facts about you automatically, invisibly,
+across conversations, and turns out to be safe for the same reason
+this chapter's full-disk reads are: an agent with no way to send bytes
+out.
