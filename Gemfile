@@ -22,7 +22,7 @@ gemspec path: 'pikuri-stemmers'
 # The gems a workshop gemspec doesn't name are the demo binaries' and the
 # specs' choices: web tools, the PDF extractor for pikuri-corpus and
 # vectordb's line-range spec, and Thunderbird for pikuri-computer.
-PIKURI_REF = '9422499b22ac4eb06f440f9064250970bf54f945'
+PIKURI_REF = '37685483377234556e8bf0c5b6f986fbd6c31b0c'
 git 'https://github.com/mvysny/pikuri.git', ref: PIKURI_REF do
   gem 'pikuri-core'
   gem 'pikuri-fileindex'

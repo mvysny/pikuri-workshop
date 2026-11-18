@@ -15,9 +15,8 @@ heading is the anchor.
 A note on scope: some of this describes **`@private`** — an egress-free,
 no-untrusted-ingest assistant agent that *wires* memory + vectordb onto
 one agent. That agent does not exist yet: it belongs to an assistant app
-such as [Puri](https://github.com/mvysny/puri), and the federation it is
-part of is sketched in [`../design/ideas/assistant.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/assistant.md).
-`pikuri-memory` ships the pieces.
+such as [Puri](https://github.com/mvysny/puri). `pikuri-memory` ships the
+pieces.
 
 ## The three retrieval tiers
 

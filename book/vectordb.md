@@ -31,6 +31,13 @@ into English, one call later. Everywhere else the two came out even:
 outside the files the desktop doesn't index at all, the file index
 answered 79 lookups of 80 at about two calls each, as the vectors did.
 
+Those files are the other thing an index of your own buys, and it has
+nothing to do with vectors: it reads every file you point it at. The
+desktop keeps a `.csv` by name only, so the file-index agent reached
+the eval's budget spreadsheet by browsing folders, in 7 to 35 calls.
+Over the whole eval, 100 runs an agent, the file index needed more than
+ten calls in 8 runs, the vector agent in none.
+
 **What it costs: the embedding bill.** Every chunk of every file goes
 through a neural network once, and that's GPU time: about seven chunks
 a second with bge-m3 on that laptop, which is the GPU's ceiling, not a
