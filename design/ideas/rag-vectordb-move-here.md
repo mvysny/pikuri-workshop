@@ -22,12 +22,15 @@ more, and rag's future is more features (`pikuri:D_gem_placement` test 1), so it
 2. Here: set `PIKURI_REF` to X and copy the gems in from X in one commit. A plain copy, with
    X named in the commit message; no history import (git syncs code here, it isn't a
    curated history).
-3. pikuri: delete the gems, both chapters and the D_ entries in commit **Y**, and point its
-   links here. This has to come after 2, because pikuri's rewritten recall chapter links
-   into this book's `vectordb.md`.
-4. Here: set `PIKURI_REF` to Y.
+3. Here: both chapters, copied whole and rewritten until this book reads well cover to cover,
+   and `pikuri-corpus` moved to pikuri-rag (`Q_rag_demo`). Their headings are settled by the
+   end of this step.
+4. pikuri: delete the gems, both chapters and the D_ entries in commit **Y**, rewrite its
+   recall chapter around the file index, and point its links here. This has to come after 3,
+   because that chapter links into this book's.
+5. Here: set `PIKURI_REF` to Y.
 
-Between 2 and 4 both repos hold the code, so edit neither copy in that window.
+From 2 on, this copy is the live one; pikuri's stays frozen until Y deletes it.
 
 ## a) The gems
 
@@ -105,10 +108,10 @@ Between 2 and 4 both repos hold the code, so edit neither copy in that window.
   these rag.md sections stay there: "The demo: a briefing from your own notes", "Name your
   notes…", "The one-legged agent", "Local inference is this agent's first invariant" and
   "Which gem *not* to wire". See `Q_rag_demo`.
-- **One home for the completeness and exactness argument.** pikuri keeps "Two questions the
-  vector DB cannot answer" to motivate its keyword index. rag.md here keeps the hybrid half:
-  BM25, RRF, "indexed" meaning both stores hold it, model text never reaching `MATCH`, and the
-  watcher. It links pikuri's chapter for the argument (`Q_chapter_split`).
+- **Each book reads whole; some overlap is fine** (`Q_chapter_split`). This book takes both
+  chapters whole, "Two questions the vector DB cannot answer" included, and rewrites them to
+  flow here. pikuri then drops them and writes its book around the file index. Whatever both
+  books still say twice is accepted, and revisited later.
 
 ### Running order and links in this book
 
@@ -118,26 +121,32 @@ Between 2 and 4 both repos hold the code, so edit neither copy in that window.
 - **`book/README.md`'s intro** says most of the book needs a cage and that hosting needs none.
   Retrieval needs none either: no egress, and Qdrant is a container for persistence, not a
   cage. Add that sentence, plus the hand-off from book 1's recall chapter.
-- **`os-assistant.md:284,606`** cite pikuri's vectordb.md as something already read ("the
-  vector-DB chapter met that registry"). Under the proposed order that chapter comes after the
-  OS assistant, so reword them, or point them at wherever pikuri now introduces the
-  `Extractor` registry.
+- **`os-assistant.md:284,606`** cite pikuri's vectordb.md as something already read. Under the
+  proposed order that chapter comes after the OS assistant. :284 compares `pikuri-fileindex`'s
+  search → read pair with `vectordb_search` → `vectordb_read`, so point it at book 1's
+  briefing instead. :606 says "the vector-DB chapter met that registry"; point it at wherever
+  pikuri's rewrite introduces the `Extractor` registry. Thunderbird reads PDF attachments
+  through it, so book 1 keeps explaining it.
 - `memories.md:11,69,100,321` and `mcp.md:208` become local links.
 
 ### Rewriting the moved chapters for their new reader
 
-- **vectordb.md gets a new opening.** The reader arrives from pikuri's recall chapter, which
-  sorted search misses into three causes and said only the third needs vectors. Start there,
-  with pikuri's numbers as the evidence:
+- **vectordb.md gets a new opening: what vectors add over the file index, and what they
+  cost.** It assumes only that the reader searched their files through `pikuri-fileindex` in
+  book 1. It's written before pikuri's rewrite, so it doesn't lean on that chapter's argument
+  (the three causes) or its headings, and links it by file. The evidence is pikuri's numbers:
   - The Finnish question: the file index found the English lease by search in 1 run of 10,
     while rag ranked it first every time it searched, twice from an all-Finnish query.
   - The GPU bill (`pikuri:D_secretary_wiring`): 11,685 files and hours of the GPU at 100%.
 
+  Then who the trade is worth it for: someone whose product is search quality. Keep it honest
+  both ways: the file index wins on cost, completeness and setup.
+
   Those eval numbers live only in pikuri's idea file. Give them a durable home here (this
   chapter or a D_ entry) before that idea graduates.
 - **"Plugging in PDF support — your first extractor"** (vectordb.md:298) was book 1's first
-  meeting with the `Extractor` registry. This book's reader already knows the registry, so keep
-  only the vectordb part: line ranges over `--- Page N ---`.
+  meeting with the `Extractor` registry. This book's reader already knows the registry from
+  book 1, so keep only the vectordb part: line ranges over `--- Page N ---`.
 - **"Prerequisites: three models, one server"** (vectordb.md:74) leans on pikuri's
   `chat.md#3-start-llama-server-in-multi-model-mode`. If pikuri drops the embedder and reranker
   presets from that chapter, this one owns them whole.
@@ -167,24 +176,27 @@ moves here (`Q_container_primer`).
   "by convention" after the others (`Q_one_runtime_picker`).
 - **Not ours, listed so nothing falls between the repos.** pikuri still has to fix its own
   references, as its idea lists: the `AGENTS.md` seam clauses, `pikuri-pdf`'s gemspec text, and
-  `D_gem_placement`'s two rag cites. Also the comments in pikuri-core that use `VectorDb` as an
+  `D_gem_placement`'s two rag cites. Its book also has to introduce the `Extractor` registry
+  somewhere new, since `vectordb.md` did it until now (the secretary's PDF attachments are
+  the natural place). Also the comments in pikuri-core that use `VectorDb` as an
   example: `finalizers.rb:6,29`, `extractor.rb:66` and `tool.rb:192`.
 
 ## Open questions
 
-- `Q_rag_demo`: what does rag.md demo once briefing leaves?
-  - (a) `pikuri-corpus --hybrid`: one bin, vector-only against hybrid on the same corpus,
-    which is exactly the chapter's lesson.
-  - (b) A researcher binary over a library: the persona pikuri rejected for its ending,
-    because search quality *is* that user's product, i.e. this book's reader. `../courts`
-    (4 Finnish acts, 41 gold questions) exists from `rag-hit-presentation-eval`, but a Finnish
-    corpus is a hard demo for most readers.
-  - (c) A rag-flavoured briefing fork here. Reject it: one binary name in two repos doing two
-    things.
-
-  Leaning (a).
-- `Q_chapter_split`: split rag.md's argument between pikuri's recall chapter and this book's
-  rag.md in the same sitting as pikuri's rewrite. Otherwise both books keep a copy.
+- `Q_rag_demo`: **resolved** (owner, 2026-11-18): vector-only against hybrid on the same
+  corpus, which is exactly the chapter's lesson. It can't be a `--hybrid` flag on
+  `pikuri-corpus`: that bin lives in pikuri-vectordb, and a vectordb bin wiring rag would point
+  the dependency backwards. So `pikuri-corpus` moves to pikuri-rag, with its prompt, and gains
+  `--hybrid`. Without the flag it stays vector-only, so vectordb.md runs it as it is today
+  and rag.md adds one flag over the same corpus. vectordb.md then runs a bin from a gem it
+  hasn't introduced yet, and one sentence says why. vectordb's README and
+  `design/architecture.md` follow the bin. rag.md's "The watcher is on by default here" was
+  about briefing; on this bin the watcher is `--watch`. Rejected: a researcher over a library (`../courts` exists, but a
+  Finnish corpus is a hard demo for most readers), and a briefing fork here (one binary name in
+  two repos doing two things).
+- `Q_chapter_split`: **resolved** (owner, 2026-11-18): no split up front. This book takes both
+  chapters whole and makes them read well here; pikuri then drops them and writes its own book
+  around the file index. What both still say twice is accepted, and revisited later.
 - `Q_running_order`: vectordb and rag just before Memories, or as a retrieval block somewhere
   else? Whatever the choice, the os-assistant back-references change.
 - `Q_container_primer`: where does pikuri's container section land?
