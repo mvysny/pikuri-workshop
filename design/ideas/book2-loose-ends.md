@@ -6,9 +6,6 @@ empty.
 
 ## Runs still owed
 
-- **First MCP server, the rejection path.** `bin/pikuri-openlibrary`'s `InjectionDetected`
-  rescue never fired in a run (the real server passes). A spec-support server with a poisoned
-  description would exercise it.
 - **MCPs revisited, the untested corners.** Headed Playwright against a real desktop's X socket
   (the run used an in-container Xvfb; `$XAUTHORITY` may be needed); the dummy-interface
   dev-server recipe (needs sudo); every recipe under docker (run on podman 5.7 only). The
@@ -22,8 +19,6 @@ empty.
 
 ## pikuri-side fixes (pikuri's repo, not this one)
 
-- **`security.md:167`** says "the Verifier you already met in the MCP chapter", but pikuri's
-  readers reach the workshop's `mcp.md` after it.
 - **"Environment is not a secret store"** still holds (pikuri filters nothing), but could point
   at `pikuri-workshop:D_sandbox_env_wall` for where clearing does happen.
 - **The trifecta verdict's "See book/trifecta-detector.md in this repo"** is wrong when the agent
@@ -49,8 +44,6 @@ process, the stack torn down clean both times. It surfaced:
   `response_format` on mem0's request (`json_object` 4/4 invalid, `json_schema` 1/4), though it
   did on a short one. Candidate fix: a mem0 patch falling back to `json_repair`, and a warning on
   a parse failure. The book and `architecture.md` still describe a separate extraction model.
-- **`pikuri-extractors` calls `docker` only** (`Documents`), against the podman-first convention;
-  `Mem0Server` had the same bug, now fixed.
 - **The exit flush lost the last turn** with a thinking extractor: `Recorder`'s 10 s flush timed
   out and `compose down` cut the in-flight `POST /memories`. Fixed in practice by the no-think
   default: quitting right after a one-turn fact stored it 3/3, no warning (extraction, 2–5 s,
