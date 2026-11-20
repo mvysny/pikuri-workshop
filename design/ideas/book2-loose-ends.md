@@ -6,10 +6,8 @@ empty.
 
 ## Runs still owed
 
-- **MCPs revisited, the untested corners.** Headed Playwright against a real desktop's X socket
-  (the run used an in-container Xvfb; `$XAUTHORITY` may be needed); the dummy-interface
-  dev-server recipe (needs sudo); every recipe under docker (run on podman 5.7 only). The
-  chapter says so in place.
+- **MCPs revisited, the dummy-interface dev-server recipe** (needs sudo). The chapter says so in
+  place.
 - **Other models.** Task tracking and the completed coding agent were measured on Ornith-1.5
   only: whether a model plans with `task_create` unasked, and whether it delegates recon to
   `file_miner`, are both the model's call and may differ elsewhere.

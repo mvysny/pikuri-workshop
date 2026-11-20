@@ -21,8 +21,9 @@ this book's [shell](shell.md) and [MCP](mcp.md) chapters. `llama-server` running
 install` done. Plus:
 
 - **Podman**, or rootless Docker, as set up in
-  [the MCP chapter](mcp.md#podman-or-rootless-docker). Every command here is podman; docker
-  takes the same arguments, but this chapter was run on podman 5.7 only. Image names are fully
+  [the MCP chapter](mcp.md#podman-or-rootless-docker). Every command here is podman, run on
+  podman 5.7. Rootless Docker 29.1 runs them with the same arguments, except the browser's:
+  [On rootless Docker](#on-rootless-docker) has those. Image names are fully
   qualified (`docker.io/library/node:26-slim`, not `node:26-slim`): podman resolves a short name
   through a list of registries, and the first one that answers wins. The rule the MCP chapter
   introduced gently, this chapter makes firm: **every MCP server you didn't write runs in a
@@ -185,6 +186,9 @@ Probed from a container on `mcp-github`, on the test box:
   `list_issues`), and `podman logs mcp-github-proxy` showed it asking for nothing but
   `api.github.com:443`. The log is also how you find the host a new server needs: run it behind
   a proxy that allows nothing, and read the refusals.
+- Under rootless Docker every probe answered the same, and the server again asked the proxy for
+  nothing but `api.github.com:443`. By then the test token had expired, so GitHub answered each
+  call with `401 Bad credentials`: the way out worked, the key didn't.
 
 Two things the build had to work around, both in the Containerfile's header. The proxy's outside
 network is a network you create, not podman's default one, because the default has no DNS and
@@ -345,22 +349,32 @@ memory and reports snapshots through the protocol. Everything below is Linux-spe
 
 Headed mode lets you watch the clicks land and step in. The vendor image carries everything
 Chromium needs for it; only the `--headless` its entrypoint passes has to go, and your display
-has to come in:
+has to come in, with the cookie that proves the browser may use it:
 
 ```ruby
 command: ['podman', 'run', '-i', '--rm',
           '--cap-drop=all', '--cap-add=SYS_CHROOT', '--security-opt=no-new-privileges',
           '--read-only', '--tmpfs', '/tmp', '-e', 'HOME=/tmp',
+          '--userns=keep-id:uid=1000,gid=1000',
           '-e', "DISPLAY=#{ENV.fetch('DISPLAY')}", '-v', '/tmp/.X11-unix:/tmp/.X11-unix',
+          '-e', 'XAUTHORITY=/tmp/.Xauthority', '-v', "#{ENV.fetch('XAUTHORITY')}:/tmp/.Xauthority:ro",
           '--entrypoint', '["/usr/bin/tini","-s","--","node","/app/cli.js","--browser","chromium"]',
           'mcr.microsoft.com/playwright/mcp:v0.0.85', '--isolated', '--sandbox']
 ```
 
-The test box had no display, so this is the one recipe in the chapter not run as written: the
-same entrypoint drove a headed Chromium against a virtual display inside the container, but not
-against a desktop. Your X server may also want its authority cookie (`$XAUTHORITY`) mounted in.
-Mounting `/tmp/.X11-unix` is a real loosening: anything that can talk to that socket can read
-your keystrokes and drive your desktop. Turn it on when you want to watch, not as a default.
+Run against a GNOME desktop (Xwayland on `:0`), each of the two extra lines is needed:
+
+- **Without `--userns=keep-id`**, the browser dies with *Missing X server or $DISPLAY*, which
+  misleads: the socket is right there. It is yours (`srwxrwxr-x`), and rootless podman maps the
+  container's `node` user to an ID that isn't you, so it may not connect. keep-id makes `node`
+  you, as in [Seeing the screenshots](#seeing-the-screenshots).
+- **Without `$XAUTHORITY`**, *Authorization required, but no authorization protocol specified*:
+  the X server lets in only a client that shows its cookie, and the cookie lives in that file.
+
+With both, the window opens on your desktop and `chrome://sandbox` still says "You are
+adequately sandboxed". The two mounts are a real loosening: anything that can talk to that
+socket with that cookie can read your keystrokes and drive your desktop. Turn it on when you
+want to watch, not as a default.
 
 ### Reaching your local dev server
 
@@ -388,9 +402,14 @@ sudo ip link set devsrv0 up
 
 Bind the dev server to `192.168.255.1` and have the browser navigate to
 `http://192.168.255.1:3000`; your LAN never sees it. Not run on the test box, since it needs
-sudo; the interface is gone after a reboot. Under rootless Docker the host answers at its LAN
-address instead, as [the MCP chapter](mcp.md#what-the-box-can-reach) measured, and its
-daemon-wide loopback switch is one [the memories chapter](memories.md) says to leave alone.
+sudo; the interface is gone after a reboot.
+
+Under rootless Docker, measured the same way: your loopback is closed too, and your LAN address
+*does* work, a dev server bound to it or to `0.0.0.0` answers there, as
+[the MCP chapter](mcp.md#what-the-box-can-reach) found. `host.docker.internal`, added with
+`--add-host=host.docker.internal:host-gateway`, names Docker's own bridge, not your host:
+refused. Rootless Docker's daemon-wide loopback switch is one
+[the memories chapter](memories.md) says to leave alone.
 
 Bubblewrap doesn't enter into this: it cages `bash`, and a dev server `bash` started listens
 wherever it binds. Whether the browser's container can reach it is decided by the list above.
@@ -410,8 +429,41 @@ Create the folder first. `--userns=keep-id` makes the container's `node` user yo
 write there and the files come out owned by you; without it, rootless podman maps `node` to a
 stranger's ID and nothing gets written.
 
-Each `-v`, `--network` and display flag is a notch of isolation traded away. Start headless,
-with no host network and no mounts; turn a knob on when you need it, and off again after.
+### On rootless Docker
+
+The browser is where Docker parts ways with podman, three times. Measured on Docker 29.1,
+rootless, on Ubuntu:
+
+- **Chromium's sandbox needs a syscall Docker forbids.** Docker's default seccomp profile
+  refuses to create the namespaces the sandbox is built from, `SYS_CHROOT` or not, so
+  `--sandbox` dies with *No usable sandbox!* and only the image's `--no-sandbox` starts. Hand
+  Docker podman's profile, which allows them:
+  `--security-opt seccomp=/usr/share/containers/seccomp.json` (Debian's and Ubuntu's
+  `golang-github-containers-common` package). `chrome://sandbox` then says "You are adequately
+  sandboxed". `seccomp=unconfined` works too, by dropping every syscall filter: don't.
+- **`--entrypoint` takes a path, not a list.** Docker reads podman's JSON array as one file name
+  and fails to start. The arguments move after the image:
+  `'--entrypoint', '/usr/bin/tini', 'mcr.microsoft.com/playwright/mcp:v0.0.85', '-s', '--',
+  'node', '/app/cli.js', '--browser', 'chromium', '--isolated', '--sandbox'`.
+- **There is no keep-id.** `node` stays a stranger, and container root, the one user that is
+  you, is the one Chromium refuses to sandbox (*Running as root without --no-sandbox is not
+  supported*). The way in is the group: container group 0 is your own group on the host, so
+  `--group-add 0` reaches what your group may touch. The X socket is group-writable already;
+  the screenshot folder needs `chmod 770`, and its files come out owned by a stranger's ID,
+  readable, and yours to delete. The cookie file is yours alone, so headed mode takes a copy
+  your group may read, made once per login:
+
+  ```sh
+  xauth -f "$XAUTHORITY" nlist "$DISPLAY" | xauth -f ~/.cache/pikuri/xauth nmerge -
+  chmod 640 ~/.cache/pikuri/xauth
+  ```
+
+  and mounts that copy in place of `$XAUTHORITY`. The window opened on the desktop, still
+  sandboxed.
+
+Each `-v`, `--network`, `--group-add` and display flag is a notch of isolation traded away.
+Start headless, with no host network and no mounts; turn a knob on when you need it, and off
+again after.
 
 ## A note on apt-shipped MCPs
 
