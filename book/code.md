@@ -99,8 +99,11 @@ that tells it to `curl` something finds no shell to do it with.
 Whether the parent delegates is the model's call, though, the same as whether it plans with the
 task list. Asked exactly that question in this repository, Ornith-1.5 didn't delegate: it ran
 `grep` twice, then `read` ten spec files itself, and its context grew from 15.7k tokens to 24.2k
-before it answered. A correct answer, paid for out of the parent's window. The persona is in the
-prompt, described; nothing makes the model reach for it.
+before it answered. A correct answer, paid for out of the parent's window. Two other models,
+asked the same, did the same: Qwen3.6-35B-A3B grepped and read the ten files itself (16.5k to
+26.9k), and the dense Qwen3.8-27B asked for all ten at once and was still working through them
+when its twenty minutes ran out. None of the three reached for `file_miner`. The persona is in
+the prompt, described; nothing makes the model reach for it.
 
 `git_repo_research` is the same move for a question a web page answers badly: "how does
 library X actually do Y?". Its child's tools are `git_clone`, the four read tools and the web

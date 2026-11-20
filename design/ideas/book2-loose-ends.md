@@ -8,9 +8,6 @@ empty.
 
 - **MCPs revisited, the dummy-interface dev-server recipe** (needs sudo). The chapter says so in
   place.
-- **Other models.** Task tracking and the completed coding agent were measured on Ornith-1.5
-  only: whether a model plans with `task_create` unasked, and whether it delegates recon to
-  `file_miner`, are both the model's call and may differ elsewhere.
 - **`sandbox_ports:` from the bin.** The forwarding is covered by
   `pikuri-code/spec/pikuri/code/bash/sandbox_spec.rb`; a run through `bin/pikuri-code` against a
   dev server on the host is not.

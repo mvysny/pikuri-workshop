@@ -143,6 +143,18 @@ four-edit job, skipping the list is arguably the right call. Just don't read the
 snippet as a guarantee: it is a nudge, and the model weighs it against its own sense of the
 job.
 
+Nor as a fact about pikuri: it's a fact about one model on one day. The same two jobs, rerun
+on three models from one router (one session each, every one ending with the tests green):
+
+| Model | Plain job | Nine numbered steps |
+|---|---|---|
+| Ornith-1.5 (35B mixture of experts) | no list | no list, this time |
+| Qwen3.6-35B-A3B (the bins' default) | no list | no list |
+| Qwen3.8-27B (dense) | no list | nine tasks, one per step, each taken through in progress to completed |
+
+The dense model planned, and paid for it in time: 18 minutes against the others' two or
+three.
+
 ## Four design choices, one lesson
 
 The shape above looks obvious once you see it, but each piece was a decision with an
