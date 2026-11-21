@@ -1,18 +1,17 @@
 # Injection tripwire: the shell, and what to do on a repeat
 
-Status: **idea, not built.** The workshop's half of pikuri's
-[`injection-tripwire.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/injection-tripwire.md),
-split off on 2026-11-21. That note owns the insight — a
-`Pikuri::Sanitizer` flag on bytes the LLM *authored* (bidi override,
-zero-width, control byte, mixed-script homoglyph) is a prompt-injection
-signal, where the same flag on bytes it merely *relayed* is display
-safety — and its first producer, `ComposeGuard`'s fail-close on a mail
-body. Its delivery channel is pikuri's
-[`warn-human-directly.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/warn-human-directly.md):
-an alert event the LLM never authors, rendered as chrome. Both are
-pikuri's own work for its secretary; this note rides them and asks
-pikuri for nothing more. Until that alert event ships, the shell
-producer below has nowhere to emit to.
+Status: **idea, not built.** The workshop's half of the injection
+tripwire, split off on 2026-11-21. Pikuri's
+[`warn-human-directly.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/warn-human-directly.md)
+owns the rest: the delivery channel — an alert event the LLM never
+authors, rendered as chrome — and, in its §"The injection tripwire", the
+insight (a `Pikuri::Sanitizer` flag on bytes the LLM *authored* — bidi
+override, zero-width, control byte, mixed-script homoglyph — is a
+prompt-injection signal, where the same flag on bytes it merely
+*relayed* is display safety) and the first producer, `ComposeGuard`'s
+fail-close on a mail body. That is pikuri's own work for its secretary;
+this note rides it and asks pikuri for nothing more. Until the alert
+event ships, the shell producer below has nowhere to emit to.
 
 ## `bash` as the second producer
 

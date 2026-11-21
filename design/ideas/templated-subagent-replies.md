@@ -31,7 +31,7 @@ Prior art (the same two papers `pikuri:D_no_quarantined_handles` cites, differen
 
 Siblings: [`private-context-taint.md`](private-context-taint.md) (the
 two-bit taint reframing below is arguably that note's vocabulary),
-pikuri's [`injection-tripwire.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/injection-tripwire.md)
+the injection tripwire in pikuri's [`warn-human-directly.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/warn-human-directly.md)
 (the heuristic counterpart — detect the injection; this one doesn't
 detect anything), and [`more-confirmers.md`](more-confirmers.md)
 §`Q_ingest_gate`, which interposes at the same return leg with a human
