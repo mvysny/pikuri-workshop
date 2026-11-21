@@ -16,22 +16,19 @@ gemspec path: 'pikuri-os'
 gemspec path: 'pikuri-conversations'
 gemspec path: 'pikuri-stemmers'
 
-# pikuri itself, "just" a dependency, pinned to one commit of its repo, so
-# the Gemfile says which pikuri this was built against. Move it by editing
-# PIKURI_REF to a commit that is already pushed, then `bundle install`.
-# The gems a workshop gemspec doesn't name are the demo binaries' and the
-# specs' choices: web tools, the PDF extractor for pikuri-corpus and
-# vectordb's line-range spec, and Thunderbird for pikuri-computer.
-PIKURI_REF = '91f5e3c6508e4a280192f564b895e0e49b060c10'
-git 'https://github.com/mvysny/pikuri.git', ref: PIKURI_REF do
-  gem 'pikuri-core'
-  gem 'pikuri-fileindex'
-  gem 'pikuri-pdf'
-  gem 'pikuri-subagents'
-  gem 'pikuri-thunderbird'
-  gem 'pikuri-web'
-  gem 'pikuri-workspace'
-end
+# pikuri itself, "just" a dependency, its released gems from rubygems: the
+# gemspecs take pikuri-core, -workspace and -fileindex at
+# Pikuri::Workshop::PIKURI, and Gemfile.lock names the one release this was
+# built against. The gems no workshop gemspec names are the demo binaries'
+# and the specs' choices, at the same constraint: the `agent` tool for
+# pikuri-code, pikuri-os and pikuri-computer, web tools, the PDF extractor
+# for pikuri-corpus and vectordb's line-range spec, and Thunderbird for
+# pikuri-computer.
+require_relative 'version'
+gem 'pikuri-pdf',         Pikuri::Workshop::PIKURI
+gem 'pikuri-subagents',   Pikuri::Workshop::PIKURI
+gem 'pikuri-thunderbird', Pikuri::Workshop::PIKURI
+gem 'pikuri-web',         Pikuri::Workshop::PIKURI
 
 group :test do
   # Test runner. We use the rspec-core describe/it harness but write

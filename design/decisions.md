@@ -18,7 +18,7 @@ open the doc comments it touches and delete what they already say.
 
 ---
 
-## D_separate_repo — Why is the workshop a repo of its own, pinned to a pikuri commit, rather than more gems in pikuri?
+## D_separate_repo — Why is the workshop a repo of its own, built on pikuri's releases, rather than more gems in pikuri?
 
 **Context.** Until 2026-11 these eight gems lived in pikuri's monorepo. Every integration added
 a gem, a release target, a book chapter and a share of a capped `AGENTS.md`, and pulled pikuri
@@ -27,10 +27,11 @@ tokenizer, a sandbox, MCP's container model and a language server's build evalua
 
 **Decision.** pikuri keeps the gems you would run on your host with your real data, and whose
 future is "explain it better". A gem that needs a cage, or whose future is more features, lives
-here. The workshop is "just" an app built on pikuri: its `Gemfile` pins one pushed pikuri
-commit by sha, its gemspecs pin the pikuri release they were built against, it releases on its
-own cycle, and its tooling (`rake check`, `rake release`, both tripwires) is a copy that evolves
-on its own. Dependencies point from here to pikuri, never back.
+here. The workshop is "just" an app built on pikuri: it takes pikuri's gems from rubygems,
+each at the release its gemspecs require (`Pikuri::Workshop::PIKURI`), so `Gemfile.lock` names
+the release it was built against; it releases on its own cycle, and its tooling (`rake check`,
+`rake release`, both tripwires) is a copy that evolves on its own. Dependencies point from here
+to pikuri, never back.
 
 **Alternatives rejected.**
 
@@ -38,8 +39,13 @@ on its own. Dependencies point from here to pikuri, never back.
   trifecta promise, which a coding agent holding all three legs can't keep.
 - **pikuri's `master` branch, with a Bundler local override to `../pikuri`.** The pin lived only
   in `Gemfile.lock`, and the override moved it silently: on the first day it pointed the lock at
-  a pikuri commit not yet pushed, which CI could never fetch. A sha in the `Gemfile` is visible,
-  and moves only when someone edits it.
+  a pikuri commit not yet pushed, which CI could never fetch.
+- **A pushed pikuri commit, pinned by sha in the `Gemfile`.** How the workshop ran until pikuri
+  0.2.0, while the gems leaving pikuri needed its changes the day they were pushed. The specs
+  then passed against a pikuri no user of a released workshop gem could install: the gemspecs
+  required a release, the `Gemfile` tested a commit, and nothing checked that the two agreed.
+  From rubygems, CI tests what `gem install` brings; the cost is that work needing unreleased
+  pikuri waits for pikuri's release.
 - **A shared version and release.** A rename in pikuri breaks the workshop until it catches up
   either way; a shared number only hides that, and spends a release on gems that didn't change.
 - **Renaming the gems `pikuri-workshop-*`.** A name is tied to its namespace and entry file, so

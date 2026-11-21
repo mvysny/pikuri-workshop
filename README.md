@@ -33,12 +33,10 @@ and some on other pikuri gems; nothing in pikuri depends on the workshop.
 
 ## Install
 
-Until the next release, ride both repos from git:
+pikuri comes from rubygems; until the workshop's next release, ride the workshop from git:
 
 ```ruby
-git 'https://github.com/mvysny/pikuri.git', branch: 'master' do
-  gem 'pikuri-core'
-end
+gem 'pikuri-core', '~> 0.2.0'
 git 'https://github.com/mvysny/pikuri-workshop.git', branch: 'master' do
   gem 'pikuri-code'
 end
@@ -53,9 +51,9 @@ bundle install
 bundle exec rake check
 ```
 
-pikuri comes from its repo at the commit `PIKURI_REF` in the `Gemfile` names. To try an
-unpushed pikuri change, point that `git` block at `path: '../pikuri'` for the session, and
-put the pin back before you commit.
+pikuri comes from rubygems, at the release `Gemfile.lock` names. To try an unreleased
+pikuri change, add `path: '../pikuri'` to its gems in the `Gemfile` for the session, and
+take it out before you commit.
 
 ## License
 

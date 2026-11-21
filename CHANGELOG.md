@@ -5,6 +5,7 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
+- Every workshop gem now requires pikuri `~> 0.2.0` (was `~> 0.1`, which let pikuri 0.2's breaking changes in) and is built against pikuri 0.2.0 from rubygems; upgrade pikuri's gems alongside.
 - `pikuri-vectordb` moved here from pikuri unchanged (pikuri `43ecf1e`): pikuri 0.2.0 no longer ships it, and its changes since pikuri 0.1.0, its last release there, are in pikuri's 0.2.0 changelog.
 - Add `pikuri-rag`, moved here from pikuri unchanged (pikuri `43ecf1e`), which never released it: hybrid retrieval over a local corpus as `rag_search` (a vector leg and an FTS5 keyword leg fused by reciprocal rank, optionally reranked), `rag_search_keywords` (every document holding all the stemmed words, no cutoff) and pikuri-vectordb's `rag_read` / `rag_reindex` (`D_rag_gem`).
 - `pikuri-corpus` moved to `pikuri-rag/bin/` and gained `--hybrid`, which swaps its `vectordb_*` tools for rag's over the same corpus and collection.

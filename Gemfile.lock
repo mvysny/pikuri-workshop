@@ -1,95 +1,56 @@
-GIT
-  remote: https://github.com/mvysny/pikuri.git
-  revision: 91f5e3c6508e4a280192f564b895e0e49b060c10
-  ref: 91f5e3c6508e4a280192f564b895e0e49b060c10
-  specs:
-    pikuri-core (0.1.0)
-      faraday (~> 2.9)
-      rainbow (~> 3.1)
-      ruby_llm (~> 2.2)
-      zeitwerk (~> 2.7)
-    pikuri-fileindex (0.1.0)
-      pikuri-core (= 0.1.0)
-    pikuri-html (0.1.0)
-      nokogiri (~> 1.19)
-      pikuri-core (= 0.1.0)
-      reverse_markdown (~> 3.0)
-      ruby-readability (~> 0.7)
-    pikuri-pdf (0.1.0)
-      pdf-reader (~> 2.15)
-      pikuri-core (= 0.1.0)
-    pikuri-subagents (0.1.0)
-      pikuri-core (= 0.1.0)
-      pikuri-workspace (= 0.1.0)
-    pikuri-thunderbird (0.1.0)
-      ice_cube (~> 0.17)
-      mail (~> 2.9)
-      pikuri-core (= 0.1.0)
-      sqlite3 (~> 2.9)
-      tzinfo (~> 2.0)
-    pikuri-web (0.1.0)
-      faraday (~> 2.9)
-      nokogiri (~> 1.19)
-      pikuri-core (= 0.1.0)
-      pikuri-html (= 0.1.0)
-      pikuri-workspace (= 0.1.0)
-    pikuri-workspace (0.1.0)
-      pikuri-core (= 0.1.0)
-      reline (~> 0.6)
-
 PATH
   remote: pikuri-code
   specs:
     pikuri-code (0.1.0)
-      pikuri-core (~> 0.1)
-      pikuri-workspace (~> 0.1)
+      pikuri-core (~> 0.2.0)
+      pikuri-workspace (~> 0.2.0)
 
 PATH
   remote: pikuri-conversations
   specs:
     pikuri-conversations (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-extractors
   specs:
     pikuri-extractors (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-lsp
   specs:
     pikuri-lsp (0.1.0)
-      pikuri-core (~> 0.1)
-      pikuri-workspace (~> 0.1)
+      pikuri-core (~> 0.2.0)
+      pikuri-workspace (~> 0.2.0)
 
 PATH
   remote: pikuri-mcp
   specs:
     pikuri-mcp (0.1.0)
       mcp (~> 0.17)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-memory
   specs:
     pikuri-memory (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-os
   specs:
     pikuri-os (0.1.0)
       pikuri-code (= 0.1.0)
-      pikuri-core (~> 0.1)
-      pikuri-fileindex (~> 0.1)
-      pikuri-workspace (~> 0.1)
+      pikuri-core (~> 0.2.0)
+      pikuri-fileindex (~> 0.2.0)
+      pikuri-workspace (~> 0.2.0)
 
 PATH
   remote: pikuri-rag
   specs:
     pikuri-rag (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
       pikuri-vectordb (= 0.1.0)
       sqlite3 (~> 2.9)
 
@@ -97,31 +58,31 @@ PATH
   remote: pikuri-skills
   specs:
     pikuri-skills (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-stemmers
   specs:
     pikuri-stemmers (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-tasks
   specs:
     pikuri-tasks (0.1.0)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 PATH
   remote: pikuri-vectordb
   specs:
     pikuri-vectordb (0.1.0)
       listen (~> 3.9)
-      pikuri-core (~> 0.1)
+      pikuri-core (~> 0.2.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    Ascii85 (2.0.1)
+    Ascii85 (2.0.2)
     afm (1.0.1)
     base64 (0.3.0)
     bigdecimal (3.3.1)
@@ -148,7 +109,7 @@ GEM
     ffi (1.17.4-x86_64-linux-musl)
     guess_html_encoding (0.0.11)
     hana (1.3.7)
-    hashery (2.1.2)
+    hashery (2.2.2)
     ice_cube (0.17.0)
     io-console (0.9.5)
     json (3.1.0)
@@ -209,6 +170,39 @@ GEM
       afm (>= 0.2.1, < 2)
       hashery (~> 2.0)
       ttfunk
+    pikuri-core (0.2.0)
+      faraday (~> 2.9)
+      rainbow (~> 3.1)
+      ruby_llm (~> 2.2)
+      zeitwerk (~> 2.7)
+    pikuri-fileindex (0.2.0)
+      pikuri-core (= 0.2.0)
+    pikuri-html (0.2.0)
+      nokogiri (~> 1.19)
+      pikuri-core (= 0.2.0)
+      reverse_markdown (~> 3.0)
+      ruby-readability (~> 0.7)
+    pikuri-pdf (0.2.0)
+      pdf-reader (~> 2.15)
+      pikuri-core (= 0.2.0)
+    pikuri-subagents (0.2.0)
+      pikuri-core (= 0.2.0)
+      pikuri-workspace (= 0.2.0)
+    pikuri-thunderbird (0.2.0)
+      ice_cube (~> 0.17)
+      mail (~> 2.9)
+      pikuri-core (= 0.2.0)
+      sqlite3 (~> 2.9)
+      tzinfo (~> 2.0)
+    pikuri-web (0.2.0)
+      faraday (~> 2.9)
+      nokogiri (~> 1.19)
+      pikuri-core (= 0.2.0)
+      pikuri-html (= 0.2.0)
+      pikuri-workspace (= 0.2.0)
+    pikuri-workspace (0.2.0)
+      pikuri-core (= 0.2.0)
+      reline (~> 0.6)
     prism (2.1.0-aarch64-linux-gnu)
     prism (2.1.0-aarch64-linux-musl)
     prism (2.1.0-arm-linux-gnu)
@@ -234,7 +228,7 @@ GEM
     ruby-readability (0.7.3)
       guess_html_encoding (>= 0.0.4)
       nokogiri (>= 1.6.0)
-    ruby_llm (2.2.0)
+    ruby_llm (2.2.3)
       base64
       faraday (>= 1.10.0, != 2.0.0)
       faraday-multipart (>= 1)
@@ -280,30 +274,27 @@ DEPENDENCIES
   minitest (~> 6.0)
   pikuri-code!
   pikuri-conversations!
-  pikuri-core!
   pikuri-extractors!
-  pikuri-fileindex!
   pikuri-lsp!
   pikuri-mcp!
   pikuri-memory!
   pikuri-os!
-  pikuri-pdf!
+  pikuri-pdf (~> 0.2.0)
   pikuri-rag!
   pikuri-skills!
   pikuri-stemmers!
-  pikuri-subagents!
+  pikuri-subagents (~> 0.2.0)
   pikuri-tasks!
-  pikuri-thunderbird!
+  pikuri-thunderbird (~> 0.2.0)
   pikuri-vectordb!
-  pikuri-web!
-  pikuri-workspace!
+  pikuri-web (~> 0.2.0)
   rake (~> 13.0)
   rspec-core (~> 3.13)
   voikko (~> 0.2)
   yard (~> 0.9.43)
 
 CHECKSUMS
-  Ascii85 (2.0.1) sha256=15cb5d941808543cbb9e7e6aea3c8ec3877f154c3461e8b3673e97f7ecedbe5a
+  Ascii85 (2.0.2) sha256=b3e3101d74a0af28e4bdad58778758c7418112917d11db0a79e89af1e8f336e1
   afm (1.0.1) sha256=4fc98c6ea9cad60c25ae12bad517513b0d6fdbedc099e25be88bf47977b7d879
   base64 (0.3.0) sha256=27337aeabad6ffae05c265c450490628ef3ebd4b67be58257393227588f5a97b
   bigdecimal (3.3.1) sha256=eaa01e228be54c4f9f53bf3cc34fe3d5e845c31963e7fcc5bedb05a4e7d52218
@@ -325,7 +316,7 @@ CHECKSUMS
   ffi (1.17.4-x86_64-linux-musl) sha256=3fdf9888483de005f8ef8d1cf2d3b20d86626af206cbf780f6a6a12439a9c49e
   guess_html_encoding (0.0.11) sha256=cab6468b945f38673fc41ad147fbbc89693b3c6c34b03b071e2ed669a603e098
   hana (1.3.7) sha256=5425db42d651fea08859811c29d20446f16af196308162894db208cac5ce9b0d
-  hashery (2.1.2) sha256=d239cc2310401903f6b79d458c2bbef5bf74c46f3f974ae9c1061fb74a404862
+  hashery (2.2.2) sha256=786b64d98ecb889caa854c7dc916ee016a87c817a7af0dd8d0df66bb585f19e5
   ice_cube (0.17.0) sha256=32deb45dda4b4acc53505c2f581f6d32b5afc04d29b9004769944a0df5a5fcbe
   io-console (0.9.5) sha256=83dd9bbf4c4680416629245b39cd4212eb5f4d9a4ea91804870c1f6b846414d5
   json (3.1.0) sha256=3ce7ccf8fde58960177a3a756c31f292a4c1e1dedee884547096a5b0604e3bd8
@@ -354,24 +345,24 @@ CHECKSUMS
   pdf-reader (2.16.0) sha256=bf1b5564c085264d8279bde3cf1467778b75841494d20c0fe7da3dad475f3732
   pikuri-code (0.1.0)
   pikuri-conversations (0.1.0)
-  pikuri-core (0.1.0)
+  pikuri-core (0.2.0) sha256=65678eaacaa747b6c17b61adfa444730a4d75fcfc0620942f5e872f31cf7d8ba
   pikuri-extractors (0.1.0)
-  pikuri-fileindex (0.1.0)
-  pikuri-html (0.1.0)
+  pikuri-fileindex (0.2.0) sha256=b33e8dc4f5bc50e4973cfecfdc2247c4abf50c966db91485e46bbbf0e4277089
+  pikuri-html (0.2.0) sha256=8364363a7b94d56e83c7578220e2d6e4fd160a2be1af69696e26d3542e19a936
   pikuri-lsp (0.1.0)
   pikuri-mcp (0.1.0)
   pikuri-memory (0.1.0)
   pikuri-os (0.1.0)
-  pikuri-pdf (0.1.0)
+  pikuri-pdf (0.2.0) sha256=e3aab814b1de874e8b750c82d1cf936beaba7ae3148027fa51d5b3f0370ac400
   pikuri-rag (0.1.0)
   pikuri-skills (0.1.0)
   pikuri-stemmers (0.1.0)
-  pikuri-subagents (0.1.0)
+  pikuri-subagents (0.2.0) sha256=42f30f6827bc28ceff354a77d128b096bef91cf492f9ded4c782b7de6dd2dfaf
   pikuri-tasks (0.1.0)
-  pikuri-thunderbird (0.1.0)
+  pikuri-thunderbird (0.2.0) sha256=3cf9e41994838acf878a72237c6cef164061059e0e3a710a3738e9229a4c45ec
   pikuri-vectordb (0.1.0)
-  pikuri-web (0.1.0)
-  pikuri-workspace (0.1.0)
+  pikuri-web (0.2.0) sha256=68c43227040cdd43304244e6c20973a99322b537d28b603f59e8c4570eaf408c
+  pikuri-workspace (0.2.0) sha256=37040203245398900648adc8ddf0da6ec5d021816c8f0821e587fc759c538c26
   prism (2.1.0-aarch64-linux-gnu) sha256=808dddc72def68e1a0463689414c97e0ba211938eddbab05387a4844aa2b3ec2
   prism (2.1.0-aarch64-linux-musl) sha256=dd1a0732620c1e575dabb07a297a62911fabd72f8e20ce850b522a866f877930
   prism (2.1.0-arm-linux-gnu) sha256=96b2426b9dbab05448c4add735619929042be3cd7e871ff186468121b62bcfa8
@@ -391,7 +382,7 @@ CHECKSUMS
   rspec-core (3.13.7) sha256=c64ff16d9788119805cbc6a3f4b6d87cc22417c2d25976a3330de136896b5469
   rspec-support (3.13.8) sha256=e4160030309b7e3e9d9863dfe720a35dfcc577162f5402cd68fc8c5258a0ffd6
   ruby-readability (0.7.3) sha256=bd213fab037118cc15d999e167a8ea2cc6b689dc78c033e78fb36a2a37efc241
-  ruby_llm (2.2.0) sha256=ed5163c3aba02c514687e1e2c6b1dfe4e8f4402201ce6d53487cf29c2f3e1a05
+  ruby_llm (2.2.3) sha256=a3b1ceccebde2894ca99e8b4d00a6329604f8481c78e7236526648a744c428fd
   schematist (1.1.0) sha256=905d8f0286830926e77e0d631bee325ee741c4b99640bc99735593b40ba73e7b
   simpleidn (0.3.0) sha256=12ca730bed2f3db04d11e9bfd1bca3e11fb37f55b21eb2e9793fb5814bf54d03
   sqlite3 (2.10.2-aarch64-linux-gnu) sha256=e9aea2c2b3476fc875dd8a89313a9a2862818519c0186bfb5b56d6f57bb08d98
