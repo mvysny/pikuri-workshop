@@ -2172,7 +2172,7 @@ document never saw. Vouching for a rendered PDF is the ingest mirror of the
 it sends are computed after the click"). The recipe needs no new code:
 convert with `Pikuri::Extractor.extract`, read the output in an editor, index
 the *output* and leave the original outside the corpus — the author-not-approver property of
-pikuri's `private-context-taint` idea, applied to ingest. The second clause exists
+the `private-context-taint` idea, applied to ingest. The second clause exists
 because trust is a claim about who can *write*, not about current content: with
 a `Watcher` a file that lands later is indexed within seconds, so a shared
 Nextcloud folder, a team Drive, a scanner's output directory or a mail

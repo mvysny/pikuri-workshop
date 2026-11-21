@@ -50,7 +50,7 @@ defend against it. A `Mcp::Verifier`-shaped pass for skills would belt-and-brace
 ## An egress allowlist below the tool layer
 
 Auto-deny non-allowlisted hosts for `bash` in interactive mode, prompting for first-use additions.
-pikuri's [`private-context-taint.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/private-context-taint.md)
+[`private-context-taint.md`](private-context-taint.md)
 **kills the user-curated `fetch` whitelist** — the hosts people want to fetch are interactive,
 hence attacker-readable (a whitelisted `github.com` exfiltrates through a gist) — so the surviving
 live shape is the `bash`-egress / network-layer version. Gondolin's egress-proxy pattern

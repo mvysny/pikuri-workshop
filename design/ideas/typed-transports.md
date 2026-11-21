@@ -23,7 +23,7 @@ Related:
   replacement for that banner. The workshop's [`SECURITY.md`](../../SECURITY.md)
   corpus bullet is the same story for the embedder: pointed at a remote
   provider, it ships the whole corpus there.
-- pikuri's [`private-context-taint.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/private-context-taint.md)
+- [`private-context-taint.md`](private-context-taint.md)
   — the runtime egress-leg story. Typed transports are about *which
   provider* bytes go to (private vs public endpoint); taint is about
   *whether* a given context is allowed to egress at all. Adjacent, not

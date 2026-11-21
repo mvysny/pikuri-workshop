@@ -579,7 +579,7 @@ risk lives.
 `r` lets you type what you want instead — "use the local docs, not the
 web" — and that comes back to the agent as the observation, a decline
 that steers instead of just ending. Richer confirmer shapes still on the list are in
-[`design/ideas/more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md).)
+[`design/ideas/more-confirmers.md`](../design/ideas/more-confirmers.md).)
 
 ## Two network boundaries, not one
 
@@ -642,7 +642,7 @@ Part 2 *weakens* the third leg; it does not delete it. What remains:
 
 Sharper still — richer confirmers, an ingest-side gate on what the
 researcher returns — is future work in
-[`design/ideas/more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md).
+[`design/ideas/more-confirmers.md`](../design/ideas/more-confirmers.md).
 
 ---
 

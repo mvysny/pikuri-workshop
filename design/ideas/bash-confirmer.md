@@ -31,7 +31,7 @@ obey the same governing invariant (stated in "The invariant" below):
   fatigue — the passive-command detector" — what already ships; the
   OS-helper is one of the two agents that would use this note (the coding agent is the other, and the likelier winner — see
   below).
-- [`more-confirmers.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/more-confirmers.md) — the sibling
+- [`more-confirmers.md`](more-confirmers.md) — the sibling
   confirmer questions still open (structured `Request` context, the
   ingest gate). That file is the **what-to-show / where-to-gate**
   axis; this note is the **fatigue +
