@@ -5,7 +5,8 @@ All notable changes to the workshop gems. pikuri's own changes are in
 
 ## [Unreleased]
 
-- `pikuri-vectordb` and `pikuri-rag` moved here from pikuri unchanged (pikuri `43ecf1e`): take them from the workshop's git source or release rather than pikuri's.
+- `pikuri-vectordb` moved here from pikuri unchanged (pikuri `43ecf1e`): pikuri 0.2.0 no longer ships it, and its changes since pikuri 0.1.0, its last release there, are in pikuri's 0.2.0 changelog.
+- Add `pikuri-rag`, moved here from pikuri unchanged (pikuri `43ecf1e`), which never released it: hybrid retrieval over a local corpus as `rag_search` (a vector leg and an FTS5 keyword leg fused by reciprocal rank, optionally reranked), `rag_search_keywords` (every document holding all the stemmed words, no cutoff) and pikuri-vectordb's `rag_read` / `rag_reindex` (`D_rag_gem`).
 - `pikuri-corpus` moved to `pikuri-rag/bin/` and gained `--hybrid`, which swaps its `vectordb_*` tools for rag's over the same corpus and collection.
 - Fix `Pikuri::Conversations::Conversation` showing two messages sent during a boot, or a message kept across a cancel and the next one, in reverse order: `TurnStarted` named the later message ahead of the earlier one's `UserTurn`, so such a turn is now bare, `user_message: nil`, and delivers them all, in order, as mid-loop `UserTurn`s.
 - **Breaking:** `Pikuri::Conversations::Event::PendingChanged` carries `items:`, the waiting `Interloper::Item`s in delivery order (`:user` and `:system`), instead of `count:`; `count` still reads and pattern-matches as `items.size`, but build the event with `items:`, and a boot that takes its only waiting message for the first turn now reports `[]` rather than leaving the last count standing (pikuri `9b6a7e3`).
