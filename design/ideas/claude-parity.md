@@ -16,9 +16,9 @@ Related:
 
 - [`coding-agent.md`](coding-agent.md) — the sibling deferral list for
   `bin/pikuri-code`; this note's not-backported list points at it.
-- [`security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md) — the
+- pikuri's [`SECURITY.md`](https://github.com/mvysny/pikuri/blob/master/SECURITY.md) — the
   security-posture preamble decision below is a prompt-shaped facet of
-  that note's threat-model framing.
+  its threat-model framing.
 
 ## What's still open
 

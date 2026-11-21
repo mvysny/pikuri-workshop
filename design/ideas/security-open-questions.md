@@ -1,9 +1,9 @@
 # Security open questions
 
-Status: **open-questions log**, split from pikuri's
-[`security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md)
-when the shell and MCP moved here; the skills, egress-allowlist, output-size and provenance
-entries followed on 2026-11-21, being features no pikuri promise waits on. The committed model is
+Status: **open-questions log**, gathered from pikuri's as the shell and MCP moved here, then the
+skills, egress-allowlist, output-size and provenance entries on 2026-11-21, being features no pikuri
+promise waits on; pikuri's own log has since dissolved into its
+[`SECURITY.md`](https://github.com/mvysny/pikuri/blob/master/SECURITY.md). The committed model here is
 [`SECURITY.md`](../../SECURITY.md). Promote an entry into its own idea file, or a fix, when the
 friction shows up.
 

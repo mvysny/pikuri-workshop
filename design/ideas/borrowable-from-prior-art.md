@@ -28,7 +28,8 @@ convention line, or nothing — and delete this file once the live items are gon
    truncation discards the answer — and writing the overflow to a `Paths.new_temp` file whose path
    the model can `grep`. `Bash` is the case that motivates it; pikuri's own tools follow only if a
    shared helper is the seam this needs. Cross-cutting version in
-   `pikuri:design/ideas/security-open-questions.md` §"Output-size DoS and cost".
+   [`security-open-questions.md`](security-open-questions.md) §"Output size: one cap shape, and
+   spill-over to disk".
 
 ## C-tier — only when scope changes
 

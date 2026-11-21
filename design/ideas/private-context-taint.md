@@ -25,8 +25,9 @@ enforcement covers the **confidentiality** leg only (private in → sever
 egress).
 
 Also related:
-pikuri's [`security-open-questions.md`](https://github.com/mvysny/pikuri/blob/master/design/ideas/security-open-questions.md)
-§"Egress is broader than `web_search`";
+pikuri's [`book/security.md`](https://github.com/mvysny/pikuri/blob/master/book/security.md)
+on how many ways bytes leave (a search query, a DNS lookup) and its
+`SECURITY.md` on the one a host opens by rendering the model's images;
 [`security-open-questions.md`](security-open-questions.md)
 §"An egress allowlist below the tool layer" (what survives of the
 allowlist once this note kills the `fetch` one); and
